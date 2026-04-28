@@ -38,7 +38,7 @@ geometry, materials, UV, rendering.
 
 The project will be divided as follows:
 1. parsing + geometry (C++):
-  - Reading DXF file (`libdxfrw` or `OpenCascade` library)
+  - Reading DXF file with `libdxfrw` (https://github.com/codelibs/libdxfrw)
   - Extraction of 2D contours
   - Triangulation of the floor
   - Wall extrusion
@@ -49,13 +49,12 @@ The project will be divided as follows:
   - Application of materials with knots (Principled BSDF)
   - Headless rendering with Cycles or EEVEE
 
-For the C++ part, I use the `Magnum Engine` library to view the generated geometry.
+Note: I use the `Magnum Engine` (https://magnum.graphics/) library as a geometry visualization tool
 
 ## Useful sources
 Some sources that may be useful:
   - Blender proc
   - Delauney Triangulation
-  - OpenCascade
   - NVIDIA-RTX/Donut and NVRHI (NVIDIA Rendering Hardware Interface)
   
 ## How to build

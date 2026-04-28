@@ -1,19 +1,34 @@
-#include <Magnum/GL/DefaultFramebuffer.h>
-#include <Magnum/GL/Mesh.h>
-#include <Magnum/GL/Renderer.h>
-#include <Magnum/Math/Angle.h>
-#include <Magnum/Math/Color.h>
-#include <Magnum/Math/Matrix4.h>
-#include <Magnum/MeshTools/Compile.h>
-#include <Magnum/Platform/Sdl2Application.h>
-#include <Magnum/Primitives/Cube.h>
-#include <Magnum/Shaders/PhongGL.h>
-#include <Magnum/Trade/MeshData.h>
-
 #include <print>
+#include <filesystem>
 
-int main() 
-{   
-  std::println("Hello, World!");
+// #include "render_primitive.hpp"
+#include "drw_parser.hpp"
+
+
+int main(int argc, char** argv)   
+{
+  if(argc < 2)
+  {
+    std::println("Usage: {} <input.dxf>", argv[0]);
+    return 1;
+  }
+  
+  auto file_path = argv[1];
+  if(!std::filesystem::exists(file_path))
+  {
+    std::println("File not found: {}", file_path);
+    return 1;
+  }
+  
+  DRWParser parser;
+  dxfRW dxf(file_path);
+  if (!dxf.read(&parser, false))
+  {
+    std::println("Error reading DXF file (code: {}): {}", static_cast<int>(dxf.getError()), file_path);
+    return 1;
+  }
   return 0;
+  
+  //PrimitivesExample app{{ argc, argv }};
+  //return app.exec();
 }

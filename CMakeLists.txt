@@ -30,11 +30,21 @@ FetchContent_Declare(
   GIT_TAG master
   GIT_PROGRESS TRUE
 )
-FetchContent_MakeAvailable(corrade magnum)
 
+# ---- libdxfrw -----
+FetchContent_Declare(
+  libdxfrw
+  GIT_REPOSITORY https://github.com/LibreCAD/libdxfrw.git
+  GIT_TAG        master
+  GIT_PROGRESS   TRUE
+)
+
+FetchContent_MakeAvailable(corrade magnum libdxfrw)
 
 add_executable(${PROJECT_NAME} 
   src/main.cpp
+  src/drw_parser.cpp
+  src/render_primitive.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -46,4 +56,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   Magnum::Primitives
   Magnum::Shaders
   Magnum::Trade
+  
+  dxfrw
 )
+target_include_directories(${PROJECT_NAME} PRIVATE ${libdxfrw_SOURCE_DIR}/src)

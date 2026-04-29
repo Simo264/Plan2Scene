@@ -4,8 +4,7 @@
 // #include "render_primitive.hpp"
 #include "drw_parser.hpp"
 
-
-int main(int argc, char** argv)   
+int main(int argc, char** argv) 
 {
   if(argc < 2)
   {
@@ -20,8 +19,8 @@ int main(int argc, char** argv)
     return 1;
   }
   
-  DRWParser parser;
-  dxfRW dxf(file_path);
+  auto parser = DRWParser{};
+  auto dxf = dxfRW(file_path);
   if (!dxf.read(&parser, false))
   {
     std::println("Error reading DXF file (code: {}): {}", static_cast<int>(dxf.getError()), file_path);

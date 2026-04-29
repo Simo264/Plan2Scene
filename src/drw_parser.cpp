@@ -2,12 +2,15 @@
 
 #include <print>
 
-void DRWParser::addLine(const DRW_Line& data)
-{
-  std::println("Line from ({:.2f}, {:.2f}) to ({:.2f}, {:.2f})", data.basePoint.x, data.basePoint.y, data.secPoint.x, data.secPoint.y);
-}
 
-void DRWParser::addCircle(const DRW_Circle& data)
-{
-  std::println("Circle at ({:.2f}, {:.2f}) radius {:.2f}", data.basePoint.x, data.basePoint.y, data.radious);
-}
+void DRWParser::addLWPolyline(const DRW_LWPolyline& data) 
+{}
+
+void DRWParser::addPolyline(const DRW_Polyline& data)
+{}
+
+void DRWParser::addLine(const DRW_Line& data) 
+{}
+
+void DRWParser::addArc(const DRW_Arc& data)
+{}

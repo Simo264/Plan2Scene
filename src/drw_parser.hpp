@@ -5,14 +5,15 @@
 
 class DRWParser : public DRW_Interface 
 {
-public:
+public: 
+  virtual void addLWPolyline(const DRW_LWPolyline& data) override;
+  virtual void addPolyline(const DRW_Polyline& data) override;
   virtual void addLine(const DRW_Line& data) override;
-  virtual void addCircle(const DRW_Circle& data) override;
+  virtual void addArc(const DRW_Arc& data) override;
 
-  virtual void addArc(const DRW_Arc& data) override {}
   virtual void addEllipse(const DRW_Ellipse& data) override {}
-  virtual void addLWPolyline(const DRW_LWPolyline& data) override {}
-  virtual void addPolyline(const DRW_Polyline& data) override {}
+  virtual void addCircle(const DRW_Circle& data) override {}
+  virtual void addSpline(const DRW_Spline* data) override {}
   virtual void addSolid(const DRW_Solid& data) override {}
   virtual void add3dFace(const DRW_3Dface& data) override {}
   virtual void addPoint(const DRW_Point& data) override {}
@@ -53,10 +54,12 @@ public:
   virtual void addAppId(const DRW_AppId& data) override {}
   virtual void addRay(const DRW_Ray& data) override {}
   virtual void addXline(const DRW_Xline& data) override {}
-  virtual void addSpline(const DRW_Spline* data) override {}
   virtual void addKnot(const DRW_Entity& data) override {}
   virtual void addTrace(const DRW_Trace& data) override {}
   virtual void addPlotSettings(const DRW_PlotSettings* data) override {}
   virtual void writeObjects() override {}
   virtual void writeAppId() override {}
+
+private:
+
 };

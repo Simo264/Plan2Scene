@@ -26,6 +26,8 @@ int main(int argc, char** argv)
     std::println("Error reading DXF file (code: {}): {}", static_cast<int>(dxf.getError()), file_path);
     return 1;
   }
+  
+  std::println("Successfully parsed DXF file. Segments: {}, Polylines: {}", parser.segments.size(), parser.polylines.size());
   return 0;
   
   //PrimitivesExample app{{ argc, argv }};

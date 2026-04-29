@@ -65,7 +65,6 @@ To distinguish a room outline from a hole (like a pillar in the middle), in a 2D
 ## Useful sources
 Some sources that may be useful:
   - Blender proc
-  - Delauney Triangulation
   - NVIDIA-RTX/Donut and NVRHI (NVIDIA Rendering Hardware Interface)
   
 ## How to build

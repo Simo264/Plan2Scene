@@ -2,15 +2,37 @@
 
 #include <libdxfrw.h>
 #include <drw_interface.h>
+#include <vector>
+
+struct Vec2
+{  
+  float x, y;
+};
+
+struct Segment
+{
+  std::string layer;
+  Vec2 p1, p2;
+};
+
+struct Polyline
+{
+  std::vector<Vec2> points;
+  std::string layer;
+  bool closed;
+};
+
 
 class DRWParser : public DRW_Interface 
 {
 public: 
-  virtual void addLWPolyline(const DRW_LWPolyline& data) override;
-  virtual void addPolyline(const DRW_Polyline& data) override;
+  virtual void addHeader(const DRW_Header* data) override;
   virtual void addLine(const DRW_Line& data) override;
-  virtual void addArc(const DRW_Arc& data) override;
-
+  virtual void addPolyline(const DRW_Polyline& data) override;
+  virtual void addLWPolyline(const DRW_LWPolyline& data) override;
+  
+  virtual void addInsert(const DRW_Insert& data) override {}
+  virtual void addArc(const DRW_Arc& data) override {}
   virtual void addEllipse(const DRW_Ellipse& data) override {}
   virtual void addCircle(const DRW_Circle& data) override {}
   virtual void addSpline(const DRW_Spline* data) override {}
@@ -19,7 +41,6 @@ public:
   virtual void addPoint(const DRW_Point& data) override {}
   virtual void addText(const DRW_Text& data) override {}
   virtual void addMText(const DRW_MText& data) override {}
-  virtual void addInsert(const DRW_Insert& data) override {}
   virtual void addDimAlign(const DRW_DimAligned* data) override {}
   virtual void addDimLinear(const DRW_DimLinear* data) override {}
   virtual void addDimRadial(const DRW_DimRadial* data) override {}
@@ -39,7 +60,6 @@ public:
   virtual void addLType(const DRW_LType& data) override {}
   virtual void addDimStyle(const DRW_Dimstyle& data) override {}
   virtual void addVport(const DRW_Vport& data) override {}
-  virtual void addHeader(const DRW_Header* data) override {}
   virtual void addComment(const char* comment) override {}
   virtual void setBlock(const int handle) override {}
   virtual void writeHeader(DRW_Header& data) override {}
@@ -60,6 +80,7 @@ public:
   virtual void writeObjects() override {}
   virtual void writeAppId() override {}
 
-private:
-
+  std::vector<Segment> segments;
+  std::vector<Polyline> polylines;
+  float unit_scale = 1.0f;
 };

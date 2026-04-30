@@ -72,6 +72,7 @@ void DRWParser::addPolyline(const DRW_Polyline& data)
     auto poly = Polyline{};
     poly.layer = layer_name;
     poly.closed = data.flags & 1;
+    std::print("closed = {}", poly.closed);
     for (const auto& v : data.vertlist)
     {
       auto p = Vec2{};
@@ -93,6 +94,7 @@ void DRWParser::addLWPolyline(const DRW_LWPolyline& data)
     auto poly = Polyline{};
     poly.layer = layer_name;
     poly.closed = data.flags & 1;
+    std::print("closed = {}", poly.closed);
     for (const auto& v : data.vertlist) 
     {
       auto p = Vec2{};

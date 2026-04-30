@@ -20,4 +20,3 @@ struct Polyline
   std::string layer;
   bool closed;
 };
-

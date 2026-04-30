@@ -17,12 +17,12 @@ In this way we obtained a room with floor, ceiling and walls, practically a 3D m
 After we have the 3D model we must also define the coordinated textures on the vertices and then apply the various materials. 
 For the generation of coordinated textures and the application of materials, the use of Blender is strongly recommended (use the Python API).
 
-Note: the 3D model with coordinated textures and materials must then be exported in GLTF format.
+*Note: the 3D model with coordinated textures and materials must then be exported in GLTF format.*
 
 Once the model is ready, we proceed to perform the photorealistic rendering of the room.
 Our task is not to go and write a photorealistic renderer, for this we will use the Blender renderer. We need to use blender API in Python.
 
-## Implementation
+## Structure of the project
 
 Blender does not expose native APIs for C++. The only official scripting modes are for Python, `bpy`, it's a complete API for everything: 
 geometry, materials, UV, rendering. 
@@ -40,6 +40,38 @@ The project will be divided as follows:
   - Application of materials with knots (Principled BSDF)
   - Headless rendering with Cycles or EEVEE
 
+## Implementation details
+
+> How to implement parsing?
+
+DXF does NOT give you “polygons”. It gives you disconnected entities.
+The main challenge with DXF files is that they are often bunch of independent of lines/polylines. During the parsing don't try to build topology here, just store raw entities.
+
+*IMPORTANT: during the parsing we must filter the geometry (by layers). If we feed everything: furniture, dimension lines, hatching, text boundaries, annotation leaders into your triangulation pipeline, the results will be completely wrong. The triangulation algorithm needs a clean, simple polygon. So filtering is not optional, it's a prerequisite for correctness.*
+
+```
+> ./build/bin/Plan2Scene res/sample-floor-plan.dxf
+Line: layer = WALLS
+Line: layer = DOORS
+Line: layer = WINDOWS
+Successfully parsed DXF file. Segments: 5, Polylines: 0
+
+> ./build/bin/Plan2Scene res/giraffe360_demo_commercial_1.dxf
+LWPolyline: layer = WALLS nr_vertices = 30
+```
+
+The parser should produce as output a list of contours, where each contour is already an ordered list of vertices. A LWPOLYLINE  directly becomes one entry in the list, a collection of LINE segments goes through snap + chain and becomes one entry in the list.
+
+In the case of LWPOLYLINE, the vertices are already ordered! We just extract them directly as your contour. Check whether the polyline is flagged as closed, if it's closed, the last vertex implicitly connects back to the first and you don't need to duplicate it.
+Otherwise in the case of individual SEGMENTS, we have no ordering information. This is where the snap + chain algorithm is needed to reconstruct the contour.
+
+In the first case we have 5 independent pairs of segments. They have no topological relationship to each other. The triangulation library needs an ordered sequence of vertices forming a closed polygon. So the goal of this phase is to convert unordered segments into ordered closed contour.
+Before procede, we need to normalize the coordinates. Two segments that share an endpoint may have endpoints like (1.0000001, 2.0) and (0.9999999, 2.0) due to floating point. If you treat these as different points, the graph will have gaps and the chaining will fail. For every endpoint in every segment, round or snap it to a grid with tolerance $\epsilon$: two points closer than $\epsilon$ become the same point.
+Once points are snapped, we must build an adjacency graph: think of each unique point as a graph node, and each segment as an undirected edge between two nodes. For a valid simple room contour, every node should have exactly degree 2 
+
+In the second case, we already have a polyline with 30 ordered vertices, we already have exactly what you need, i.e. an ordered contour. If the geometry is already a LWPOLYLINE, the parser gives you the vertices in order for free. The chaining algorithm exists to handle the case where your geometry arrives as unordered disconnected segments.
+
+
 ## Useful sources
 Some sources that may be useful:
   - Blender proc
@@ -47,17 +79,8 @@ Some sources that may be useful:
   
 ## How to build
 
-Generate the project buildsystem:
 ```bash
 cmake . -B ./build -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-```
-
-Build the project
-```bash
 cmake --build ./build/ --parallel 8
-```
-
-Execute
-```bash
 ./build/bin/Plan2Scene <input.dxf>
 ```

@@ -3,6 +3,18 @@
 
 // #include "render_primitive.hpp"
 #include "drw_parser.hpp"
+#include "primitives.hpp"
+
+bool are_equals(Vec2 p1, Vec2 p2, double e)
+{
+  return std::abs(p1.x - p2.x) < e && std::abs(p1.y - p2.y) < e;
+}
+
+void merge_points()
+{
+
+}
+
 
 int main(int argc, char** argv) 
 {
@@ -19,6 +31,8 @@ int main(int argc, char** argv)
     return 1;
   }
   
+  // --- Step 1: parsing DXF file to retrieve segments and polylines ---
+  // -------------------------------------------------------------------
   auto parser = DRWParser{};
   auto dxf = dxfRW(file_path);
   if (!dxf.read(&parser, false))
@@ -26,8 +40,29 @@ int main(int argc, char** argv)
     std::println("Error reading DXF file (code: {}): {}", static_cast<int>(dxf.getError()), file_path);
     return 1;
   }
-  
-  std::println("Successfully parsed DXF file. Segments: {}, Polylines: {}", parser.segments.size(), parser.polylines.size());
+
+  auto& segments = parser.segments;
+  auto& polylines = parser.polylines;
+  std::println("Successfully parsed DXF file. Segments: {}, Polylines: {}", segments.size(), polylines.size());
+
+  // --- Step 2: convert polylines to segments ---
+  // ---------------------------------------------
+  if(!polylines.empty())
+  {
+    
+  }
+
+
+  // --- Step 3: epsilon merging ---
+  // -------------------------------
+  constexpr double EPS = 1e-5;
+  std::vector<Vec2> unique_points;
+
+
+  // --- Step 4: build an adjacency graph ---
+  // ----------------------------------------
+
+
   return 0;
   
   //PrimitivesExample app{{ argc, argv }};

@@ -40,28 +40,6 @@ The project will be divided as follows:
   - Application of materials with knots (Principled BSDF)
   - Headless rendering with Cycles or EEVEE
 
-### Step 1: parsing DXF file
-
-The main challenge with DXF files is that they are a bunch of independent lines.
-To get an ordered sequence of vertices, your DRWParser needs to:
-1. **Filter by Layer**. CAD files usually put walls on specific layers (e.g., "WALLS", "ARCH"). Ignore layers with annotations or furniture for now.
-2. Store every line and polyline found in the file.
-3. Connect the endpoints of these segments to form closed loops.
-
-We start with the entity collection (override DRW_Interface callbacks). You’ll need to override specific virtual methods in your DRWParser class. Since libdxfrw is an event-driven parser, it will "call" these methods as it reads the file.
-
-*Note: collect everything into intermediate structures. Don't try to build topology here, just store raw entities, grouped by layer.*
-
-Once the parser finishes reading, you have a bucket of segments. Because of floating-point errors, two lines that "touch" might actually be $0.00001$ units apart. The solution is to use a tolerance ($\epsilon$): if $|x_1 - x_2| < \epsilon$, treat them as the same point.
-
-Next, think of your segments as edges in a graph: pick a random starting segment, find another segment that starts where the current one ends, repeat until you return to your starting point (you found a loop!). If segments are left over, they might be internal "holes" (like columns) or separate rooms.
-
-To distinguish a room outline from a hole (like a pillar in the middle), in a 2D plane, an "outer" contour usually has a clockwise or counter-clockwise orientation that differs from the holes. If one closed loop is entirely inside another, it’s a hole. You'll need this information later for your Constrained Delaunay Triangulation.
-
-*Tip: watch out for units! DXF files can be in mm, cm, or m depending on what the architect used. Check the $INSUNITS variable in the HEADER section. You'll want to normalize to meters before passing to your geometry pipeline.*
-
-### Step 2: Triangulation of the floor
-
 ## Useful sources
 Some sources that may be useful:
   - Blender proc

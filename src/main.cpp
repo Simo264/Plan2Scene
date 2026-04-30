@@ -53,6 +53,7 @@ int main(int argc, char** argv)
     std::println("todo: merging points...");
     // Once points are snapped, we must build an adjacency graph
     std::println("todo: chaining segments...");
+    return 1;
   }
   // We have polylines? Then we already have an ordered contour.
   else if(!polylines.empty())

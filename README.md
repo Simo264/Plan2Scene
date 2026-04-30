@@ -74,7 +74,8 @@ In the second case, we already have a polyline with 30 ordered vertices, we alre
 
 ## Useful sources
 Some sources that may be useful:
-  - Blender proc
+  - Clipper2 (https://github.com/AngusJohnson/Clipper2)
+  - Blender procedural
   - NVIDIA-RTX/Donut and NVRHI (NVIDIA Rendering Hardware Interface)
   
 ## How to build

@@ -10,13 +10,13 @@ struct Vec2
 
 struct Segment
 {
-  std::string layer;
+  // std::string layer;
   Vec2 p1, p2;
 };
 
 struct Polyline
 {
+  // std::string layer;
   std::vector<Vec2> points;
-  std::string layer;
   bool closed;
 };

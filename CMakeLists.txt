@@ -39,7 +39,16 @@ FetchContent_Declare(
   GIT_PROGRESS   TRUE
 )
 
-FetchContent_MakeAvailable(corrade magnum libdxfrw)
+
+## --- poly2tri ---
+FetchContent_Declare(
+  poly2tri
+  GIT_REPOSITORY https://github.com/jhasse/poly2tri.git
+  GIT_TAG        master
+  GIT_PROGRESS   TRUE
+)
+
+FetchContent_MakeAvailable(corrade magnum libdxfrw poly2tri)
 
 add_executable(${PROJECT_NAME} 
   src/main.cpp
@@ -58,5 +67,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   Magnum::Trade
   
   dxfrw
+  poly2tri
 )
 target_include_directories(${PROJECT_NAME} PRIVATE ${libdxfrw_SOURCE_DIR}/src)

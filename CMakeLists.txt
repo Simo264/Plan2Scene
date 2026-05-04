@@ -52,6 +52,8 @@ FetchContent_MakeAvailable(corrade magnum libdxfrw poly2tri)
 
 add_executable(${PROJECT_NAME} 
   src/main.cpp
+  src/geometry.cpp
+  src/mesh_builder.cpp
   src/drw_parser.cpp
   src/render_primitive.cpp
 )

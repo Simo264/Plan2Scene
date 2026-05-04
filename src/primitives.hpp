@@ -1,11 +1,16 @@
 #pragma once
 
 #include <vector>
-#include <string>
+// #include <string>
 
 struct Vec2
 {  
-  float x, y;
+  double x, y;
+};
+
+struct Vec3
+{  
+  double x, y, z;
 };
 
 struct Segment

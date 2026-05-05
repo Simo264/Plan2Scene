@@ -1,21 +1,63 @@
 #include <algorithm>
+#include <memory>
 #include <print>
 #include <filesystem>
 #include <stdexcept>
 #include <vector>
 
 #include "geometry.hpp"
-#include "mesh_builder.hpp"
+#include "graphics/static_mesh.hpp"
 #include "io/drw_parser.hpp"
 #include "graphics/mesh_visualizer.hpp"
 
 #include "poly2tri/sweep/cdt.h"
 
-// constexpr auto epsilon = 1e-4;
-
-int main() 
+auto create_cube_mesh()
 {
-#if 0
+  constexpr auto vertices = std::array<Vertex, 24>{
+    Vertex{{-0.5f, -0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}},
+    Vertex{{ 0.5f, -0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}},
+    Vertex{{ 0.5f,  0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}},
+    Vertex{{-0.5f,  0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}},
+
+    Vertex{{-0.5f, -0.5f, -0.5f}, { 0.0f,  0.0f, -1.0f}},
+    Vertex{{-0.5f,  0.5f, -0.5f}, { 0.0f,  0.0f, -1.0f}},
+    Vertex{{ 0.5f,  0.5f, -0.5f}, { 0.0f,  0.0f, -1.0f}},
+    Vertex{{ 0.5f, -0.5f, -0.5f}, { 0.0f,  0.0f, -1.0f}},
+
+    Vertex{{-0.5f, -0.5f, -0.5f}, {-1.0f,  0.0f,  0.0f}},
+    Vertex{{-0.5f, -0.5f,  0.5f}, {-1.0f,  0.0f,  0.0f}},
+    Vertex{{-0.5f,  0.5f,  0.5f}, {-1.0f,  0.0f,  0.0f}},
+    Vertex{{-0.5f,  0.5f, -0.5f}, {-1.0f,  0.0f,  0.0f}},
+
+    Vertex{{ 0.5f, -0.5f, -0.5f}, { 1.0f,  0.0f,  0.0f}},
+    Vertex{{ 0.5f,  0.5f, -0.5f}, { 1.0f,  0.0f,  0.0f}},
+    Vertex{{ 0.5f,  0.5f,  0.5f}, { 1.0f,  0.0f,  0.0f}},
+    Vertex{{ 0.5f, -0.5f,  0.5f}, { 1.0f,  0.0f,  0.0f}},
+
+    Vertex{{-0.5f,  0.5f, -0.5f}, { 0.0f,  1.0f,  0.0f}},
+    Vertex{{-0.5f,  0.5f,  0.5f}, { 0.0f,  1.0f,  0.0f}},
+    Vertex{{ 0.5f,  0.5f,  0.5f}, { 0.0f,  1.0f,  0.0f}},
+    Vertex{{ 0.5f,  0.5f, -0.5f}, { 0.0f,  1.0f,  0.0f}},
+    
+    Vertex{{-0.5f, -0.5f, -0.5f}, { 0.0f, -1.0f,  0.0f}},
+    Vertex{{ 0.5f, -0.5f, -0.5f}, { 0.0f, -1.0f,  0.0f}},
+    Vertex{{ 0.5f, -0.5f,  0.5f}, { 0.0f, -1.0f,  0.0f}},
+    Vertex{{-0.5f, -0.5f,  0.5f}, { 0.0f, -1.0f,  0.0f}}
+  };
+
+  return std::make_unique<StaticMesh>(
+    vertices.data(), 
+    vertices.size(), 
+    nullptr, 
+    0
+  ); 
+}
+
+constexpr auto epsilon = 1e-4;
+
+int main(int argc, char* argv[]) 
+{
   if(argc < 2)
     throw std::runtime_error(std::format("No input file provided. Usage: {} <input.dxf>", argv[0]));
   
@@ -112,15 +154,37 @@ int main()
   auto triangle_list = cdt.GetTriangles();
   std::println("Triangulation completed. Number of triangles: {}", triangle_list.size());
 
-  // build indexed mesh from triangle list
-  constexpr auto ceiling_height = 3.f;
-  auto room_mesh = IndexedMesh{};
-  create_floor(triangle_list,  room_mesh);
-  create_ceiling(triangle_list, ceiling_height, room_mesh);
-  extrude_walls(wall_polyline, ceiling_height, room_mesh);
-#endif
+  auto vertices = std::vector<Vertex>{};
+  vertices.reserve(triangle_list.size() * 3);
+  for (const auto& tri : triangle_list)
+  {
+    for (auto i = 0; i < 3; ++i)
+    {
+      auto p = tri->GetPoint(i);
+
+      auto v = Vertex{};
+      v.position.x = static_cast<float>(p->x * 0.001f);
+      v.position.y = 0.f;                                   // floor at y=0
+      v.position.z = static_cast<float>(p->y * 0.001f);     // DXF y → world z
+      v.normal = {0.f, 1.f, 0.f};                           // normal points up (+Y)
+      vertices.push_back(v);
+    }
+  }
+  
+  // constexpr auto ceiling_height = 3.f;
+  // create_floor(triangle_list,  room_mesh);
+  // create_ceiling(triangle_list, ceiling_height, room_mesh);
+  // extrude_walls(wall_polyline, ceiling_height, room_mesh);
 
   MeshVisualizer visualizer(1024, 768);
+  visualizer.set_mesh(std::make_shared<StaticMesh>(
+    vertices.data(), 
+    vertices.size(),
+    nullptr,  
+    0
+  ));
+  visualizer.set_mesh_transform(Transformation{});
+  visualizer.camera().eye = {0.f, 1.f, 5.f};
   visualizer.render();
   return 0;
 }

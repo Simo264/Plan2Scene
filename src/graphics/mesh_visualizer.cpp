@@ -1,6 +1,5 @@
 #include "mesh_visualizer.hpp"
 
-#include <array>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 
@@ -18,8 +17,6 @@ MeshVisualizer::MeshVisualizer(i32 width, i32 height)
   m_camera = Camera(0.1f, 100.0f, 45.f, s_aspect_ratio);
 
   create_pipeline_object();
-
-  prepare_mesh();
   
   glEnable(GL_DEPTH_TEST);  // enable depth testing
   glDepthFunc(GL_LESS);    	// specify the value used for depth buffer comparisons
@@ -30,11 +27,14 @@ MeshVisualizer::MeshVisualizer(i32 width, i32 height)
 
 void MeshVisualizer::render()
 {
+  if(!m_mesh)
+    return;
+  
   while (!glfwWindowShouldClose(m_context)) 
   {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear buffers to preset values  
 
-    handle_camera_input();
+    handle_camera_input();   
     m_camera.aspect = s_aspect_ratio;
     auto mat_camera = m_camera.canonical_to_camera();
     auto mat_persp = m_camera.get_perspective();
@@ -50,7 +50,10 @@ void MeshVisualizer::render()
     m_fragment_program.set_uniform_vector3f(m_fragment_program.get_uniform_location("u_camera_eye"), &m_camera.eye[0]); 
     
     m_mesh->vao().bind();
-    glDrawElements(GL_TRIANGLES, m_mesh->nr_indices(), GL_UNSIGNED_INT, 0);
+    if(m_mesh->nr_indices() > 0)
+      glDrawElements(GL_TRIANGLES, m_mesh->nr_indices(), GL_UNSIGNED_INT, 0);
+    else
+      glDrawArrays(GL_TRIANGLES, 0, m_mesh->nr_vertices());
     
     glfwSwapBuffers(m_context);
     glfwPollEvents();
@@ -152,64 +155,4 @@ void MeshVisualizer::handle_camera_input()
   if (glfwGetKey(m_context, GLFW_KEY_D) == GLFW_PRESS) m_camera.eye += m_camera.right() * 0.1f;
   if (glfwGetKey(m_context, GLFW_KEY_SPACE) == GLFW_PRESS) m_camera.eye += m_camera.up() * 0.1f;
   if (glfwGetKey(m_context, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) m_camera.eye -= m_camera.up() * 0.1f;
-}
-
-
-void MeshVisualizer::prepare_mesh()
-{
-  constexpr auto vertices = std::array<Vertex, 24>{
-    Vertex{{-0.5f, -0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}},
-    Vertex{{ 0.5f, -0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}},
-    Vertex{{ 0.5f,  0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}},
-    Vertex{{-0.5f,  0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}},
-
-    Vertex{{-0.5f, -0.5f, -0.5f}, { 0.0f,  0.0f, -1.0f}},
-    Vertex{{-0.5f,  0.5f, -0.5f}, { 0.0f,  0.0f, -1.0f}},
-    Vertex{{ 0.5f,  0.5f, -0.5f}, { 0.0f,  0.0f, -1.0f}},
-    Vertex{{ 0.5f, -0.5f, -0.5f}, { 0.0f,  0.0f, -1.0f}},
-
-    Vertex{{-0.5f, -0.5f, -0.5f}, {-1.0f,  0.0f,  0.0f}},
-    Vertex{{-0.5f, -0.5f,  0.5f}, {-1.0f,  0.0f,  0.0f}},
-    Vertex{{-0.5f,  0.5f,  0.5f}, {-1.0f,  0.0f,  0.0f}},
-    Vertex{{-0.5f,  0.5f, -0.5f}, {-1.0f,  0.0f,  0.0f}},
-
-    Vertex{{ 0.5f, -0.5f, -0.5f}, { 1.0f,  0.0f,  0.0f}},
-    Vertex{{ 0.5f,  0.5f, -0.5f}, { 1.0f,  0.0f,  0.0f}},
-    Vertex{{ 0.5f,  0.5f,  0.5f}, { 1.0f,  0.0f,  0.0f}},
-    Vertex{{ 0.5f, -0.5f,  0.5f}, { 1.0f,  0.0f,  0.0f}},
-
-    Vertex{{-0.5f,  0.5f, -0.5f}, { 0.0f,  1.0f,  0.0f}},
-    Vertex{{-0.5f,  0.5f,  0.5f}, { 0.0f,  1.0f,  0.0f}},
-    Vertex{{ 0.5f,  0.5f,  0.5f}, { 0.0f,  1.0f,  0.0f}},
-    Vertex{{ 0.5f,  0.5f, -0.5f}, { 0.0f,  1.0f,  0.0f}},
-    
-    Vertex{{-0.5f, -0.5f, -0.5f}, { 0.0f, -1.0f,  0.0f}},
-    Vertex{{ 0.5f, -0.5f, -0.5f}, { 0.0f, -1.0f,  0.0f}},
-    Vertex{{ 0.5f, -0.5f,  0.5f}, { 0.0f, -1.0f,  0.0f}},
-    Vertex{{-0.5f, -0.5f,  0.5f}, { 0.0f, -1.0f,  0.0f}}
-  };
-  
-  constexpr auto indices = std::array<u32, 36>{
-    0,  1,  2,  0,  2,  3,  // Front
-    4,  5,  6,  4,  6,  7,  // Back
-    8,  9,  10, 8,  10, 11, // Left
-    12, 13, 14, 12, 14, 15, // Right
-    16, 17, 18, 16, 18, 19, // Top
-    20, 21, 22, 20, 22, 23  // Bottom
-  };
-  
-  m_mesh = std::make_unique<StaticMesh>(
-    vertices.data(), 
-    vertices.size(), 
-    indices.data(), 
-    indices.size()
-  );
-
-  m_mesh_transform = Transformation{
-    .position = glm::vec3{0.f, 0.f, 0.f},
-    .scale = glm::vec3{1.f, 1.f, 1.f},
-    .rotation = glm::vec3{0.f, 0.f, 0.f}
-  };
-  
-  m_mesh_transform.update_tranformation();
 }

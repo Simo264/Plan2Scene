@@ -1,15 +1,15 @@
 #include "geometry.hpp"
 
+#include <glm/ext/vector_double2.hpp>
 #include <cmath>
 
-auto distance(Vec2 p1, Vec2 p2) -> double { return std::hypot(p1.x - p2.x, p1.y - p2.y); }
+auto distance(glm::dvec2 p1, glm::dvec2 p2) -> f64 { return std::hypot(p1.x - p2.x, p1.y - p2.y); }
 
-auto signed_area(const Polyline& contour) -> double
+auto signed_area(const Polyline& contour) -> f64
 {
   const auto& points = contour.points;
-
-  // Compute the signed area of the contour using the shoelace formula.
-  auto area = double{ 0.f };
+  
+  auto area = f64{ 0.f };
   for(auto i = 0u; i < points.size(); ++i)
   {
     auto p1 = points.at(i);

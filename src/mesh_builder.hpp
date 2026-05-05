@@ -3,6 +3,7 @@
 #include "geometry.hpp"
 #include "poly2tri/common/shapes.h"
 
+#if 0
 // Appends a single triangle (3 vertices + 3 sequential indices) to the mesh.
 // Note: this function does not check for duplicate vertices. It is the caller's responsibility to 
 // ensure that vertices are not duplicated if they should be shared across triangles. 
@@ -28,3 +29,4 @@ void create_ceiling(const std::vector<p2t::Triangle*>& triangles, float H, Index
 // direction rotated 90° clockwise, which yields the correct exterior normal
 // when the input polygon is wound counter-clockwise.
 void extrude_walls(const Polyline& polyline, float H, IndexedMesh& mesh);
+#endif

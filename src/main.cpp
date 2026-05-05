@@ -4,18 +4,18 @@
 #include <stdexcept>
 #include <vector>
 
-#include "drw_parser.hpp"
 #include "geometry.hpp"
 #include "mesh_builder.hpp"
+#include "io/drw_parser.hpp"
+#include "graphics/mesh_visualizer.hpp"
 
 #include "poly2tri/sweep/cdt.h"
 
-// #include "render_primitive.hpp"
+// constexpr auto epsilon = 1e-4;
 
-constexpr auto epsilon = 1e-4;
-
-int main(int argc, char** argv) 
+int main() 
 {
+#if 0
   if(argc < 2)
     throw std::runtime_error(std::format("No input file provided. Usage: {} <input.dxf>", argv[0]));
   
@@ -96,7 +96,7 @@ int main(int argc, char** argv)
   // Otherwise, if signed_area > 0 the order is CCW and we can pass the vertices as they are.
   if (wall_points.size() < 3)
     throw std::runtime_error("Not enough points to triangulate");
-
+  
   auto area = signed_area(wall_polyline);
   std::println("Signed area of the contour: {}", area);
   if(area < 0)
@@ -118,8 +118,9 @@ int main(int argc, char** argv)
   create_floor(triangle_list,  room_mesh);
   create_ceiling(triangle_list, ceiling_height, room_mesh);
   extrude_walls(wall_polyline, ceiling_height, room_mesh);
+#endif
+
+  MeshVisualizer visualizer(1024, 768);
+  visualizer.render();
   return 0;
-  
-  //PrimitivesExample app{{ argc, argv }};
-  //return app.exec();
 }

@@ -1,5 +1,6 @@
 #include "mesh_builder.hpp"
 
+#if 0
 void add_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, IndexedMesh& mesh) 
 {
   auto base = mesh.vertices.size();
@@ -79,3 +80,4 @@ void extrude_walls(const Polyline& polyline, float H, IndexedMesh& mesh)
     add_triangle(BL, TR, TL, mesh);
   }
 }
+#endif

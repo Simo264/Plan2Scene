@@ -3,6 +3,10 @@
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
 #include <print>
 #include <filesystem>
 
@@ -34,6 +38,14 @@ void MeshVisualizer::render()
   {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear buffers to preset values  
 
+    // Start the Dear ImGui frame
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    
+    show_camera_props();
+    show_mesh_props();
+
     handle_camera_input();   
     m_camera.aspect = s_aspect_ratio;
     auto mat_camera = m_camera.canonical_to_camera();
@@ -55,12 +67,26 @@ void MeshVisualizer::render()
     else
       glDrawArrays(GL_TRIANGLES, 0, m_mesh->nr_vertices());
     
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    auto& io = ImGui::GetIO();
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) 
+    {
+      auto backup_current_context = glfwGetCurrentContext();
+      ImGui::UpdatePlatformWindows();
+      ImGui::RenderPlatformWindowsDefault();
+      glfwMakeContextCurrent(backup_current_context);
+    }
+
     glfwSwapBuffers(m_context);
     glfwPollEvents();
   }
   
   glfwTerminate();
 }
+
+
 
 // ======== private methods ========
 // =================================
@@ -91,6 +117,17 @@ auto MeshVisualizer::init_context(i32 width, i32 height) -> GLFWwindow*
     s_aspect_ratio = static_cast<f32>(width) / static_cast<f32>(height);
   });
   glViewport(0, 0, width, height);
+
+  // Setup Dear ImGui context
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  auto &io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;           // Enable Keyboard Controls
+  io.ConfigFlags |= ImGuiConfigFlags_DockingEnable; // Enable Docking
+  ImGui::StyleColorsDark();
+  ImGui_ImplGlfw_InitForOpenGL(context, true);
+  ImGui_ImplOpenGL3_Init("#version 460");
+
   return context;
 }
 
@@ -156,3 +193,100 @@ void MeshVisualizer::handle_camera_input()
   if (glfwGetKey(m_context, GLFW_KEY_SPACE) == GLFW_PRESS) m_camera.eye += m_camera.up() * 0.1f;
   if (glfwGetKey(m_context, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) m_camera.eye -= m_camera.up() * 0.1f;
 }
+
+void MeshVisualizer::show_camera_props() 
+{
+  ImGui::SetNextWindowSize(ImVec2(350, 0), ImGuiCond_FirstUseEver);
+  if (!ImGui::Begin("Camera Control", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) 
+  {
+    ImGui::End();
+    return;
+  }
+
+  auto fov = glm::degrees(m_camera.fovy);
+  if (ImGui::SliderFloat("FOV", &fov, 30.0f, 120.0f, "%.1f°")) 
+    m_camera.fovy = glm::radians(fov);
+
+  ImGui::DragFloat("Near plane", &m_camera.near, 0.01f, 0.001f, 10.0f, "%.3f");
+  ImGui::DragFloat("Far plane", &m_camera.far, 1.0f, 10.0f, 10000.0f, "%.1f");
+  ImGui::InputFloat("Aspect ratio", &m_camera.aspect, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_ReadOnly);
+
+  ImGui::Spacing();
+
+  ImGui::DragFloat3("Position", &m_camera.eye.x, 0.1f);
+  auto euler_deg = glm::degrees(m_camera.get_euler_angles());
+  if (ImGui::DragFloat3("Orientation (deg)", &euler_deg.x, 0.5f, -180.0f, 180.0f, "%.1f°"))
+    m_camera.set_orientation(glm::radians(euler_deg));
+
+  ImGui::Spacing();
+  ImGui::Separator();
+  ImGui::Spacing();
+
+  if (ImGui::Button("Reset Camera", ImVec2(ImGui::GetContentRegionAvail().x, 0))) 
+  {
+    m_camera.eye = glm::vec3(0.0f, 1.0f, 5.0f);
+    m_camera.orientation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+    m_camera.fovy = glm::radians(45.0f);
+  }
+  ImGui::End();
+}
+
+void MeshVisualizer::show_mesh_props() 
+{
+  ImGui::SetNextWindowSize(ImVec2(350, 0), ImGuiCond_FirstUseEver);
+  if (!ImGui::Begin("Mesh Properties", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) 
+  {
+    ImGui::End();
+    return;
+  }
+
+  if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) 
+  {
+    auto changed = false;
+    changed |= ImGui::DragFloat3("Position", &m_mesh_transform.position.x, 0.1f);
+    
+    auto rot_deg = glm::degrees(m_mesh_transform.rotation);
+    if (ImGui::DragFloat3("Rotazione", &rot_deg.x, 0.5f, -180.0f, 180.0f, "%.1f°"))
+    {
+      m_mesh_transform.rotation = glm::radians(rot_deg);
+      changed = true;
+    }
+    
+    changed |= ImGui::DragFloat3("Scale", &m_mesh_transform.scale.x, 0.05f, 0.001f, 100.0f);
+    if (changed) 
+      m_mesh_transform.update_tranformation();
+  }
+
+  ImGui::Spacing();
+
+  if (ImGui::CollapsingHeader("Geometry Data", ImGuiTreeNodeFlags_DefaultOpen)) 
+  {
+    ImGui::Columns(2, "mesh_stats", false);
+    ImGui::SetColumnWidth(0, 120.0f);
+    ImGui::Text("Vertices:");   ImGui::NextColumn(); ImGui::Text("%u", m_mesh->nr_vertices()); ImGui::NextColumn();
+    ImGui::Text("Indices:");    ImGui::NextColumn(); ImGui::Text("%u", m_mesh->nr_indices());  ImGui::NextColumn();
+    ImGui::Columns(1);
+  }
+
+  ImGui::Spacing();
+
+  if (ImGui::CollapsingHeader("Video memory (VRAM)")) 
+  {
+    auto vbo_size = m_mesh->nr_vertices() * sizeof(Vertex); // 24 bytes per vertice
+    auto ibo_size = m_mesh->nr_indices() * sizeof(u32);     // 4 bytes per indice
+    auto total_kb = (vbo_size + ibo_size) / 1024.0f;
+
+    ImGui::Text("VBO Size:"); 
+    ImGui::SameLine(); ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "%.2f KB", vbo_size / 1024.0f);
+    
+    ImGui::Text("IBO Size:"); 
+    ImGui::SameLine(); ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "%.2f KB", ibo_size / 1024.0f);
+    
+    ImGui::Separator();
+    ImGui::Text("Total:"); 
+    ImGui::SameLine(); ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f), "%.2f KB", total_kb);
+  }
+
+  ImGui::End();
+}
+

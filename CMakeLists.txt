@@ -51,6 +51,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(libdxfrw poly2tri glfw glm)
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/glad")
+add_subdirectory("${CMAKE_SOURCE_DIR}/imgui")
 
 add_executable(${PROJECT_NAME} 
   src/io/drw_parser.cpp
@@ -76,6 +77,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   glad::glad
   glfw
   glm::glm
+  imgui::imgui
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${libdxfrw_SOURCE_DIR}/src)

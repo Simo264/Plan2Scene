@@ -11,7 +11,7 @@ class Camera
 public:
   Camera() = default;
   Camera(f32 n, f32 f, f32 fovy, f32 aspect) : 
-  	eye{0.0f, 0.0f, 5.0f},
+  	eye{0.0f, 1.0f, 5.0f},
   	orientation{glm::quat(1.0f, 0.0f, 0.0f, 0.0f)},
   	near{n},
   	far{f},

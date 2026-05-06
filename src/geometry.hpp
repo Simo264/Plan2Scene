@@ -19,12 +19,6 @@ struct Polyline
   bool closed{ false };
 };
 
-// struct Vertex3d
-// {
-//   glm::dvec3 position;
-//   glm::dvec3 normal;
-// };
-
 struct Vertex
 {
   glm::vec3 position;

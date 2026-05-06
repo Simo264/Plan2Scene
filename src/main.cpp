@@ -7,10 +7,11 @@
 
 #include "geometry.hpp"
 #include "graphics/static_mesh.hpp"
+#include "graphics/transformation.hpp"
 #include "io/drw_parser.hpp"
 #include "graphics/mesh_visualizer.hpp"
 
-#include "poly2tri/sweep/cdt.h"
+#include <poly2tri/sweep/cdt.h>
 
 auto create_cube_mesh()
 {
@@ -154,6 +155,7 @@ int main(int argc, char* argv[])
   auto triangle_list = cdt.GetTriangles();
   std::println("Triangulation completed. Number of triangles: {}", triangle_list.size());
 
+  // define vertices for mesh floor
   auto vertices = std::vector<Vertex>{};
   vertices.reserve(triangle_list.size() * 3);
   for (const auto& tri : triangle_list)
@@ -161,12 +163,11 @@ int main(int argc, char* argv[])
     for (auto i = 0; i < 3; ++i)
     {
       auto p = tri->GetPoint(i);
-
       auto v = Vertex{};
-      v.position.x = static_cast<float>(p->x * 0.001f);
-      v.position.y = 0.f;                                   // floor at y=0
-      v.position.z = static_cast<float>(p->y * 0.001f);     // DXF y → world z
-      v.normal = {0.f, 1.f, 0.f};                           // normal points up (+Y)
+      v.position.x = static_cast<f32>(p->x);
+      v.position.y = 0.f;                    // floor at y=0
+      v.position.z = static_cast<f32>(p->y); // DXF y → world z
+      v.normal = {0.f, 1.f, 0.f};    // normal points up (+Y)
       vertices.push_back(v);
     }
   }
@@ -176,15 +177,18 @@ int main(int argc, char* argv[])
   // create_ceiling(triangle_list, ceiling_height, room_mesh);
   // extrude_walls(wall_polyline, ceiling_height, room_mesh);
 
-  MeshVisualizer visualizer(1024, 768);
+  auto visualizer = MeshVisualizer(1024, 768);
   visualizer.set_mesh(std::make_shared<StaticMesh>(
     vertices.data(), 
     vertices.size(),
     nullptr,  
     0
   ));
-  visualizer.set_mesh_transform(Transformation{});
-  visualizer.camera().eye = {0.f, 1.f, 5.f};
+  auto transform = Transformation{};
+  transform.scale = { 0.001f, 0.001f, 0.001f};
+  transform.update_tranformation();
+
+  visualizer.set_mesh_transform(transform);
   visualizer.render();
   return 0;
 }

@@ -66,7 +66,6 @@ void MeshVisualizer::render()
       glDrawElements(GL_TRIANGLES, m_mesh->nr_indices(), GL_UNSIGNED_INT, 0);
     else
       glDrawArrays(GL_TRIANGLES, 0, m_mesh->nr_vertices());
-    
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

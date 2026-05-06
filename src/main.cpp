@@ -6,51 +6,36 @@
 #include <vector>
 
 #include "geometry.hpp"
+#include "glm/trigonometric.hpp"
 #include "io/drw_parser.hpp"
 #include "graphics/mesh_visualizer.hpp"
 
 #include <poly2tri/sweep/cdt.h>
 
-auto create_cube_mesh()
+auto detect_unit_scale(const std::vector<glm::dvec2>& points) -> f32
 {
-  constexpr auto vertices = std::array<Vertex, 24>{
-    Vertex{{-0.5f, -0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}},
-    Vertex{{ 0.5f, -0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}},
-    Vertex{{ 0.5f,  0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}},
-    Vertex{{-0.5f,  0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}},
+  // compute bounding box diagonal
+  auto min_x = std::numeric_limits<double>::max();
+  auto max_x = std::numeric_limits<double>::lowest();
+  auto min_y = std::numeric_limits<double>::max();
+  auto max_y = std::numeric_limits<double>::lowest();
+  for (const auto& p : points)
+  {
+    min_x = std::min(min_x, p.x); max_x = std::max(max_x, p.x);
+    min_y = std::min(min_y, p.y); max_y = std::max(max_y, p.y);
+  }
+  const auto extent = std::sqrt(
+    std::pow(max_x - min_x, 2) +
+    std::pow(max_y - min_y, 2));
 
-    Vertex{{-0.5f, -0.5f, -0.5f}, { 0.0f,  0.0f, -1.0f}},
-    Vertex{{-0.5f,  0.5f, -0.5f}, { 0.0f,  0.0f, -1.0f}},
-    Vertex{{ 0.5f,  0.5f, -0.5f}, { 0.0f,  0.0f, -1.0f}},
-    Vertex{{ 0.5f, -0.5f, -0.5f}, { 0.0f,  0.0f, -1.0f}},
+  std::println("Raw bounding box extent: {:.2f}", extent);
 
-    Vertex{{-0.5f, -0.5f, -0.5f}, {-1.0f,  0.0f,  0.0f}},
-    Vertex{{-0.5f, -0.5f,  0.5f}, {-1.0f,  0.0f,  0.0f}},
-    Vertex{{-0.5f,  0.5f,  0.5f}, {-1.0f,  0.0f,  0.0f}},
-    Vertex{{-0.5f,  0.5f, -0.5f}, {-1.0f,  0.0f,  0.0f}},
-
-    Vertex{{ 0.5f, -0.5f, -0.5f}, { 1.0f,  0.0f,  0.0f}},
-    Vertex{{ 0.5f,  0.5f, -0.5f}, { 1.0f,  0.0f,  0.0f}},
-    Vertex{{ 0.5f,  0.5f,  0.5f}, { 1.0f,  0.0f,  0.0f}},
-    Vertex{{ 0.5f, -0.5f,  0.5f}, { 1.0f,  0.0f,  0.0f}},
-
-    Vertex{{-0.5f,  0.5f, -0.5f}, { 0.0f,  1.0f,  0.0f}},
-    Vertex{{-0.5f,  0.5f,  0.5f}, { 0.0f,  1.0f,  0.0f}},
-    Vertex{{ 0.5f,  0.5f,  0.5f}, { 0.0f,  1.0f,  0.0f}},
-    Vertex{{ 0.5f,  0.5f, -0.5f}, { 0.0f,  1.0f,  0.0f}},
-    
-    Vertex{{-0.5f, -0.5f, -0.5f}, { 0.0f, -1.0f,  0.0f}},
-    Vertex{{ 0.5f, -0.5f, -0.5f}, { 0.0f, -1.0f,  0.0f}},
-    Vertex{{ 0.5f, -0.5f,  0.5f}, { 0.0f, -1.0f,  0.0f}},
-    Vertex{{-0.5f, -0.5f,  0.5f}, { 0.0f, -1.0f,  0.0f}}
-  };
-
-  return std::make_unique<StaticMesh>(
-    vertices.data(), 
-    vertices.size(), 
-    nullptr, 
-    0
-  ); 
+  // a typical room is 3–20 meters diagonal
+  // if extent >> 20, assume smaller units
+  if      (extent > 5000.0) return 0.001f; // mm → m
+  else if (extent > 500.0)  return 0.01f;  // cm → m
+  else if (extent > 50.0)   return 0.1f;   // dm → m (rare)
+  else                      return 1.0f;   // already meters
 }
 
 constexpr auto epsilon = 1e-4;
@@ -78,6 +63,19 @@ int main(int argc, char* argv[])
   auto& wall_polyline = polylines.front();
   auto& wall_points = wall_polyline.points;
   std::println("Wall polyline has {} points.", wall_points.size());
+
+  if(parser.unit_scale == 0.0f)
+  {
+    std::println("Unit scale not specified in DXF header. Detecting unit scale from geometry...");
+    parser.unit_scale = detect_unit_scale(wall_points);
+    std::println("Detected unit scale: {}", parser.unit_scale);
+  }
+
+  for (auto& p : wall_points)
+  {
+    p.x *= parser.unit_scale;
+    p.y *= parser.unit_scale;
+  }
   
   // We have unordered disconnected segments?
   // The triangulation library needs an ordered sequence of vertices forming a closed polygon.
@@ -156,8 +154,9 @@ int main(int argc, char* argv[])
   // Define the vertices for our mesh
   auto nr_vertices_floor = triangle_list.size() * 3;
   auto nr_vertices_wall = wall_points.size() * 6; // 2 triangles * 3 vertices per edge
+  auto nr_vertices_ceil = nr_vertices_floor; // same as floor
   auto vertices = std::vector<Vertex>{};
-  vertices.reserve(nr_vertices_floor + nr_vertices_wall);
+  vertices.reserve(nr_vertices_floor + nr_vertices_wall + nr_vertices_ceil);
   
   // build the floor
   for (const auto& tri : triangle_list)
@@ -166,26 +165,20 @@ int main(int argc, char* argv[])
     {
       auto p = tri->GetPoint(i);
       auto v = Vertex{};
-      v.position.x = static_cast<f32>(p->x) * 0.001f;
+      v.position.x = static_cast<f32>(p->x);
       v.position.y = 0.f;                    // floor at y=0
-      v.position.z = static_cast<f32>(p->y) * 0.001f; // DXF y → world z
+      v.position.z = static_cast<f32>(p->y); // DXF y → world z
       v.normal = {0.f, 1.f, 0.f};    // normal points up (+Y)
       vertices.push_back(v);
     }
   }
 
-  // build the wall
-  constexpr auto H = 3.f;
+  // wall extrusion
+  constexpr auto H = 3.f; // 3 meters
   for (auto i = 0u; i < wall_points.size(); ++i)
   {
     auto p1 = wall_points.at(i);
     auto p2 = wall_points.at((i + 1) % wall_points.size());
-
-    // 4 corners of the wall quad, Y-up convention
-    auto BL = glm::vec3{f32(p1.x), 0.f,f32(p1.y)};
-    auto BR = glm::vec3{f32(p2.x), 0.f,f32(p2.y)};
-    auto TR = glm::vec3{f32(p2.x), H,  f32(p2.y)};
-    auto TL = glm::vec3{f32(p1.x), H,  f32(p1.y)};
 
     // outward normal: edge direction in XZ plane rotated 90 degrees
     auto dx = f32(p2.x - p1.x);
@@ -193,22 +186,49 @@ int main(int argc, char* argv[])
     auto len = std::sqrt(dx * dx + dz * dz);
     auto normal = glm::vec3{dz / len, 0.f, -dx / len};
 
+    // 4 corners of the wall quad, Y-up convention
+    auto BL = Vertex{ .position={static_cast<f32>(p1.x), 0.f,  static_cast<f32>(p1.y)}, .normal=normal};
+    auto BR = Vertex{ .position={static_cast<f32>(p2.x), 0.f,  static_cast<f32>(p2.y)}, .normal=normal};
+    auto TR = Vertex{ .position={static_cast<f32>(p2.x), H,    static_cast<f32>(p2.y)}, .normal=normal};
+    auto TL = Vertex{ .position={static_cast<f32>(p1.x), H,    static_cast<f32>(p1.y)}, .normal=normal}; 
     // triangle 1: BL, BR, TR
-    vertices.push_back(Vertex{BL, normal});
-    vertices.push_back(Vertex{BR, normal});
-    vertices.push_back(Vertex{TR, normal});
+    vertices.push_back(BL);
+    vertices.push_back(BR);
+    vertices.push_back(TR);
     // triangle 2: BL, TR, TL
-    vertices.push_back(Vertex{BL, normal});
-    vertices.push_back(Vertex{TR, normal});
-    vertices.push_back(Vertex{TL, normal});
+    vertices.push_back(BL);
+    vertices.push_back(TR);
+    vertices.push_back(TL);
   }
 
-  
-  // constexpr auto ceiling_height = 3.f;
-  // create_floor(triangle_list,  room_mesh);
-  // create_ceiling(triangle_list, ceiling_height, room_mesh);
-  // extrude_walls(wall_polyline, ceiling_height, room_mesh);
+  // build the ceiling (same triangles as floor but at height H and normal pointing down)
+  for (const auto& tri : triangle_list)
+  {
+    for (auto i = 0; i < 3; ++i)
+    {
+      auto p = tri->GetPoint(i);
+      auto v = Vertex{};
+      v.position.x = static_cast<f32>(p->x);
+      v.position.y = H;                       // ceiling at y=H
+      v.position.z = static_cast<f32>(p->y);  // DXF y → world z
+      v.normal = {0.f, -1.f, 0.f};            // normal points down (-Y)
+      vertices.push_back(v);
+    }
+  }
 
+  // compute bounding box for visualization
+  auto min = vertices.front().position;
+  auto max = vertices.front().position;  
+  for (const auto& v : vertices) 
+  {
+    min = glm::min(min, v.position);
+    max = glm::max(max, v.position);
+  }
+  auto center = (min + max) * 0.5f;
+  auto transform = Transformation{};
+  transform.position = -center;
+  transform.update_tranformation();
+  
   auto visualizer = MeshVisualizer(1024, 768);
   visualizer.set_mesh(std::make_shared<StaticMesh>(
     vertices.data(), 
@@ -216,11 +236,10 @@ int main(int argc, char* argv[])
     nullptr,  
     0
   ));
-  // auto transform = Transformation{};
-  // transform.scale = { 0.001f, 0.001f, 0.001f};
-  // transform.update_tranformation();
-  // visualizer.set_mesh_transform(transform);
-
+  visualizer.set_mesh_transform(transform);
+  
+  visualizer.camera().eye = { 0.f, 10.f, 30.f };
+  visualizer.camera().set_orientation(glm::radians(glm::vec3{ -10.f, 0.f, 0.f })); // look slightly down
   visualizer.render();
   return 0;
 }

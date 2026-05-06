@@ -9,7 +9,7 @@ void DRWParser::addHeader(const DRW_Header* data)
 {
   if(!data) 
   { 
-    unit_scale = 1.0f;
+    unit_scale = 0.0f;
     std::println("Header: no data. Deafult unit: {}", unit_scale);
     return;
   }
@@ -30,24 +30,21 @@ void DRWParser::addHeader(const DRW_Header* data)
   
   switch (units) 
   {
-    case 0:  // unknown
-      unit_scale = 1.0f;  
-      std::println("Warning: unknown units. Set scale to 1.0");
+    case 1:
+      unit_scale = 0.0254f; // inches
       break;
-    case 1: // inches
-      unit_scale = 0.0254f;
+    case 4: 
+      unit_scale = 0.001f; // millimeters
       break;
-    case 4: // millimeters
-      unit_scale = 0.001f;
+    case 5:
+      unit_scale = 0.01f; // centimeters
       break;
-    case 5: // centimeters
-      unit_scale = 0.01f;
-      break;
-    case 6: // meters
-      unit_scale = 1.0f;
+    case 6:
+      unit_scale = 1.0f; // meters
       break;
     default:
-      unit_scale = 1.0f;
+      unit_scale = 0.0f; // unknown
+      std::println("Warning: unknown units. Try to detect the actual unit from the geometry.");
       break;
   }
   std::println("Header: INSUNITS = {}, scale = {}", units, unit_scale);
@@ -61,8 +58,8 @@ void DRWParser::addLine(const DRW_Line& data)
   if(layer_name.contains("WALL"))
   {  
     auto seg = Segment{};
-    seg.p1 = { data.basePoint.x  * unit_scale, data.basePoint.y * unit_scale };
-    seg.p2 = { data.secPoint.x * unit_scale, data.secPoint.y * unit_scale };
+    seg.p1 = { data.basePoint.x, data.basePoint.y };
+    seg.p2 = { data.secPoint.x, data.secPoint.y };
     segments.push_back(seg);
   }
 }
@@ -79,8 +76,8 @@ void DRWParser::addPolyline(const DRW_Polyline& data)
     for (const auto& v : data.vertlist)
     {
       auto p = glm::dvec2{};
-      p.x = v->basePoint.x * unit_scale;
-      p.y = v->basePoint.y * unit_scale;
+      p.x = v->basePoint.x;
+      p.y = v->basePoint.y;
       poly.points.push_back(p);
     }
     polylines.push_back(poly);
@@ -96,12 +93,11 @@ void DRWParser::addLWPolyline(const DRW_LWPolyline& data)
   std::println("LWPolyline: layer = {}, nr_vertices = {}, closed = {}", layer_name, data.vertlist.size(), poly.closed);
   if(layer_name.contains("WALL"))
   {
-    //poly.layer = layer_name;
     for (const auto& v : data.vertlist) 
     {
       auto p = glm::dvec2{};
-      p.x = v->x * unit_scale;
-      p.y = v->y * unit_scale;
+      p.x = v->x;
+      p.y = v->y;
       poly.points.push_back(p);
     }
     polylines.push_back(poly);

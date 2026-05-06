@@ -65,5 +65,5 @@ public:
 
   std::vector<Segment> segments;
   std::vector<Polyline> polylines;
-  f32 unit_scale = 1.0f;
+  f32 unit_scale = 0.0f;
 };

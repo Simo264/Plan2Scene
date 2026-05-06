@@ -17,6 +17,8 @@ public:
   void set_mesh_transform(const Transformation& transform) { m_mesh_transform = transform; }
   void render();
   
+  auto camera() -> Camera& { return m_camera; }
+  
 private:
   auto init_context(i32 width, i32 height) -> struct GLFWwindow*;
   void create_pipeline_object();

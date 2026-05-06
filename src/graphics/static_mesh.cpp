@@ -23,7 +23,7 @@ StaticMesh::StaticMesh(const Vertex* vertices, u32 nr_vertices, const u32* indic
   // Attribute 0: position(xyz)
   m_vao.set_attrib_format_float(0, 3, VertexAttribType::Float, false, offsetof(Vertex, position));
   // Attribute 1: normal(x,y,z)
-  m_vao.set_attrib_format_float(1, 3, VertexAttribType::Float, false, offsetof(Vertex, normal));
+  m_vao.set_attrib_format_float(1, 3, VertexAttribType::Float, true, offsetof(Vertex, normal));
   m_vao.attach_vertex_buffer(0, m_vbo, 0, sizeof(Vertex));
   
   m_vao.link_attrib(0, 0);

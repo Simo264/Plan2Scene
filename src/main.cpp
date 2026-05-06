@@ -6,8 +6,6 @@
 #include <vector>
 
 #include "geometry.hpp"
-#include "graphics/static_mesh.hpp"
-#include "graphics/transformation.hpp"
 #include "io/drw_parser.hpp"
 #include "graphics/mesh_visualizer.hpp"
 
@@ -155,22 +153,56 @@ int main(int argc, char* argv[])
   auto triangle_list = cdt.GetTriangles();
   std::println("Triangulation completed. Number of triangles: {}", triangle_list.size());
 
-  // define vertices for mesh floor
+  // Define the vertices for our mesh
+  auto nr_vertices_floor = triangle_list.size() * 3;
+  auto nr_vertices_wall = wall_points.size() * 6; // 2 triangles * 3 vertices per edge
   auto vertices = std::vector<Vertex>{};
-  vertices.reserve(triangle_list.size() * 3);
+  vertices.reserve(nr_vertices_floor + nr_vertices_wall);
+  
+  // build the floor
   for (const auto& tri : triangle_list)
   {
     for (auto i = 0; i < 3; ++i)
     {
       auto p = tri->GetPoint(i);
       auto v = Vertex{};
-      v.position.x = static_cast<f32>(p->x);
+      v.position.x = static_cast<f32>(p->x) * 0.001f;
       v.position.y = 0.f;                    // floor at y=0
-      v.position.z = static_cast<f32>(p->y); // DXF y → world z
+      v.position.z = static_cast<f32>(p->y) * 0.001f; // DXF y → world z
       v.normal = {0.f, 1.f, 0.f};    // normal points up (+Y)
       vertices.push_back(v);
     }
   }
+
+  // build the wall
+  constexpr auto H = 3.f;
+  for (auto i = 0u; i < wall_points.size(); ++i)
+  {
+    auto p1 = wall_points.at(i);
+    auto p2 = wall_points.at((i + 1) % wall_points.size());
+
+    // 4 corners of the wall quad, Y-up convention
+    auto BL = glm::vec3{f32(p1.x), 0.f,f32(p1.y)};
+    auto BR = glm::vec3{f32(p2.x), 0.f,f32(p2.y)};
+    auto TR = glm::vec3{f32(p2.x), H,  f32(p2.y)};
+    auto TL = glm::vec3{f32(p1.x), H,  f32(p1.y)};
+
+    // outward normal: edge direction in XZ plane rotated 90 degrees
+    auto dx = f32(p2.x - p1.x);
+    auto dz = f32(p2.y - p1.y);
+    auto len = std::sqrt(dx * dx + dz * dz);
+    auto normal = glm::vec3{dz / len, 0.f, -dx / len};
+
+    // triangle 1: BL, BR, TR
+    vertices.push_back(Vertex{BL, normal});
+    vertices.push_back(Vertex{BR, normal});
+    vertices.push_back(Vertex{TR, normal});
+    // triangle 2: BL, TR, TL
+    vertices.push_back(Vertex{BL, normal});
+    vertices.push_back(Vertex{TR, normal});
+    vertices.push_back(Vertex{TL, normal});
+  }
+
   
   // constexpr auto ceiling_height = 3.f;
   // create_floor(triangle_list,  room_mesh);
@@ -184,11 +216,11 @@ int main(int argc, char* argv[])
     nullptr,  
     0
   ));
-  auto transform = Transformation{};
-  transform.scale = { 0.001f, 0.001f, 0.001f};
-  transform.update_tranformation();
+  // auto transform = Transformation{};
+  // transform.scale = { 0.001f, 0.001f, 0.001f};
+  // transform.update_tranformation();
+  // visualizer.set_mesh_transform(transform);
 
-  visualizer.set_mesh_transform(transform);
   visualizer.render();
   return 0;
 }

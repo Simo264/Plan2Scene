@@ -246,7 +246,7 @@ void MeshVisualizer::show_mesh_props()
     changed |= ImGui::DragFloat3("Position", &m_mesh_transform.position.x, 0.1f);
     
     auto rot_deg = glm::degrees(m_mesh_transform.rotation);
-    if (ImGui::DragFloat3("Rotazione", &rot_deg.x, 0.5f, -180.0f, 180.0f, "%.1f°"))
+    if (ImGui::DragFloat3("Rotation", &rot_deg.x, 0.5f, -180.0f, 180.0f, "%.1f°"))
     {
       m_mesh_transform.rotation = glm::radians(rot_deg);
       changed = true;

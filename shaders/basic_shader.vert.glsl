@@ -3,12 +3,12 @@
 layout(location = 0) in vec3 in_pos; 			// in local coordinate system
 layout(location = 1) in vec3 in_normal; 	// in local coordinate system
 
-uniform mat4 mat_transform;
-uniform mat4 mat_cam; 
-uniform mat4 mat_per;
+layout(location = 0) uniform mat4 mat_transform;
+layout(location = 1) uniform mat4 mat_cam; 
+layout(location = 2) uniform mat4 mat_per;
 
-out vec3 vs_out_normal_world_space;
-out vec3 vs_out_frag_world_space;
+layout(location = 0) out vec3 vs_out_normal_world_space;
+layout(location = 1) out vec3 vs_out_frag_world_space;
  
 void main()
 {
@@ -26,5 +26,7 @@ void main()
   vec3 normal_world_space = normal_matrix * in_normal;
   
   gl_Position = p_clip_space;
+  
   vs_out_normal_world_space = normal_world_space;
+  //vs_out_normal_world_space = in_normal;
 }

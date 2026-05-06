@@ -30,30 +30,29 @@ void VerteArray::unbind() const
   glBindVertexArray(0);
 }
 
-
-void VerteArray::enable_attrib(std::uint32_t index) const
+void VerteArray::enable_attrib(u32 index) const
 {
   glEnableVertexArrayAttrib(m_id, index);
 }
 
-void VerteArray::disable_attrib(std::uint32_t index) const
+void VerteArray::disable_attrib(u32 index) const
 {
   glDisableVertexArrayAttrib(m_id, index);
 }
 
-void VerteArray::set_attrib_format_float(std::uint32_t attrindex, std::int32_t size, VertexAttribType type, bool normalized, std::uint32_t offset) const
+void VerteArray::set_attrib_format_float(u32 attrindex, i32 size, VertexAttribType type, bool normalized, u32 offset) const
 {
-  glVertexArrayAttribFormat(m_id, attrindex, size, static_cast<std::int32_t>(type), normalized, offset);
+  glVertexArrayAttribFormat(m_id, attrindex, size, static_cast<i32>(type), normalized, offset);
 }
 
-void VerteArray::set_attrib_format_int(std::uint32_t attrindex, std::int32_t size, VertexAttribType type, std::uint32_t offset) const
+void VerteArray::set_attrib_format_int(u32 attrindex, i32 size, VertexAttribType type, u32 offset) const
 {
-  glVertexArrayAttribIFormat(m_id, attrindex, size, static_cast<std::int32_t>(type), offset);
+  glVertexArrayAttribIFormat(m_id, attrindex, size, static_cast<i32>(type), offset);
 }
 
-void VerteArray::set_attrib_format_long(std::uint32_t attrindex, std::int32_t size, VertexAttribType type, std::uint32_t offset) const
+void VerteArray::set_attrib_format_long(u32 attrindex, i32 size, VertexAttribType type, u32 offset) const
 {
-  glVertexArrayAttribLFormat(m_id, attrindex, size, static_cast<std::int32_t>(type), offset);
+  glVertexArrayAttribLFormat(m_id, attrindex, size, static_cast<i32>(type), offset);
 }
 
 void VerteArray::attach_index_buffer(Buffer buffer) const
@@ -66,12 +65,12 @@ void VerteArray::detach_index_buffer() const
   glVertexArrayElementBuffer(m_id, 0);
 }
 
-void VerteArray::attach_vertex_buffer(std::uint32_t bindingindex, Buffer buffer, std::int32_t offset, std::int64_t stride) const
+void VerteArray::attach_vertex_buffer(u32 bindingindex, Buffer buffer, i32 offset, i32 stride) const
 {
   glVertexArrayVertexBuffer(m_id, bindingindex, buffer.id(), offset, stride);
 }
 
-void VerteArray::link_attrib(std::uint32_t attrindex, std::uint32_t bindingindex) const
+void VerteArray::link_attrib(u32 attrindex, u32 bindingindex) const
 {
   glVertexArrayAttribBinding(m_id, attrindex, bindingindex);
 }

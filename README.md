@@ -24,8 +24,7 @@ Our task is not to go and write a photorealistic renderer, for this we will use 
 
 ## Structure of the project
 
-Blender does not expose native APIs for C++. The only official scripting modes are for Python, `bpy`, it's a complete API for everything: 
-geometry, materials, UV, rendering. 
+Blender does not expose native APIs for C++. The only official scripting modes are for Python.
 
 The project will be divided as follows:
 1. parsing + geometry (C++):
@@ -41,6 +40,7 @@ The project will be divided as follows:
   - Headless rendering with Cycles or EEVEE
 
 ## Helpful sources
+
 Some sources that may be useful:
   - Clipper2
   - Blender procedural
@@ -48,13 +48,15 @@ Some sources that may be useful:
   
 ## Building and running the code
 
-Installing dependencies for GLFW:
+Installing wayland and x11 development libraries.
 
-- On Debian and derivatives like Ubuntu and Linux Mint:
+On Debian/Ubuntu:
+
 ```bash
 sudo apt install libwayland-dev libxkbcommon-dev xorg-dev
 ```
-- On Fedora and derivatives like Red Hat:
+On Fedora:
+
 ```bash
 sudo dnf install wayland-devel libxkbcommon-devel libXcursor-devel libXi-devel libXinerama-devel libXrandr-devel
 ```

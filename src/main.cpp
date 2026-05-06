@@ -237,7 +237,6 @@ int main(int argc, char* argv[])
     0
   ));
   visualizer.set_mesh_transform(transform);
-  
   visualizer.camera().eye = { 0.f, 10.f, 30.f };
   visualizer.camera().set_orientation(glm::radians(glm::vec3{ -10.f, 0.f, 0.f })); // look slightly down
   visualizer.render();

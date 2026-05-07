@@ -16,6 +16,70 @@
 
 constexpr auto epsilon = static_cast<f64>(1e-4);
 
+void build_floor(std::vector<Vertex>& vertices, const std::vector<p2t::Triangle*> triangle_list)
+{
+  for (const auto& tri : triangle_list)
+  {
+    for (auto i = 0; i < 3; ++i)
+    {
+      auto p = tri->GetPoint(i);
+      auto v = Vertex{};
+      v.position.x = static_cast<f32>(p->x);
+      v.position.y = 0.f; // floor at y=0
+      v.position.z = static_cast<f32>(p->y);
+      v.normal = {0.f, 1.f, 0.f}; // normal points up (+Y)
+      vertices.push_back(v);
+    }
+  }
+}
+
+void build_ceil(std::vector<Vertex>& vertices, f32 H, const std::vector<p2t::Triangle*> triangle_list)
+{
+  for (const auto& tri : triangle_list)
+  {
+    for (auto i = 0; i < 3; ++i)
+    {
+      auto p = tri->GetPoint(i);
+      auto v = Vertex{};
+      v.position.x = static_cast<f32>(p->x);
+      v.position.y = H; // ceiling at y=H
+      v.position.z = static_cast<f32>(p->y);
+      v.normal = {0.f, -1.f, 0.f}; // normal points down (-Y)
+      vertices.push_back(v);
+    }
+  }
+}
+
+void extrude_walls(std::vector<Vertex>& vertices, f32 H, const std::vector<glm::dvec2>& wall_points)
+{
+  for (auto i = 0u; i < wall_points.size(); ++i)
+  {
+    auto p1 = wall_points.at(i);
+    auto p2 = wall_points.at((i + 1) % wall_points.size());
+
+    // outward normal: edge direction in XZ plane rotated 90 degrees
+    auto dx = f32(p2.x - p1.x);
+    auto dz = f32(p2.y - p1.y);
+    auto len = std::sqrt(dx * dx + dz * dz);
+    auto normal = glm::vec3{dz / len, 0.f, -dx / len};
+
+    // 4 corners of the wall quad, Y-up convention
+    auto BL = Vertex{ .position={static_cast<f32>(p1.x), 0.f,  static_cast<f32>(p1.y)}, .normal=normal};
+    auto BR = Vertex{ .position={static_cast<f32>(p2.x), 0.f,  static_cast<f32>(p2.y)}, .normal=normal};
+    auto TR = Vertex{ .position={static_cast<f32>(p2.x), H,    static_cast<f32>(p2.y)}, .normal=normal};
+    auto TL = Vertex{ .position={static_cast<f32>(p1.x), H,    static_cast<f32>(p1.y)}, .normal=normal}; 
+    // triangle 1: BL, BR, TR
+    vertices.push_back(BL);
+    vertices.push_back(BR);
+    vertices.push_back(TR);
+    // triangle 2: BL, TR, TL
+    vertices.push_back(BL);
+    vertices.push_back(TR);
+    vertices.push_back(TL);
+  } 
+}
+
+
 int main(int argc, char* argv[]) 
 {
   if(argc < 2)
@@ -138,63 +202,17 @@ int main(int argc, char* argv[])
   vertices.reserve(nr_vertices_floor + nr_vertices_wall + nr_vertices_ceil);
   
   // build the floor
-  for (const auto& tri : triangle_list)
-  {
-    for (auto i = 0; i < 3; ++i)
-    {
-      auto p = tri->GetPoint(i);
-      auto v = Vertex{};
-      v.position.x = static_cast<f32>(p->x);
-      v.position.y = 0.f; // floor at y=0
-      v.position.z = static_cast<f32>(p->y);
-      v.normal = {0.f, 1.f, 0.f}; // normal points up (+Y)
-      vertices.push_back(v);
-    }
-  }
-
+  build_floor(vertices, triangle_list);
+  
   // wall extrusion
   constexpr auto H = 3.f; // 3 meters
-  for (auto i = 0u; i < wall_points.size(); ++i)
-  {
-    auto p1 = wall_points.at(i);
-    auto p2 = wall_points.at((i + 1) % wall_points.size());
-
-    // outward normal: edge direction in XZ plane rotated 90 degrees
-    auto dx = f32(p2.x - p1.x);
-    auto dz = f32(p2.y - p1.y);
-    auto len = std::sqrt(dx * dx + dz * dz);
-    auto normal = glm::vec3{dz / len, 0.f, -dx / len};
-
-    // 4 corners of the wall quad, Y-up convention
-    auto BL = Vertex{ .position={static_cast<f32>(p1.x), 0.f,  static_cast<f32>(p1.y)}, .normal=normal};
-    auto BR = Vertex{ .position={static_cast<f32>(p2.x), 0.f,  static_cast<f32>(p2.y)}, .normal=normal};
-    auto TR = Vertex{ .position={static_cast<f32>(p2.x), H,    static_cast<f32>(p2.y)}, .normal=normal};
-    auto TL = Vertex{ .position={static_cast<f32>(p1.x), H,    static_cast<f32>(p1.y)}, .normal=normal}; 
-    // triangle 1: BL, BR, TR
-    vertices.push_back(BL);
-    vertices.push_back(BR);
-    vertices.push_back(TR);
-    // triangle 2: BL, TR, TL
-    vertices.push_back(BL);
-    vertices.push_back(TR);
-    vertices.push_back(TL);
-  }
-
+  extrude_walls(vertices, H, wall_points);
+  
   // build the ceiling (same triangles as floor but at height H and normal pointing down)
-  for (const auto& tri : triangle_list)
-  {
-    for (auto i = 0; i < 3; ++i)
-    {
-      auto p = tri->GetPoint(i);
-      auto v = Vertex{};
-      v.position.x = static_cast<f32>(p->x);
-      v.position.y = H; // ceiling at y=H
-      v.position.z = static_cast<f32>(p->y);
-      v.normal = {0.f, -1.f, 0.f}; // normal points down (-Y)
-      vertices.push_back(v);
-    }
-  }
+  build_ceil(vertices, H, triangle_list);
 
+//#define VISUALIZE_MESH
+#ifdef VISUALIZE_MESH 
   // Get the bounds of the extruded 3D room
   auto bbox = calculate_bounding_box(vertices);
   auto center = (bbox.min + bbox.max) * 0.5f; 
@@ -214,9 +232,12 @@ int main(int argc, char* argv[])
   visualizer.camera().eye = { 0.f, 10.f, 30.f };
   visualizer.camera().set_orientation(glm::radians(glm::vec3{ -10.f, 0.f, 0.f })); // look slightly down
   visualizer.render();
+#endif
 
   // --- Step 4: exporting mesh in GLTF ---
   // --------------------------------------
-
+  auto model_path = "output_model.gltf";
+  std::println("Model will be exported to: {}", model_path);
+  export_to_gltf(vertices, model_path);  
   return 0;
 }

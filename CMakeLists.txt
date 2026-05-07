@@ -52,7 +52,7 @@ FetchContent_MakeAvailable(libdxfrw poly2tri glfw glm)
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/externals/glad")
 add_subdirectory("${CMAKE_SOURCE_DIR}/externals/imgui")
-add_subdirectory("${CMAKE_SOURCE_DIR}/externals/TinyGLTF/")
+add_subdirectory("${CMAKE_SOURCE_DIR}/externals/tinygltf/")
 
 add_executable(${PROJECT_NAME} 
   src/io/drw_parser.cpp

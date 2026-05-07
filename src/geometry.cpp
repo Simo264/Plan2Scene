@@ -2,7 +2,7 @@
 
 #include <glm/ext/vector_double2.hpp>
 #include <glm/geometric.hpp>
-
+#include <glm/common.hpp>
 
 auto calculate_signed_area(const Polyline& contour) -> f32
 {
@@ -23,17 +23,19 @@ auto calculate_bounding_box(const std::vector<glm::dvec2>& points) -> BoundingBo
   if (points.empty())
     return BoundingBox{};
   
-  auto min = glm::vec3(static_cast<f32>(points[0].x), static_cast<f32>(points[0].y), 0.0f);
-  auto max = min;
+  auto min = glm::vec3{ std::numeric_limits<float>::max() };
+  auto max = glm::vec3{ std::numeric_limits<float>::lowest() };
   for (const auto& p : points) 
   {
     auto px = static_cast<f32>(p.x);
     auto py = static_cast<f32>(p.y);
-    min.x = std::min(min.x, px);
-    min.y = std::min(min.y, py);
-    max.x = std::max(max.x, px);
-    max.y = std::max(max.y, py);
+    min.x = glm::min(min.x, px);
+    min.y = glm::min(min.y, py);
+    max.x = glm::max(max.x, px);
+    max.y = glm::max(max.y, py);
   }
+  min.z = 0.f;
+  max.z = 0.f;
   return BoundingBox{ min, max };
 }
 

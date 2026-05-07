@@ -28,7 +28,7 @@ target_compile_definitions(imgui PRIVATE
   GLFW_EXPOSE_NATIVE_WAYLAND
   IMGUI_IMPL_GLFW_DISABLE_X11
 )
-target_include_directories(imgui PUBLIC "${CMAKE_SOURCE_DIR}/glad/include")
+target_include_directories(imgui PUBLIC "${CMAKE_SOURCE_DIR}/externals/glad/include")
 
 find_package(OpenGL QUIET)
 target_link_libraries(imgui PUBLIC 

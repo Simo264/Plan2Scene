@@ -50,8 +50,9 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(libdxfrw poly2tri glfw glm)
 
-add_subdirectory("${CMAKE_SOURCE_DIR}/glad")
-add_subdirectory("${CMAKE_SOURCE_DIR}/imgui")
+add_subdirectory("${CMAKE_SOURCE_DIR}/externals/glad")
+add_subdirectory("${CMAKE_SOURCE_DIR}/externals/imgui")
+add_subdirectory("${CMAKE_SOURCE_DIR}/externals/TinyGLTF/")
 
 add_executable(${PROJECT_NAME} 
   src/io/drw_parser.cpp
@@ -66,7 +67,6 @@ add_executable(${PROJECT_NAME}
 
   src/main.cpp
   src/geometry.cpp
-  src/mesh_builder.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -78,6 +78,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   glfw
   glm::glm
   imgui::imgui
+  tiny_gltf::tiny_gltf
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${libdxfrw_SOURCE_DIR}/src)

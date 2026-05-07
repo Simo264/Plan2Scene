@@ -211,8 +211,9 @@ int main(int argc, char* argv[])
   // build the ceiling (same triangles as floor but at height H and normal pointing down)
   build_ceil(vertices, H, triangle_list);
 
-//#define VISUALIZE_MESH
-#ifdef VISUALIZE_MESH 
+  // --- Step 4: visualize generated mesh ---
+  // ----------------------------------------
+  
   // Get the bounds of the extruded 3D room
   auto bbox = calculate_bounding_box(vertices);
   auto center = (bbox.min + bbox.max) * 0.5f; 
@@ -232,9 +233,8 @@ int main(int argc, char* argv[])
   visualizer.camera().eye = { 0.f, 10.f, 30.f };
   visualizer.camera().set_orientation(glm::radians(glm::vec3{ -10.f, 0.f, 0.f })); // look slightly down
   visualizer.render();
-#endif
 
-  // --- Step 4: exporting mesh in GLTF ---
+  // --- Step 5: exporting mesh in GLTF ---
   // --------------------------------------
   auto model_path = "output_model.gltf";
   std::println("Model will be exported to: {}", model_path);

@@ -56,6 +56,7 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/externals/TinyGLTF/")
 
 add_executable(${PROJECT_NAME} 
   src/io/drw_parser.cpp
+  src/io/gltf_exporter.cpp
 
   src/graphics/buffer.cpp
   src/graphics/pipeline.cpp

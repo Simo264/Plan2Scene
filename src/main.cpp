@@ -8,37 +8,13 @@
 #include "geometry.hpp"
 #include "glm/trigonometric.hpp"
 #include "io/drw_parser.hpp"
+#include "io/gltf_exporter.hpp"
 #include "graphics/mesh_visualizer.hpp"
 
 #include <poly2tri/sweep/cdt.h>
+#include <glm/geometric.hpp>
 
-auto detect_unit_scale(const std::vector<glm::dvec2>& points) -> f32
-{
-  // compute bounding box diagonal
-  auto min_x = std::numeric_limits<double>::max();
-  auto max_x = std::numeric_limits<double>::lowest();
-  auto min_y = std::numeric_limits<double>::max();
-  auto max_y = std::numeric_limits<double>::lowest();
-  for (const auto& p : points)
-  {
-    min_x = std::min(min_x, p.x); max_x = std::max(max_x, p.x);
-    min_y = std::min(min_y, p.y); max_y = std::max(max_y, p.y);
-  }
-  const auto extent = std::sqrt(
-    std::pow(max_x - min_x, 2) +
-    std::pow(max_y - min_y, 2));
-
-  std::println("Raw bounding box extent: {:.2f}", extent);
-
-  // a typical room is 3–20 meters diagonal
-  // if extent >> 20, assume smaller units
-  if      (extent > 5000.0) return 0.001f; // mm → m
-  else if (extent > 500.0)  return 0.01f;  // cm → m
-  else if (extent > 50.0)   return 0.1f;   // dm → m (rare)
-  else                      return 1.0f;   // already meters
-}
-
-constexpr auto epsilon = 1e-4;
+constexpr auto epsilon = static_cast<f64>(1e-4);
 
 int main(int argc, char* argv[]) 
 {
@@ -103,7 +79,7 @@ int main(int argc, char* argv[])
       auto first_point = wall_points.front();
       auto last_point = wall_points.back();
       std::println("Polyline is closed. First point: ({}, {}), last point: ({}, {})", first_point.x, first_point.y, last_point.x, last_point.y);
-      if(distance(first_point, last_point) < epsilon)
+      if(glm::distance(first_point, last_point) < epsilon)
       {
         std::println("First and last point are closer than epsilon. Drop the last point to avoid near-duplicate.");
         wall_points.pop_back();
@@ -116,7 +92,7 @@ int main(int argc, char* argv[])
       auto first_point = wall_points.front();
       auto last_point = wall_points.back();
       std::println("Polyline is not closed. First point: ({}, {}), last point: ({}, {})", first_point.x, first_point.y, last_point.x, last_point.y);
-      if(distance(first_point, last_point) < epsilon)
+      if(glm::distance(first_point, last_point) < epsilon)
       {
         std::println("First and last point are closer than epsilon. Drop the last point to avoid near-duplicate and consider it as closed.");
         wall_points.pop_back();
@@ -136,7 +112,7 @@ int main(int argc, char* argv[])
   if (wall_points.size() < 3)
     throw std::runtime_error("Not enough points to triangulate");
   
-  auto area = signed_area(wall_polyline);
+  auto area = calculate_signed_area(wall_polyline);
   std::println("Signed area of the contour: {}", area);
   if(area < 0)
     std::ranges::reverse(wall_points);
@@ -150,6 +126,9 @@ int main(int argc, char* argv[])
   cdt.Triangulate();
   auto triangle_list = cdt.GetTriangles();
   std::println("Triangulation completed. Number of triangles: {}", triangle_list.size());
+
+  // --- Step 3: extrusion and mesh creation ---
+  // -------------------------------------------
 
   // Define the vertices for our mesh
   auto nr_vertices_floor = triangle_list.size() * 3;
@@ -166,9 +145,9 @@ int main(int argc, char* argv[])
       auto p = tri->GetPoint(i);
       auto v = Vertex{};
       v.position.x = static_cast<f32>(p->x);
-      v.position.y = 0.f;                    // floor at y=0
-      v.position.z = static_cast<f32>(p->y); // DXF y → world z
-      v.normal = {0.f, 1.f, 0.f};    // normal points up (+Y)
+      v.position.y = 0.f; // floor at y=0
+      v.position.z = static_cast<f32>(p->y);
+      v.normal = {0.f, 1.f, 0.f}; // normal points up (+Y)
       vertices.push_back(v);
     }
   }
@@ -209,22 +188,17 @@ int main(int argc, char* argv[])
       auto p = tri->GetPoint(i);
       auto v = Vertex{};
       v.position.x = static_cast<f32>(p->x);
-      v.position.y = H;                       // ceiling at y=H
-      v.position.z = static_cast<f32>(p->y);  // DXF y → world z
-      v.normal = {0.f, -1.f, 0.f};            // normal points down (-Y)
+      v.position.y = H; // ceiling at y=H
+      v.position.z = static_cast<f32>(p->y);
+      v.normal = {0.f, -1.f, 0.f}; // normal points down (-Y)
       vertices.push_back(v);
     }
   }
 
-  // compute bounding box for visualization
-  auto min = vertices.front().position;
-  auto max = vertices.front().position;  
-  for (const auto& v : vertices) 
-  {
-    min = glm::min(min, v.position);
-    max = glm::max(max, v.position);
-  }
-  auto center = (min + max) * 0.5f;
+  // Get the bounds of the extruded 3D room
+  auto bbox = calculate_bounding_box(vertices);
+  auto center = (bbox.min + bbox.max) * 0.5f; 
+  // Center the model at the origin (0, 0, 0)
   auto transform = Transformation{};
   transform.position = -center;
   transform.update_tranformation();
@@ -240,5 +214,9 @@ int main(int argc, char* argv[])
   visualizer.camera().eye = { 0.f, 10.f, 30.f };
   visualizer.camera().set_orientation(glm::radians(glm::vec3{ -10.f, 0.f, 0.f })); // look slightly down
   visualizer.render();
+
+  // --- Step 4: exporting mesh in GLTF ---
+  // --------------------------------------
+
   return 0;
 }

@@ -10,7 +10,7 @@
 
 struct Segment
 {
-  glm::dvec2 p1, p2;
+  glm::dvec2 p1{ 0.f}, p2{ 0.f};
 };
 
 struct Polyline
@@ -21,11 +21,24 @@ struct Polyline
 
 struct Vertex
 {
-  glm::vec3 position;
-  glm::vec3 normal;
+  glm::vec3 position{ 0.f };
+  glm::vec3 normal{ 0.f }; // use it as debug color
 };
 
-// Calculate the Euclidean distance between two 2D points
-auto distance(glm::dvec2 p1, glm::dvec2 p2) -> f64;
+struct BoundingBox
+{
+  glm::vec3 min{ 0.f };  // the bottom left corner
+  glm::vec3 max{ 0.f };  // the top right corner
+};
+
 // Calculate the signed area of the contour using the shoelace formula.
-auto signed_area(const Polyline& contour) -> f64;
+auto calculate_signed_area(const Polyline& contour) -> f32;
+
+// Calculates the bounding box for 2D points. The Z-coordinate is set to 0.0f by default.
+auto calculate_bounding_box(const std::vector<glm::dvec2>& points) -> BoundingBox;
+// Calculates the bounding box for 3D points
+auto calculate_bounding_box(const std::vector<Vertex>& vertices) -> BoundingBox;
+
+// Calculate the unit scale based on the geometry
+auto detect_unit_scale(const std::vector<glm::dvec2>& points) -> f32;
+

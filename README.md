@@ -11,7 +11,7 @@ Once we have the floor, to create the ceiling we simply make an extrusion, where
 height H and we obtain a prism solid. In this way we obtained a room with floor, ceiling and walls, practically a 3D mesh. 
 We export the model in GLTF format.
 
-*Tip: When generating the geometry do not calculate the normals, export the model with only the 3D positions (x,y,z). Normals can be calculated with Blender. Since your immediate goal in C++ is to visualize the result geometry to ensure your extrusion and triangulation logic worked correctly, replacing normals with colors is a great "debug" strategy.*
+*Tip: When generating the geometry do not calculate the normals, export the model with only the 3D positions (x,y,z). Normals can be calculated with Blender.*
 
 Once we have the GLTF model, we import it with Blender and calculate the normals, the coordinated textures and apply the materials.
 Once the model is ready, we proceed to perform the photorealistic rendering of the room.

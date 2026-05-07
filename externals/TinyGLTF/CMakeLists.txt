@@ -7,3 +7,5 @@ add_library(tiny_gltf STATIC "tinygltf_impl.cpp")
 target_include_directories(tiny_gltf PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 
 add_library(tiny_gltf::tiny_gltf ALIAS tiny_gltf)
+
+message(STATUS "Created static target 'tiny_gltf' from '${CMAKE_CURRENT_SOURCE_DIR}/tinygltf_impl.cpp'")

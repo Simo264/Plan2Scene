@@ -6,3 +6,8 @@
 
 void export_to_gltf(const std::vector<Vertex>& vertices, 
                     const std::filesystem::path& filename);
+
+
+void import_gltf(const std::filesystem::path& filename, 
+                 std::vector<Vertex>& out_vertices, 
+                 std::vector<u32>& out_indices);

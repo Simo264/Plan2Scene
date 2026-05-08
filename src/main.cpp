@@ -16,6 +16,7 @@
 
 constexpr auto epsilon = static_cast<f64>(1e-4);
 
+
 void build_floor(std::vector<Vertex>& vertices, const std::vector<p2t::Triangle*> triangle_list)
 {
   for (const auto& tri : triangle_list)
@@ -79,21 +80,16 @@ void extrude_walls(std::vector<Vertex>& vertices, f32 H, const std::vector<glm::
   } 
 }
 
-int main(int argc, char* argv[]) 
+void parse_cad(const std::filesystem::path& filename, 
+               std::vector<Vertex>& out_vertices, 
+               [[maybe_unused]]std::vector<u32>& out_indices)
 {
-  if(argc < 2)
-    throw std::runtime_error(std::format("No input file provided. Usage: {} <input.dxf>", argv[0]));
-  
-  auto file_path = argv[1];
-  if(!std::filesystem::exists(file_path))
-    throw std::runtime_error(std::format("Input file not found: {}", file_path));
-  
   // --- Step 1: parsing DXF file to retrieve segments and polylines ---
   // -------------------------------------------------------------------
   auto parser = DRWParser{};
-  auto dxf = dxfRW(file_path);
+  auto dxf = dxfRW(filename.string().c_str());
   if (!dxf.read(&parser, false))
-    throw std::runtime_error(std::format("Error reading DXF file (code: {}): {}", static_cast<i32>(dxf.getError()), file_path));
+    throw std::runtime_error(std::format("Error reading DXF file (code: {}): {}", static_cast<i32>(dxf.getError()), filename.string()));
 
   auto& segments = parser.segments;
   auto& polylines = parser.polylines;
@@ -110,7 +106,6 @@ int main(int argc, char* argv[])
   //   std::println("todo: chaining segments...");
   //   throw std::runtime_error("Chaining segments into a closed contour is not implemented yet.");
   // }
-
 
   if(polylines.empty())
     throw std::runtime_error("No wall polyline found");
@@ -193,22 +188,58 @@ int main(int argc, char* argv[])
   auto nr_vertices_floor = triangle_list.size() * 3;
   auto nr_vertices_wall = wall_polyline.points.size() * 6; // 2 triangles * 3 vertices per edge
   auto nr_vertices_ceil = nr_vertices_floor; // same as floor
-  auto vertices = std::vector<Vertex>{};
-  vertices.reserve(nr_vertices_floor + nr_vertices_wall + nr_vertices_ceil);
+  
+  out_vertices.reserve(nr_vertices_floor + nr_vertices_wall + nr_vertices_ceil);
   
   // build the floor
-  build_floor(vertices, triangle_list);
+  build_floor(out_vertices, triangle_list);
   
   // wall extrusion
   constexpr auto H = 3.f; // 3 meters
-  extrude_walls(vertices, H, wall_polyline.points);
+  extrude_walls(out_vertices, H, wall_polyline.points);
   
   // build the ceiling (same triangles as floor but at height H and normal pointing down)
-  build_ceil(vertices, H, triangle_list);
+  build_ceil(out_vertices, H, triangle_list);
+}
 
-  // --- Step 4: visualize generated mesh ---
-  // ----------------------------------------
+int main(int argc, char* argv[]) 
+{
+  if(argc != 3)
+    throw std::runtime_error(
+      "Usage:\n 1. /build/Plan2Scene --load <model/input.gltf>\n2. ./build/Plan2Scene --parse <cad/input.dxf>");
   
+  auto mode = std::string(argv[1]);
+  auto is_parse = mode == "--parse";
+  auto is_load = mode == "--load";
+  if(!is_load && ! is_parse)
+    throw std::runtime_error(
+      "Usage example:\n 1. /build/Plan2Scene --load <model/input.gltf>\n2. ./build/Plan2Scene --parse <cad/input.dxf>");
+
+  auto file_path = std::filesystem::path(argv[2]);
+  if(!std::filesystem::exists(file_path))
+    throw std::runtime_error(std::format("Input file not found: {}", file_path.string()));
+  
+  auto vertices = std::vector<Vertex>{};
+  auto indices = std::vector<u32>{};
+
+  if(is_load)
+  {
+    import_gltf(file_path, vertices, indices);
+  }
+  else if(is_parse)
+  {
+    parse_cad(file_path, vertices, indices);
+   
+    // exporting mesh in GLTF
+    auto gltf_path = file_path.filename().replace_extension("gltf");
+    std::println("Model will be exported to: {}", gltf_path.string());
+    export_to_gltf(vertices, gltf_path);
+  }
+
+
+  // --- visualize mesh ---
+  // ----------------------
+
   // Get the bounds of the extruded 3D room
   auto bbox = calculate_bounding_box(vertices);
   auto center = (bbox.min + bbox.max) * 0.5f; 
@@ -221,19 +252,14 @@ int main(int argc, char* argv[])
   visualizer.set_mesh(std::make_shared<StaticMesh>(
     vertices.data(), 
     vertices.size(),
-    nullptr,  
-    0
+    indices.data(),  
+    indices.size()
   ));
   visualizer.set_mesh_transform(transform);
-  visualizer.camera().eye = { 0.f, 10.f, 30.f };
-  visualizer.camera().set_orientation(glm::radians(glm::vec3{ -10.f, 0.f, 0.f })); // look slightly down
+  visualizer.camera().eye = { 0.f, 2.f, 10.f };
+  visualizer.camera().set_orientation(glm::radians(glm::vec3{ -5.f, 0.f, 0.f }));
   visualizer.render();
 
-  // --- Step 5: exporting mesh in GLTF ---
-  // --------------------------------------
-  auto gltf_path = std::filesystem::path(file_path);
-  gltf_path = gltf_path.filename().replace_extension("gltf");
-  std::println("Model will be exported to: {}", gltf_path.string());
-  export_to_gltf(vertices, gltf_path);
+
   return 0;
 }

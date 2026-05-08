@@ -4,5 +4,3 @@ build/
 .zed/
 .vscode/
 compile_commands.json
-*.bin
-*.gltf

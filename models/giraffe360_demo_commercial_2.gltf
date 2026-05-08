@@ -1,0 +1,63 @@
+{
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "count": 1632,
+      "max": [
+        32.180999755859375,
+        3.0,
+        26.30299949645996
+      ],
+      "min": [
+        0.9879999756813049,
+        0.0,
+        1.1990000009536743
+      ],
+      "type": "VEC3"
+    }
+  ],
+  "asset": {
+    "generator": "Plan2Scene",
+    "version": "2.0"
+  },
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteLength": 19584,
+      "target": 34962
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 19584,
+      "uri": "giraffe360_demo_commercial_2.bin"
+    }
+  ],
+  "meshes": [
+    {
+      "name": "Room",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0
+          },
+          "mode": 4
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "mesh": 0
+    }
+  ],
+  "scene": 0,
+  "scenes": [
+    {
+      "nodes": [
+        0
+      ]
+    }
+  ]
+}

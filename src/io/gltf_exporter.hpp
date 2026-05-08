@@ -5,6 +5,7 @@
 #include <filesystem>
 
 void export_to_gltf(const std::vector<Vertex>& vertices, 
+                    const std::vector<u32>& indices,
                     const std::filesystem::path& filename);
 
 

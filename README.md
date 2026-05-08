@@ -8,12 +8,15 @@ Given the floor plan of the room we will have to create the corresponding model 
 Here we have as input a 2-dimensional polygon, which is the result of the previous step, and from this we need to generate a 3D model.
 One method can be Constrained Delaunay Triangulation. After that we get a list of floor triangles.
 Once we have the floor, to create the ceiling we simply make an extrusion, where the outline of the room is extruded vertically by a 
-height H and we obtain a prism solid. In this way we obtained a room with floor, ceiling and walls, practically a 3D mesh. 
-We export the model in GLTF format.
+height H and we obtain a prism solid. 
+Furthermore, the walls must have a thickness (for example 50cm). 
+In this way we obtained a room with floor, ceiling and walls, practically a 3D mesh.
 
-*Tip: When generating the geometry do not calculate the normals, export the model with only the 3D positions (x,y,z). Normals can be calculated with Blender.*
+We export the model in GLTF format with the following vertex information: position (xyz) and normals (xyz).
 
-Once we have the GLTF model, we import it with Blender and calculate the normals, the coordinated textures and apply the materials.
+*Tip: when you generate the geometry you will also have to analytically calculate the normals on the vertices: the normals of the floor must point upwards and the ceiling downwards, while the walls must point towards the inside of the room.*
+
+Once we have the GLTF model, we import it with Blender and calculate the the coordinated textures, UV mapping and apply the materials.
 Once the model is ready, we proceed to perform the photorealistic rendering of the room.
 Our task is not to go and write a photorealistic renderer, for this we will use the Blender renderer.
 
@@ -30,9 +33,9 @@ The project will be divided as follows:
   - Wall extrusion
   - Visualize the result geometry with `OpenGL`, `GLFW` and `ImGui`
   - Exporting the mesh in GLTF format with `TinyGLTF`
-2. Normals, UV mapping, materials, rendering (Python with `bpy`)
+2. Texture coordinate, UV mapping, materials, rendering (Python with `bpy`)
   - Import of the GLTF model
-  - Calculate normals and texture coordinate of the mesh
+  - Calculate texture coordinate and UV mapping
   - Application of materials 
   - Headless rendering with Cycles or EEVEE
 

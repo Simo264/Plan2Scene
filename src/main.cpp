@@ -17,72 +17,96 @@
 constexpr auto epsilon = static_cast<f64>(1e-4);
 
 
-void build_floor(std::vector<Vertex>& vertices, const std::vector<p2t::Triangle*> triangle_list)
+void build_floor(std::vector<Vertex>& out_vertices, 
+                 std::vector<u32>& out_indices,
+                 const std::vector<p2t::Triangle*> triangle_list)
 {
   for (const auto& tri : triangle_list)
   {
-    for (auto i = 0; i < 3; ++i)
+    for (auto i = 0; i < 3; ++i) 
     {
+      // poly2tri gives CCW winding in XY, so we emit points in order 0,1,2 which stays CCW
       auto p = tri->GetPoint(i);
+      auto idx = static_cast<u32>(out_vertices.size());
+      out_indices.push_back(idx);
+
       auto v = Vertex{};
       v.position.x = static_cast<f32>(p->x);
-      v.position.y = 0.f; // floor at y=0
+      v.position.y = 0.f;
       v.position.z = static_cast<f32>(p->y);
-      v.normal = {0.f, 1.f, 0.f}; // normal points up (+Y)
-      vertices.push_back(v);
+      v.normal = {0.f, 1.f, 0.f},
+      out_vertices.push_back(v);
     }
   }
 }
 
-void build_ceil(std::vector<Vertex>& vertices, f32 H, const std::vector<p2t::Triangle*> triangle_list)
+void build_ceil(std::vector<Vertex>& out_vertices, 
+                std::vector<u32>& out_indices,
+                f32 H,
+                const std::vector<p2t::Triangle*> triangle_list)
 {
+  // The ceiling is almost identical to the floor with y = H and normal {0, -1, 0}.
+  // However there's one subtle but important issue: the winding order must be reversed.
   for (const auto& tri : triangle_list)
   {
-    for (auto i = 0; i < 3; ++i)
+    for (auto i = 2; i >= 0; --i) 
     {
       auto p = tri->GetPoint(i);
+      auto idx = static_cast<u32>(out_vertices.size());
+      out_indices.push_back(idx);
+
       auto v = Vertex{};
       v.position.x = static_cast<f32>(p->x);
-      v.position.y = H; // ceiling at y=H
+      v.position.y = H;
       v.position.z = static_cast<f32>(p->y);
-      v.normal = {0.f, -1.f, 0.f}; // normal points down (-Y)
-      vertices.push_back(v);
+      v.normal = {0.f, -1.f, 0.f},  // down, into the room
+      out_vertices.push_back(v);
     }
   }
 }
 
-void extrude_walls(std::vector<Vertex>& vertices, f32 H, const std::vector<glm::dvec2>& wall_points)
+void extrude_walls(std::vector<Vertex>& vertices,
+                   std::vector<u32>& out_indices,
+                   f32 H, 
+                   const std::vector<glm::dvec2>& wall_points)
 {
   for (auto i = 0u; i < wall_points.size(); ++i)
   {
     auto p1 = wall_points.at(i);
     auto p2 = wall_points.at((i + 1) % wall_points.size());
 
-    // outward normal: edge direction in XZ plane rotated 90 degrees
-    auto dx = f32(p2.x - p1.x);
-    auto dz = f32(p2.y - p1.y);
-    auto len = std::sqrt(dx * dx + dz * dz);
-    auto normal = glm::vec3{dz / len, 0.f, -dx / len};
+    auto edge = glm::vec3(f32(p2.x - p1.x), 0.0f, f32(p2.y - p1.y));
+    constexpr auto up = glm::vec3(0.0f, 1.0f, 0.0f); // the world up vector
+    // Wall normals must point towards the inside of the room.
+    // Important: the direction of the normal produced by glm::cross depends on your winding order.
+    // Since the CCW winding will point outwards, to point inwards you would flip the direction edge-up.
+    auto normal = glm::normalize(glm::cross(edge, up));
+    
+    auto BL = Vertex{.position = {f32(p1.x), 0.f, f32(p1.y)}, .normal = normal};
+    auto BR = Vertex{.position = {f32(p2.x), 0.f, f32(p2.y)}, .normal = normal};
+    auto TR = Vertex{.position = {f32(p2.x),   H, f32(p2.y)}, .normal = normal};
+    auto TL = Vertex{.position = {f32(p1.x),   H, f32(p1.y)}, .normal = normal};
 
-    // 4 corners of the wall quad, Y-up convention
-    auto BL = Vertex{ .position={static_cast<f32>(p1.x), 0.f,  static_cast<f32>(p1.y)}, .normal=normal};
-    auto BR = Vertex{ .position={static_cast<f32>(p2.x), 0.f,  static_cast<f32>(p2.y)}, .normal=normal};
-    auto TR = Vertex{ .position={static_cast<f32>(p2.x), H,    static_cast<f32>(p2.y)}, .normal=normal};
-    auto TL = Vertex{ .position={static_cast<f32>(p1.x), H,    static_cast<f32>(p1.y)}, .normal=normal}; 
-    // triangle 1: BL, BR, TR
-    vertices.push_back(BL);
-    vertices.push_back(BR);
-    vertices.push_back(TR);
-    // triangle 2: BL, TR, TL
-    vertices.push_back(BL);
-    vertices.push_back(TR);
-    vertices.push_back(TL);
+    auto base = static_cast<u32>(vertices.size());
+    vertices.push_back(BL);  // base + 0
+    vertices.push_back(BR);  // base + 1
+    vertices.push_back(TR);  // base + 2
+    vertices.push_back(TL);  // base + 3
+
+    // Triangle 1: BL => BR => TR
+    out_indices.push_back(base + 0);
+    out_indices.push_back(base + 1);
+    out_indices.push_back(base + 2);
+    // Triangle 1: BL => TR => TL
+    out_indices.push_back(base + 0);
+    out_indices.push_back(base + 2);
+    out_indices.push_back(base + 3);
   } 
 }
 
 void parse_cad(const std::filesystem::path& filename, 
                std::vector<Vertex>& out_vertices, 
-               [[maybe_unused]]std::vector<u32>& out_indices)
+               std::vector<u32>& out_indices)
 {
   // --- Step 1: parsing DXF file to retrieve segments and polylines ---
   // -------------------------------------------------------------------
@@ -113,7 +137,6 @@ void parse_cad(const std::filesystem::path& filename,
   // With polylines we already have an ordered contour.
   auto& wall_polyline = polylines.front();
   std::println("Wall polyline has {} points.", wall_polyline.points.size());  
-  
   if (wall_polyline.points.size() < 3)
     throw std::runtime_error("Not enough points to triangulate");
 
@@ -132,7 +155,7 @@ void parse_cad(const std::filesystem::path& filename,
     }
   }
   else 
-  {    
+  {
     // Polyline is open: we should check if the first and last point are close enough to be considered the same point.
     auto first_point = wall_polyline.points.front();
     auto last_point = wall_polyline.points.back();
@@ -162,10 +185,8 @@ void parse_cad(const std::filesystem::path& filename,
   
   // --- Step 2: triangulation of the contour using poly2tri---
   // ----------------------------------------------------------
-  // Compute signed area to determine orientation
   // poly2tri expects the outer polygon to be counter-clockwise (CCW) and holes to be clockwise (CW).
   // If signed_area < 0 the order is CW: we must reverse the vertices before passing to poly2tri.
-  // Otherwise, if signed_area > 0 the order is CCW and we can pass the vertices as they are.
   auto area = calculate_signed_area(wall_polyline);
   std::println("Signed area of the contour: {}", area);
   if(area < 0)
@@ -187,26 +208,23 @@ void parse_cad(const std::filesystem::path& filename,
   // Define the vertices for our mesh
   auto nr_vertices_floor = triangle_list.size() * 3;
   auto nr_vertices_wall = wall_polyline.points.size() * 6; // 2 triangles * 3 vertices per edge
-  auto nr_vertices_ceil = nr_vertices_floor; // same as floor
-  
+  auto nr_vertices_ceil = nr_vertices_floor; // same as floor 
   out_vertices.reserve(nr_vertices_floor + nr_vertices_wall + nr_vertices_ceil);
+  //out_indices.reserve(???);
+
+  build_floor(out_vertices, out_indices, triangle_list);
   
-  // build the floor
-  build_floor(out_vertices, triangle_list);
+  constexpr auto H = 3.f;
+  extrude_walls(out_vertices, out_indices, H, wall_polyline.points);
   
-  // wall extrusion
-  constexpr auto H = 3.f; // 3 meters
-  extrude_walls(out_vertices, H, wall_polyline.points);
-  
-  // build the ceiling (same triangles as floor but at height H and normal pointing down)
-  build_ceil(out_vertices, H, triangle_list);
+  build_ceil(out_vertices, out_indices, H, triangle_list);
 }
 
 int main(int argc, char* argv[]) 
 {
   if(argc != 3)
     throw std::runtime_error(
-      "Usage:\n 1. /build/Plan2Scene --load <model/input.gltf>\n2. ./build/Plan2Scene --parse <cad/input.dxf>");
+      "Usage:\n1. /build/Plan2Scene --load <model/input.gltf>\n2. ./build/Plan2Scene --parse <cad/input.dxf>");
   
   auto mode = std::string(argv[1]);
   auto is_parse = mode == "--parse";
@@ -221,7 +239,6 @@ int main(int argc, char* argv[])
   
   auto vertices = std::vector<Vertex>{};
   auto indices = std::vector<u32>{};
-
   if(is_load)
   {
     import_gltf(file_path, vertices, indices);
@@ -233,7 +250,7 @@ int main(int argc, char* argv[])
     // exporting mesh in GLTF
     auto gltf_path = file_path.filename().replace_extension("gltf");
     std::println("Model will be exported to: {}", gltf_path.string());
-    export_to_gltf(vertices, gltf_path);
+    export_to_gltf(vertices, indices, gltf_path);
   }
 
 
@@ -259,7 +276,5 @@ int main(int argc, char* argv[])
   visualizer.camera().eye = { 0.f, 2.f, 10.f };
   visualizer.camera().set_orientation(glm::radians(glm::vec3{ -5.f, 0.f, 0.f }));
   visualizer.render();
-
-
   return 0;
 }

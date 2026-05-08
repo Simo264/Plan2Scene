@@ -62,5 +62,5 @@ Compiling and running the code:
 ```bash
 cmake . -B ./build 
 cmake --build ./build/ --parallel 8
-./build/bin/Plan2Scene <input.dxf>
+./build/Plan2Scene <input.dxf>
 ```

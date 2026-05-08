@@ -79,7 +79,6 @@ void extrude_walls(std::vector<Vertex>& vertices, f32 H, const std::vector<glm::
   } 
 }
 
-
 int main(int argc, char* argv[]) 
 {
   if(argc < 2)
@@ -94,78 +93,77 @@ int main(int argc, char* argv[])
   auto parser = DRWParser{};
   auto dxf = dxfRW(file_path);
   if (!dxf.read(&parser, false))
-    throw std::runtime_error(std::format("Error reading DXF file (code: {}): {}", static_cast<int>(dxf.getError()), file_path));
+    throw std::runtime_error(std::format("Error reading DXF file (code: {}): {}", static_cast<i32>(dxf.getError()), file_path));
 
   auto& segments = parser.segments;
   auto& polylines = parser.polylines;
   std::println("Successfully parsed DXF file: segments: {}, polylines: {}", segments.size(), polylines.size());
+  
+  // // We have unordered disconnected segments? 
+  // // The triangulation library needs an ordered sequence of vertices forming a closed polygon.
+  // // We must convert this unordered segments into ordered closed contour.
+  // if(!segments.empty())
+  // {
+  //   // Two points closer than epsilon become the same point.
+  //   std::println("todo: merging points...");
+  //   // Once points are snapped, we must build an adjacency graph
+  //   std::println("todo: chaining segments...");
+  //   throw std::runtime_error("Chaining segments into a closed contour is not implemented yet.");
+  // }
 
+
+  if(polylines.empty())
+    throw std::runtime_error("No wall polyline found");
+
+  // With polylines we already have an ordered contour.
   auto& wall_polyline = polylines.front();
-  auto& wall_points = wall_polyline.points;
-  std::println("Wall polyline has {} points.", wall_points.size());
+  std::println("Wall polyline has {} points.", wall_polyline.points.size());  
+  
+  if (wall_polyline.points.size() < 3)
+    throw std::runtime_error("Not enough points to triangulate");
+
+  // Is polyline closed: we should check the distance between them v[0] and v[last] and if their 
+  // distance is less than epsilon they represent the same logical point. 
+  // We can drop the last vertex so the contour doesn't have a near-duplicate.
+  if(wall_polyline.closed)
+  {
+    auto first_point = wall_polyline.points.front();
+    auto last_point = wall_polyline.points.back();
+    std::println("Polyline is closed. First point: ({}, {}), last point: ({}, {})", first_point.x, first_point.y, last_point.x, last_point.y);
+    if(glm::distance(first_point, last_point) < epsilon)
+    {
+      std::println("Merge the first and last points");
+      wall_polyline.points.pop_back();
+    }
+  }
+  else 
+  {    
+    // Polyline is open: we should check if the first and last point are close enough to be considered the same point.
+    auto first_point = wall_polyline.points.front();
+    auto last_point = wall_polyline.points.back();
+    std::println("Polyline is not closed. First point: ({}, {}), last point: ({}, {})", first_point.x, first_point.y, last_point.x, last_point.y);
+    if(glm::distance(first_point, last_point) < epsilon)
+    {
+      std::println("First and last point are closer than epsilon. Drop the last point to avoid near-duplicate and consider it as closed.");
+      wall_polyline.points.pop_back();
+      wall_polyline.closed = true;
+    }
+    else 
+      throw std::runtime_error("First and last point are not closer than epsilon. Exit with error because we need a closed contour for triangulation.");
+  }
 
   if(parser.unit_scale == 0.0f)
   {
     std::println("Unit scale not specified in DXF header. Detecting unit scale from geometry...");
-    parser.unit_scale = detect_unit_scale(wall_points);
+    parser.unit_scale = detect_unit_scale(wall_polyline.points);
     std::println("Detected unit scale: {}", parser.unit_scale);
   }
 
-  for (auto& p : wall_points)
+  for (auto& p : wall_polyline.points)
   {
     p.x *= parser.unit_scale;
     p.y *= parser.unit_scale;
-  }
-  
-  // We have unordered disconnected segments?
-  // The triangulation library needs an ordered sequence of vertices forming a closed polygon.
-  // We must convert this unordered segments into ordered closed contour.
-  if(!segments.empty())
-  {
-    //for(const auto& seg : segments)
-    //  std::println("Segment: p1 =({}, {}), p2 = ({}, {})", seg.p1.x, seg.p1.y, seg.p2.x, seg.p2.y);
-    
-    // espilon merging of points to merge segments that are close enough to be considered connected.
-    // Two points closer than epsilon become the same point.
-    std::println("todo: merging points...");
-    // Once points are snapped, we must build an adjacency graph
-    std::println("todo: chaining segments...");
-    throw std::runtime_error("Chaining segments into a closed contour is not implemented yet.");
-  }
-  // We have polylines? Then we already have an ordered contour.
-  else if(!polylines.empty())
-  {
-    // Is polyline closed: we should check the distance between them v[0] and v[last] and if their 
-    // distance is less than epsilon they represent the same logical point. 
-    // We can drop the last vertex so the contour doesn't have a near-duplicate.
-    if(wall_polyline.closed)
-    {
-      auto first_point = wall_points.front();
-      auto last_point = wall_points.back();
-      std::println("Polyline is closed. First point: ({}, {}), last point: ({}, {})", first_point.x, first_point.y, last_point.x, last_point.y);
-      if(glm::distance(first_point, last_point) < epsilon)
-      {
-        std::println("First and last point are closer than epsilon. Drop the last point to avoid near-duplicate.");
-        wall_points.pop_back();
-      }
-    }
-    // Polyline is open: we should check if the first and last point are close enough to be 
-    // considered the same point.
-    else 
-    {
-      auto first_point = wall_points.front();
-      auto last_point = wall_points.back();
-      std::println("Polyline is not closed. First point: ({}, {}), last point: ({}, {})", first_point.x, first_point.y, last_point.x, last_point.y);
-      if(glm::distance(first_point, last_point) < epsilon)
-      {
-        std::println("First and last point are closer than epsilon. Drop the last point to avoid near-duplicate and consider it as closed.");
-        wall_points.pop_back();
-        wall_polyline.closed = true;
-      }
-      else 
-        throw std::runtime_error("First and last point are not closer than epsilon. Exit with error because we need a closed contour for triangulation.");
-    }
-  }
+  } 
   
   // --- Step 2: triangulation of the contour using poly2tri---
   // ----------------------------------------------------------
@@ -173,17 +171,14 @@ int main(int argc, char* argv[])
   // poly2tri expects the outer polygon to be counter-clockwise (CCW) and holes to be clockwise (CW).
   // If signed_area < 0 the order is CW: we must reverse the vertices before passing to poly2tri.
   // Otherwise, if signed_area > 0 the order is CCW and we can pass the vertices as they are.
-  if (wall_points.size() < 3)
-    throw std::runtime_error("Not enough points to triangulate");
-  
   auto area = calculate_signed_area(wall_polyline);
   std::println("Signed area of the contour: {}", area);
   if(area < 0)
-    std::ranges::reverse(wall_points);
+    std::ranges::reverse(wall_polyline.points);
    
   auto contour = std::vector<p2t::Point*>{};
-  contour.reserve(wall_points.size());
-  for(const auto& p : wall_points)
+  contour.reserve(wall_polyline.points.size());
+  for(const auto& p : wall_polyline.points)
     contour.push_back(new p2t::Point{p.x, p.y});
     
   auto cdt = p2t::CDT(contour);
@@ -196,7 +191,7 @@ int main(int argc, char* argv[])
 
   // Define the vertices for our mesh
   auto nr_vertices_floor = triangle_list.size() * 3;
-  auto nr_vertices_wall = wall_points.size() * 6; // 2 triangles * 3 vertices per edge
+  auto nr_vertices_wall = wall_polyline.points.size() * 6; // 2 triangles * 3 vertices per edge
   auto nr_vertices_ceil = nr_vertices_floor; // same as floor
   auto vertices = std::vector<Vertex>{};
   vertices.reserve(nr_vertices_floor + nr_vertices_wall + nr_vertices_ceil);
@@ -206,7 +201,7 @@ int main(int argc, char* argv[])
   
   // wall extrusion
   constexpr auto H = 3.f; // 3 meters
-  extrude_walls(vertices, H, wall_points);
+  extrude_walls(vertices, H, wall_polyline.points);
   
   // build the ceiling (same triangles as floor but at height H and normal pointing down)
   build_ceil(vertices, H, triangle_list);
@@ -236,8 +231,9 @@ int main(int argc, char* argv[])
 
   // --- Step 5: exporting mesh in GLTF ---
   // --------------------------------------
-  auto model_path = "output_model.gltf";
-  std::println("Model will be exported to: {}", model_path);
-  export_to_gltf(vertices, model_path);  
+  auto gltf_path = std::filesystem::path(file_path);
+  gltf_path = gltf_path.filename().replace_extension("gltf");
+  std::println("Model will be exported to: {}", gltf_path.string());
+  export_to_gltf(vertices, gltf_path);
   return 0;
 }

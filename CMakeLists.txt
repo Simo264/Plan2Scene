@@ -27,6 +27,15 @@ FetchContent_Declare(
   GIT_PROGRESS   TRUE
 )
 
+## --- Clipper2 ---
+FetchContent_Declare(
+  Clipper2
+  GIT_REPOSITORY https://github.com/AngusJohnson/Clipper2.git
+  GIT_TAG 21ebba0
+  GIT_SHALLOW    TRUE
+  GIT_PROGRESS   TRUE
+)
+
 # --- GLFW 3.4 ---
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "Disable building GLFW docs" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "Disable building GLFW tests" FORCE)
@@ -49,7 +58,12 @@ FetchContent_Declare(
  GIT_PROGRESS    TRUE
 )
 
-FetchContent_MakeAvailable(libdxfrw poly2tri glfw glm)
+FetchContent_MakeAvailable(libdxfrw poly2tri glfw glm Clipper2)
+
+# Create interface for Clipper2 library
+add_library(Clipper2 INTERFACE)
+target_include_directories(Clipper2 INTERFACE ${clipper2_SOURCE_DIR}/CPP/Clipper2Lib/include)
+add_library(Clipper2::Clipper2 ALIAS Clipper2)
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/externals/glad")
 add_subdirectory("${CMAKE_SOURCE_DIR}/externals/imgui")
@@ -81,6 +95,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   glm::glm
   imgui::imgui
   tiny_gltf::tiny_gltf
+  Clipper2::Clipper2
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${libdxfrw_SOURCE_DIR}/src)

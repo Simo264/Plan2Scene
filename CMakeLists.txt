@@ -61,8 +61,13 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(libdxfrw poly2tri glfw glm Clipper2)
 
 # Create interface for Clipper2 library
-add_library(Clipper2 INTERFACE)
-target_include_directories(Clipper2 INTERFACE ${clipper2_SOURCE_DIR}/CPP/Clipper2Lib/include)
+add_library(Clipper2 STATIC 
+  ${clipper2_SOURCE_DIR}/CPP/Clipper2Lib/src/clipper.engine.cpp
+  ${clipper2_SOURCE_DIR}/CPP/Clipper2Lib/src/clipper.offset.cpp
+  ${clipper2_SOURCE_DIR}/CPP/Clipper2Lib/src/clipper.rectclip.cpp
+  ${clipper2_SOURCE_DIR}/CPP/Clipper2Lib/src/clipper.triangulation.cpp
+)
+target_include_directories(Clipper2 PUBLIC ${clipper2_SOURCE_DIR}/CPP/Clipper2Lib/include)
 add_library(Clipper2::Clipper2 ALIAS Clipper2)
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/externals/glad")

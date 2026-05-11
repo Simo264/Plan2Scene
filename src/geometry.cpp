@@ -4,6 +4,8 @@
 #include <glm/geometric.hpp>
 #include <glm/common.hpp>
 
+#include <clipper2/clipper.h>
+
 auto calculate_signed_area(const Polyline& contour) -> f32
 {
   const auto& points = contour.points;
@@ -78,3 +80,34 @@ auto detect_unit_scale(const std::vector<glm::dvec2>& points) -> f32
 
   return 1.0f; // Already in meters
 }
+
+
+auto compute_polygon_offsetting(const std::vector<glm::dvec2>& inner_points, 
+                                f32 thickness) -> std::vector<glm::dvec2>
+{
+  // Convert to Clipper2 format
+  auto innerPath = Clipper2Lib::PathD{};
+  for (const auto& p : inner_points) 
+    innerPath.push_back(Clipper2Lib::PointD(p.x, p.y));
+
+  // Inflate the polygon outward
+  Clipper2Lib::PathsD solution = InflatePaths(
+      Clipper2Lib::PathsD{innerPath}, 
+      thickness, 
+      Clipper2Lib::JoinType::Miter, // Good for architectural corners
+      Clipper2Lib::EndType::Polygon // Closed polygon
+  );
+
+  // Convert back to glm::dvec2
+  auto outer_points = std::vector<glm::dvec2>{};
+  if (!solution.empty() && !solution[0].empty()) 
+  {
+    for (const auto& pt : solution[0]) 
+    {
+      outer_points.emplace_back(pt.x, pt.y);
+    }
+  }
+  
+  return outer_points;
+}
+

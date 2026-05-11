@@ -9,7 +9,9 @@ Here we have as input a 2-dimensional polygon, which is the result of the previo
 One method can be Constrained Delaunay Triangulation. After that we get a list of floor triangles.
 Once we have the floor, to create the ceiling we simply make an extrusion, where the outline of the room is extruded vertically by a 
 height H and we obtain a prism solid. 
-Furthermore, the walls must have a thickness (for example 50cm). 
+Furthermore, the walls must have a thickness (for example 50cm). To obtain a thickness in the walls use the polygon offsetting algorithm.
+
+
 In this way we obtained a room with floor, ceiling and walls, practically a 3D mesh.
 
 We export the model in GLTF format with the following vertex information: position (xyz) and normals (xyz).
@@ -30,6 +32,7 @@ The project will be divided as follows:
 1. parsing + geometry (C++):
   - Reading and parse DXF file with `libdxfrw`
   - Triangulation of the floor with `poly2tri`
+  - Polygon offsetting with `Clipper2`
   - Wall extrusion
   - Visualize the result geometry with `OpenGL`, `GLFW` and `ImGui`
   - Exporting the mesh in GLTF format with `TinyGLTF`

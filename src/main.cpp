@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstdlib>
 #include <memory>
 #include <print>
 #include <filesystem>
@@ -6,12 +7,12 @@
 #include <vector>
 
 #include "geometry.hpp"
-#include "glm/trigonometric.hpp"
 #include "io/drw_parser.hpp"
 #include "io/gltf_exporter.hpp"
 #include "graphics/mesh_visualizer.hpp"
 
 #include <poly2tri/sweep/cdt.h>
+#include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
 
 constexpr auto epsilon = static_cast<f64>(1e-4);
@@ -147,6 +148,8 @@ void parse_cad(const std::filesystem::path& filename,
   auto& segments = parser.segments;
   auto& polylines = parser.polylines;
   std::println("Successfully parsed DXF file: segments: {}, polylines: {}", segments.size(), polylines.size());
+
+  exit(0);
   
   // // We have unordered disconnected segments? 
   // // The triangulation library needs an ordered sequence of vertices forming a closed polygon.

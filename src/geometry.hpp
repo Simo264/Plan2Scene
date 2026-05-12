@@ -22,7 +22,7 @@ struct Polyline
 struct Vertex
 {
   glm::vec3 position{ 0.f };
-  glm::vec3 normal{ 0.f }; // use it as debug color
+  glm::vec3 normal{ 0.f };
 };
 
 struct BoundingBox
@@ -41,7 +41,6 @@ auto calculate_bounding_box(const std::vector<Vertex>& vertices) -> BoundingBox;
 
 // Calculate the unit scale based on the geometry
 auto detect_unit_scale(const std::vector<glm::dvec2>& points) -> f32;
-
 
 auto compute_polygon_offsetting(const std::vector<glm::dvec2>& inner_points, 
                                 f32 thickness) -> std::vector<glm::dvec2>;

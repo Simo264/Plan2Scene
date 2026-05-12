@@ -53,16 +53,18 @@ void DRWParser::addHeader(const DRW_Header* data)
 void DRWParser::addLine(const DRW_Line& data)
 {
   auto layer_name = data.layer;
-  std::ranges::transform(layer_name, layer_name.begin(), [](auto c) { return std::toupper(c); }); 
-  std::println("Line: layer = {}", layer_name);
-  if(layer_name.contains("WALL"))
-  {  
-    auto seg = Segment{};
-    seg.p1 = { data.basePoint.x, data.basePoint.y };
-    seg.p2 = { data.secPoint.x, data.secPoint.y };
-    segments.push_back(seg);
-  }
-}
+  std::println("Line: layer_name=`{}`", layer_name);
+  
+ //  std::ranges::transform(layer_name, layer_name.begin(), [](auto c) { return std::toupper(c); }); 
+ //  std::println("Line: layer = {}", layer_name);
+ //  if(layer_name.contains("WALL"))
+ //  {  
+ //    auto seg = Segment{};
+ //    seg.p1 = { data.basePoint.x, data.basePoint.y };
+ //    seg.p2 = { data.secPoint.x, data.secPoint.y };
+ //    segments.push_back(seg);
+ //  }
+}// 
 
 void DRWParser::addPolyline(const DRW_Polyline& data)
 {
@@ -70,14 +72,12 @@ void DRWParser::addPolyline(const DRW_Polyline& data)
   std::ranges::transform(layer_name, layer_name.begin(), [](auto c) { return std::toupper(c); }); 
   auto poly = Polyline{};
   poly.closed = data.flags & 1;
-  std::println("Polyline: layer = {}, nr_vertices = {}, closed = {}", layer_name, data.vertlist.size(), poly.closed);
+  std::println("Polyline: layername=`{}`, nr_vertices = {}, closed = {}", layer_name, data.vertlist.size(), poly.closed);
   if(layer_name.contains("WALL"))
   {
     for (const auto& v : data.vertlist)
     {
-      auto p = glm::dvec2{};
-      p.x = v->basePoint.x;
-      p.y = v->basePoint.y;
+      auto p = glm::dvec2{v->basePoint.x, v->basePoint.y};
       poly.points.push_back(p);
     }
     polylines.push_back(poly);
@@ -90,14 +90,12 @@ void DRWParser::addLWPolyline(const DRW_LWPolyline& data)
   std::ranges::transform(layer_name, layer_name.begin(), [](auto c) { return std::toupper(c); }); 
   auto poly = Polyline{};
   poly.closed = data.flags & 1;
-  std::println("LWPolyline: layer = {}, nr_vertices = {}, closed = {}", layer_name, data.vertlist.size(), poly.closed);
+  std::println("LWPolyline: layer_name=`{}`, nr_vertices = {}, closed = {}", layer_name, data.vertlist.size(), poly.closed);
   if(layer_name.contains("WALL"))
   {
     for (const auto& v : data.vertlist) 
     {
-      auto p = glm::dvec2{};
-      p.x = v->x;
-      p.y = v->y;
+      auto p = glm::dvec2{v->x, v->y};
       poly.points.push_back(p);
     }
     polylines.push_back(poly);

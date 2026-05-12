@@ -81,7 +81,6 @@ auto detect_unit_scale(const std::vector<glm::dvec2>& points) -> f32
   return 1.0f; // Already in meters
 }
 
-
 auto compute_polygon_offsetting(const std::vector<glm::dvec2>& inner_points, 
                                 f32 thickness) -> std::vector<glm::dvec2>
 {

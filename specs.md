@@ -13,8 +13,6 @@ Furthermore, the walls must have a thickness (for example 50cm). To obtain a thi
 
 *Tip: after performed the polygon offsetting, we have generated inner and outer vertical wall faces but with no top surface and no bottom surface. The mesh is still an open shell. For a room mesh, bottom cap is unnecessary because the floor completely covers it and nobody will ever see it. We only need the top wall cap. We already have the inner polygon and outer polygon, the recommended way is to triangulate the area between them reusing `poly2tri`.*
 
-In this way we obtained a room with floor, ceiling and walls, practically a 3D mesh.
-
 Finally, we export the model in GLTF format with the following vertex information: position (xyz) and normals (xyz).
 
 *Tip: when you generate the geometry you will also have to analytically calculate the normals on the vertices: the normals of the floor must point upwards and the ceiling downwards, while the walls must point towards the inside of the room.*
@@ -27,8 +25,6 @@ Our task is not to go and write a photorealistic renderer, for this we will use 
 
 ## Structure of the project
 
-Blender does not expose native APIs for C++. The only official scripting modes are for Python.
-
 The project will be divided as follows:
 1. parsing + geometry (C++):
   - Reading and parse DXF file with `libdxfrw`
@@ -38,37 +34,3 @@ The project will be divided as follows:
   - Visualize the result geometry with `OpenGL`, `GLFW` and `ImGui`
   - Exporting the mesh in GLTF format with `TinyGLTF`
 2. Texture coordinate, UV mapping, materials, rendering (Python with `bpy`)
-  - Import of the GLTF model
-  - Calculate texture coordinate and UV mapping
-  - Application of materials 
-  - Headless rendering with Cycles or EEVEE
-
-## Helpful sources
-
-Some sources that may be useful:
-  - Blender procedural
-  - NVIDIA-RTX/Donut and NVRHI (NVIDIA Rendering Hardware Interface)
-  
-## Building and running the code
-
-Installing dependencies for Wayland and X11.
-
-On Debian/Ubuntu:
-
-```bash
-sudo apt install libwayland-dev libxkbcommon-dev xorg-dev
-```
-On Fedora:
-
-```bash
-sudo dnf install wayland-devel libxkbcommon-devel libXcursor-devel libXi-devel libXinerama-devel libXrandr-devel
-```
-
-Compiling and running the code:
-
-```bash
-cmake . -B ./build 
-cmake --build ./build/ --parallel 8
-./build/Plan2Scene --load <model/input.gltf>
-./build/Plan2Scene --parse <cad/input.dxf>
-```

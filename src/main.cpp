@@ -19,9 +19,9 @@ constexpr auto epsilon = static_cast<f64>(1e-4);
 
 void build_floor(std::vector<Vertex>& out_vertices, 
                  std::vector<u32>& out_indices,
-                 const std::vector<p2t::Triangle*> triangle_list)
+                 const std::vector<p2t::Triangle*> floor_triangles)
 {
-  for (const auto& tri : triangle_list)
+  for (const auto& tri : floor_triangles)
   {
     for (auto i = 0; i < 3; ++i) 
     {
@@ -134,6 +134,55 @@ void extrude_walls(std::vector<Vertex>& vertices,
   } 
 }
 
+void build_wall_top_cap(std::vector<Vertex>& out_vertices,
+                        std::vector<u32>& out_indices,
+                        f32 H,
+                        const std::vector<glm::dvec2>& inner_points,
+                        const std::vector<glm::dvec2>& outer_points)
+{
+  // Build the outer contour (CCW) for poly2tri.
+  auto outer_contour = std::vector<p2t::Point*>{};
+  outer_contour.reserve(outer_points.size());
+  for (const auto& p : outer_points)
+    outer_contour.push_back(new p2t::Point(p.x, p.y));
+
+  // Build the inner hole (must be CW, opposite to the outer CCW contour).
+  // Since inner_points is CCW, we reverse it.
+  auto inner_hole = std::vector<p2t::Point*>{};
+  inner_hole.reserve(inner_points.size());
+  for (auto it = inner_points.rbegin(); it != inner_points.rend(); ++it)
+    inner_hole.push_back(new p2t::Point(it->x, it->y));
+
+  auto cdt = p2t::CDT(outer_contour);
+  cdt.AddHole(inner_hole);
+  cdt.Triangulate();
+
+  auto triangle_list = cdt.GetTriangles();
+  std::println("Wall top cap triangulation: {} triangles", triangle_list.size());
+
+  // Emit triangles at y = H with normals pointing up.
+  for (const auto& tri : triangle_list)
+  {
+    for (auto i = 0; i < 3; ++i)
+    {
+      auto p = tri->GetPoint(i);
+      auto idx = static_cast<u32>(out_vertices.size());
+      out_indices.push_back(idx);
+
+      auto v = Vertex{};
+      v.position.x = static_cast<f32>(p->x);
+      v.position.y = H;
+      v.position.z = static_cast<f32>(p->y);
+      v.normal = {0.f, 1.f, 0.f};  // up
+      out_vertices.push_back(v);
+    }
+  }
+
+  // Clean up poly2tri points.
+  for (auto* pt : outer_contour) delete pt;
+  for (auto* pt : inner_hole)  delete pt;
+}
+
 void parse_cad(const std::filesystem::path& filename, 
                std::vector<Vertex>& out_vertices, 
                std::vector<u32>& out_indices)
@@ -224,34 +273,47 @@ void parse_cad(const std::filesystem::path& filename,
   if(area < 0.0f)
     std::ranges::reverse(wall_polyline.points);
    
-  auto contour = std::vector<p2t::Point*>{};
-  contour.reserve(wall_polyline.points.size());
+  auto floor_contour = std::vector<p2t::Point*>{};
+  floor_contour.reserve(wall_polyline.points.size());
   for(const auto& p : wall_polyline.points)
-    contour.push_back(new p2t::Point{p.x, p.y});
+    floor_contour.push_back(new p2t::Point{p.x, p.y});
     
-  auto cdt = p2t::CDT(contour);
+  auto cdt = p2t::CDT(floor_contour);
   cdt.Triangulate();
-  auto triangle_list = cdt.GetTriangles();
-  std::println("Triangulation completed. Number of triangles: {}", triangle_list.size());
+  auto floor_triangles = cdt.GetTriangles();
+  std::println("Triangulation completed. Number of floor triangles: {}", floor_triangles.size());
 
   // --- Step 3: extrusion and mesh creation ---
   // -------------------------------------------
-  auto nr_vertices_floor = triangle_list.size() * 3;
-  size_t nr_vertices_wall = wall_polyline.points.size() * 4 * 4;  
-  auto nr_vertices_ceil = nr_vertices_floor; // same as floor 
-  out_vertices.reserve(nr_vertices_floor + nr_vertices_wall + nr_vertices_ceil);
-  
-  constexpr auto H = 3.f;
-  constexpr auto thickness = 0.125f;
-  
-  build_floor(out_vertices, out_indices, triangle_list);
+  constexpr auto ceil_H = 3.f;
+  constexpr auto wall_thickness = 0.125f;
 
-  auto outer_polygon = compute_polygon_offsetting(wall_polyline.points, thickness);
+  auto& inner_wall = wall_polyline.points;
+  auto outer_wall = compute_polygon_offsetting(inner_wall, wall_thickness);
+
+  // reserve memory for vertices and indices
+  auto nr_vertices_floor = floor_triangles.size() * 3;
+  auto nr_vertices_wall = inner_wall.size() * 4   // inner faces
+                                      + outer_wall.size() * 4;         // outer faces
+  auto nr_vertices_top_cap = (inner_wall.size() + outer_wall.size()) * 3;
+  auto nr_vertices_ceil = nr_vertices_floor;
+  out_vertices.reserve(nr_vertices_floor + nr_vertices_wall + nr_vertices_top_cap + nr_vertices_ceil);
+  
+  auto nr_indices_floor    = floor_triangles.size() * 3;
+  auto nr_indices_walls    = inner_wall.size() * 6    // inner quads
+                                        + outer_wall.size() * 6;    // outer quads
+  auto nr_indices_top_cap  = (inner_wall.size() + outer_wall.size()) * 3;
+  auto nr_indices_ceil     = floor_triangles.size() * 3;
+  out_indices.reserve(nr_indices_floor + nr_indices_walls + nr_indices_top_cap + nr_indices_ceil);  
+
+  build_floor(out_vertices, out_indices, floor_triangles);
+  build_ceil(out_vertices, out_indices, ceil_H, floor_triangles);
+  // Clean up poly2tri points.
+  for (auto* pt : floor_contour) delete pt;
 
   // takes both inner and outer polygons
-  extrude_walls(out_vertices, out_indices, H, wall_polyline.points, outer_polygon);
-  
-  // build_ceil(out_vertices, out_indices, H, triangle_list);
+  extrude_walls(out_vertices, out_indices, ceil_H, inner_wall, outer_wall);
+  build_wall_top_cap(out_vertices, out_indices, ceil_H, inner_wall, outer_wall);
 }
 
 int main(int argc, char* argv[])

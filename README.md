@@ -1,4 +1,4 @@
-## Building and running the code
+# Building and running the code
 
 Installing dependencies for Wayland and X11.
 

@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_BUILD_TYPE Debug)
 
+find_package(CGAL REQUIRED)
 find_package(OpenGL REQUIRED)
 
 include(FetchContent)
@@ -70,6 +71,8 @@ add_library(Clipper2 STATIC
 target_include_directories(Clipper2 PUBLIC ${clipper2_SOURCE_DIR}/CPP/Clipper2Lib/include)
 add_library(Clipper2::Clipper2 ALIAS Clipper2)
 
+find_package(CGAL REQUIRED CONFIG PATHS ${cgal_SOURCE_DIR})
+
 add_subdirectory("${CMAKE_SOURCE_DIR}/externals/glad")
 add_subdirectory("${CMAKE_SOURCE_DIR}/externals/imgui")
 add_subdirectory("${CMAKE_SOURCE_DIR}/externals/tinygltf/")
@@ -101,6 +104,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   imgui::imgui
   tiny_gltf::tiny_gltf
   Clipper2::Clipper2
+  CGAL::CGAL
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${libdxfrw_SOURCE_DIR}/src)

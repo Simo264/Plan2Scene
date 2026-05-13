@@ -194,32 +194,15 @@ void parse_cad(const std::filesystem::path& filename,
   if (!dxf.read(&parser, false))
     throw std::runtime_error(std::format("Error reading DXF file (code: {}): {}", static_cast<i32>(dxf.getError()), filename.string()));
 
-  auto& segments = parser.segments;
-  auto& polylines = parser.polylines;
-  std::println("Successfully parsed DXF file: segments: {}, polylines: {}", segments.size(), polylines.size());
-
+  std::println("Successfully parsed DXF file: segments: {}, polylines: {}", parser.segments.size(), parser.polylines.size());
   exit(0);
-  
-  // // We have unordered disconnected segments? 
-  // // The triangulation library needs an ordered sequence of vertices forming a closed polygon.
-  // // We must convert this unordered segments into ordered closed contour.
-  // if(!segments.empty())
-  // {
-  //   // Two points closer than epsilon become the same point.
-  //   std::println("todo: merging points...");
-  //   // Once points are snapped, we must build an adjacency graph
-  //   std::println("todo: chaining segments...");
-  //   throw std::runtime_error("Chaining segments into a closed contour is not implemented yet.");
-  // }
 
-  if(polylines.empty())
+  if(parser.polylines.empty())
     throw std::runtime_error("No wall polyline found");
 
   // With polylines we already have an ordered contour.
-  auto& wall_polyline = polylines.front();
+  auto& wall_polyline = parser.polylines.front();
   std::println("Wall polyline has {} points.", wall_polyline.points.size());  
-  if (wall_polyline.points.size() < 3)
-    throw std::runtime_error("Not enough points to triangulate");
 
   // Is polyline closed: we should check the distance between them v[0] and v[last] and if their 
   // distance is less than epsilon they represent the same logical point. 
@@ -319,8 +302,7 @@ void parse_cad(const std::filesystem::path& filename,
 int main(int argc, char* argv[])
 {
   if(argc != 3)
-    throw std::runtime_error(
-      "Usage:\n1. /build/Plan2Scene --load <model/input.gltf>\n2. ./build/Plan2Scene --parse <cad/input.dxf>");
+    throw std::runtime_error("Usage:\n1. /build/Plan2Scene --load <model/input.gltf>\n2. ./build/Plan2Scene --parse <cad/input.dxf>");
   
   auto mode = std::string(argv[1]);
   auto is_parse = mode == "--parse";

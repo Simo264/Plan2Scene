@@ -64,7 +64,7 @@ void DRWParser::addLine(const DRW_Line& data)
  //    seg.p2 = { data.secPoint.x, data.secPoint.y };
  //    segments.push_back(seg);
  //  }
-}// 
+}
 
 void DRWParser::addPolyline(const DRW_Polyline& data)
 {
@@ -87,10 +87,13 @@ void DRWParser::addPolyline(const DRW_Polyline& data)
 void DRWParser::addLWPolyline(const DRW_LWPolyline& data)
 {
   auto layer_name = data.layer;
-  std::ranges::transform(layer_name, layer_name.begin(), [](auto c) { return std::toupper(c); }); 
+  auto is_closed = data.flags & 1;
+  auto& vertices =  data.vertlist;
+  std::println("LWPolyline: layer_name=`{}`, nr_vertices = {}, closed = {}", layer_name, vertices.size(), is_closed);
+
   auto poly = Polyline{};
-  poly.closed = data.flags & 1;
-  std::println("LWPolyline: layer_name=`{}`, nr_vertices = {}, closed = {}", layer_name, data.vertlist.size(), poly.closed);
+  poly.closed = is_closed;
+  std::ranges::transform(layer_name, layer_name.begin(), [](auto c) { return std::toupper(c); }); 
   if(layer_name.contains("WALL"))
   {
     for (const auto& v : data.vertlist) 

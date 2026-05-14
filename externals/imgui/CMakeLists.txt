@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.22)
 
 project(imgui LANGUAGES C CXX)
 
+find_package(OpenGL QUIET)
+find_package(glfw3 REQUIRED)
+
 set(IMGUI_SOURCES
   imgui.cpp
   imgui_impl_opengl3.cpp
@@ -30,7 +33,7 @@ target_compile_definitions(imgui PRIVATE
 )
 target_include_directories(imgui PUBLIC "${CMAKE_SOURCE_DIR}/externals/glad/include")
 
-find_package(OpenGL QUIET)
+
 target_link_libraries(imgui PUBLIC 
 	OpenGL::GL 
 	glfw 

@@ -15,11 +15,6 @@
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
 
-#include <CGAL/Simple_cartesian.h>
-
-typedef CGAL::Simple_cartesian<double> Kernel;
-typedef Kernel::Point_2 Point;
-
 constexpr auto epsilon = static_cast<f64>(1e-4);
 
 void build_floor(std::vector<Vertex>& out_vertices, 

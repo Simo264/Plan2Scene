@@ -5,13 +5,16 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
-find_package(CGAL REQUIRED)
 find_package(OpenGL REQUIRED)
+find_package(glfw3 REQUIRED)
+find_package(glm REQUIRED)
+find_package(poly2tri REQUIRED)
+find_package(clipper2 REQUIRED)
 
 include(FetchContent)
 set(FETCHCONTENT_QUIET FALSE)
-
 # ---- libdxfrw -----
 FetchContent_Declare(
   libdxfrw
@@ -19,59 +22,8 @@ FetchContent_Declare(
   GIT_TAG        master
   GIT_PROGRESS   TRUE
 )
+FetchContent_MakeAvailable(libdxfrw)
 
-## --- poly2tri ---
-FetchContent_Declare(
-  poly2tri
-  GIT_REPOSITORY https://github.com/jhasse/poly2tri.git
-  GIT_TAG        master
-  GIT_PROGRESS   TRUE
-)
-
-## --- Clipper2 ---
-FetchContent_Declare(
-  Clipper2
-  GIT_REPOSITORY https://github.com/AngusJohnson/Clipper2.git
-  GIT_TAG 21ebba0
-  GIT_SHALLOW    TRUE
-  GIT_PROGRESS   TRUE
-)
-
-# --- GLFW 3.4 ---
-set(GLFW_BUILD_DOCS OFF CACHE BOOL "Disable building GLFW docs" FORCE)
-set(GLFW_BUILD_TESTS OFF CACHE BOOL "Disable building GLFW tests" FORCE)
-set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "Disable building GLFW examples" FORCE)
-set(GLFW_INSTALL OFF CACHE BOOL "Disable GLFW install target" FORCE)
-FetchContent_Declare(
-  glfw
-  GIT_REPOSITORY https://github.com/glfw/glfw.git
-  GIT_TAG        3.4
-  GIT_SHALLOW    TRUE
-  GIT_PROGRESS   TRUE
-)
-
-# --- GLM ---
-FetchContent_Declare(
- glm
- GIT_REPOSITORY	https://github.com/g-truc/glm.git
- GIT_TAG         0af55ccecd98d4e5a8d1fad7de25ba429d60e863
- GIT_SHALLOW     TRUE
- GIT_PROGRESS    TRUE
-)
-
-FetchContent_MakeAvailable(libdxfrw poly2tri glfw glm Clipper2)
-
-# Create interface for Clipper2 library
-add_library(Clipper2 STATIC 
-  ${clipper2_SOURCE_DIR}/CPP/Clipper2Lib/src/clipper.engine.cpp
-  ${clipper2_SOURCE_DIR}/CPP/Clipper2Lib/src/clipper.offset.cpp
-  ${clipper2_SOURCE_DIR}/CPP/Clipper2Lib/src/clipper.rectclip.cpp
-  ${clipper2_SOURCE_DIR}/CPP/Clipper2Lib/src/clipper.triangulation.cpp
-)
-target_include_directories(Clipper2 PUBLIC ${clipper2_SOURCE_DIR}/CPP/Clipper2Lib/include)
-add_library(Clipper2::Clipper2 ALIAS Clipper2)
-
-find_package(CGAL REQUIRED CONFIG PATHS ${cgal_SOURCE_DIR})
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/externals/glad")
 add_subdirectory("${CMAKE_SOURCE_DIR}/externals/imgui")
@@ -94,18 +46,24 @@ add_executable(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-  dxfrw
-  poly2tri
-
   OpenGL::GL
   glad::glad
   glfw
   glm::glm
+
+  dxfrw
+  poly2tri::poly2tri
+  clipper2::clipper2
+
   imgui::imgui
   tiny_gltf::tiny_gltf
-  Clipper2::Clipper2
-  CGAL::CGAL
 )
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${libdxfrw_SOURCE_DIR}/src)
-target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
+target_include_directories(${PROJECT_NAME} PRIVATE 
+  ${libdxfrw_SOURCE_DIR}/src
+)
+
+target_compile_options(${PROJECT_NAME} PRIVATE 
+  -Wall 
+  -Wextra 
+  -Wpedantic)

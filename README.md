@@ -1,42 +1,69 @@
 # Building and running the code
 
-Installing dependencies for Wayland and X11.
-
-Debian/Ubuntu:
+Install Conan package manager with pip:
 
 ```bash
-sudo apt install libwayland-dev libxkbcommon-dev xorg-dev
-```
-Fedora:
-
-```bash
-sudo dnf install wayland-devel libxkbcommon-devel libXcursor-devel libXi-devel libXinerama-devel libXrandr-devel
-```
-Installing CGAL devel library:
-
-Debian/Ubuntu:
-
-```bash
-sudo apt-get install libcgal-dev
+python3 -m venv venv
+source venv/bin/activate.fish
+pip install conan
 ```
 
-Fedora: 
+This will detect the operating system, build architecture and compiler settings based on the environment.
+It will also set the build configuration as Release by default
 
 ```bash
-sudo dnf install CGAL-devel
+conan profile detect --force
 ```
 
-
-Compiling and running the code:
+We will use Conan to install dependencies and generate the files that CMake needs to find these libraries and build our project.
+We will generate those files in the folder **build**.
 
 ```bash
-cmake . -B ./build 
+conan install . \
+  --output-folder=build \
+  --build=missing \
+  -s build_type=Debug \
+  -c tools.system.package_manager:mode=disabled
+```
+
+It might happen sometimes, when you specify a setting not present in the defaults that you receive a message like this:
+
+```bash
+ERROR: Invalid setting '16' is not a valid 'settings.compiler.version' value.
+```
+
+This doesn’t mean that such compiler version is not supported by Conan, it is just that it is not present in the actual defaults settings ~/.conan2/settings.yml.
+
+Open the settings.yml file and look for the section relating to your compiler (gcc or clang), and add "16" to the list. For example:
+
+```YAML
+gcc:
+  version: ["4.1", "4.4", ..., "15", "15.1", "15.2", "16"]
+```
+
+Conan generated several files under the **build** folder.
+
+To build the project:
+
+```bash
+cmake -B ./build \
+  -DCMAKE_TOOLCHAIN_FILE=build/build/Debug/generators/conan_toolchain.cmake
+```
+
+To compile:
+
+```bash
 cmake --build ./build/ --parallel 8
+```
+
+Run:
+
+```bash
 ./build/Plan2Scene --load <model/input.gltf>
 ./build/Plan2Scene --parse <cad/input.dxf>
 ```
 
- It is also possible to convert a DWG file to DXF format using the `dwg2dxf` binary provided with the `libdxfrw` library:
+It is also possible to convert a DWG file to DXF format using the `dwg2dxf` binary provided with the `libdxfrw` library:
 
 ```bash
 ./build/_deps/libdxfrw-build/dwg2dxf/dwg2dxf <input.dwg> <output.dxf>

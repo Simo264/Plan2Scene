@@ -194,14 +194,14 @@ void parse_cad(const std::filesystem::path& filename,
   if (!dxf.read(&parser, false))
     throw std::runtime_error(std::format("Error reading DXF file (code: {}): {}", static_cast<i32>(dxf.getError()), filename.string()));
 
-  std::println("Successfully parsed DXF file: segments: {}, polylines: {}", parser.segments.size(), parser.polylines.size());
+  std::println("Successfully parsed DXF file: segments: {}, polylines: {}", parser.wall_segments.size(), parser.wall_polylines.size());
   exit(0);
 
-  if(parser.polylines.empty())
+  if(parser.wall_polylines.empty())
     throw std::runtime_error("No wall polyline found");
 
   // With polylines we already have an ordered contour.
-  auto& wall_polyline = parser.polylines.front();
+  auto& wall_polyline = parser.wall_polylines.front();
   std::println("Wall polyline has {} points.", wall_polyline.points.size());  
 
   // Is polyline closed: we should check the distance between them v[0] and v[last] and if their 

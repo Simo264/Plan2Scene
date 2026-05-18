@@ -60,55 +60,96 @@ void DRWParser::addLine(const DRW_Line& data)
   auto layer_name = data.layer;
   std::println("Line: layer_name=`{}`", layer_name);
   
- //  std::ranges::transform(layer_name, layer_name.begin(), [](auto c) { return std::toupper(c); }); 
- //  std::println("Line: layer = {}", layer_name);
- //  if(layer_name.contains("WALL"))
- //  {  
- //    auto seg = Segment{};
- //    seg.p1 = { data.basePoint.x, data.basePoint.y };
- //    seg.p2 = { data.secPoint.x, data.secPoint.y };
- //    segments.push_back(seg);
- //  }
+ std::ranges::transform(layer_name, layer_name.begin(), [](auto c) { return std::toupper(c); }); 
+ if(layer_name.contains("WALL"))
+ { 
+   wall_segments.push_back(Segment{
+     .p1 = glm::dvec2{ data.basePoint.x, data.basePoint.y },
+     .p2 = glm::dvec2{ data.secPoint.x, data.secPoint.y }
+   });
+ }
 }
 
 void DRWParser::addPolyline(const DRW_Polyline& data)
 {
   auto layer_name = data.layer;
   auto is_closed = data.flags & 1;
-  auto& vertices =  data.vertlist;
-  std::println("LWPolyline: layer_name=`{}`, nr_vertices = {}, closed = {}", layer_name, vertices.size(), is_closed);
+  auto& vertices = data.vertlist;
+  std::println("Polyline: layer_name=`{}`, nr_vertices = {}, closed = {}", layer_name, vertices.size(), is_closed);
 
-  // auto poly = Polyline{};
-  // poly.closed = is_closed;
-  // std::ranges::transform(layer_name, layer_name.begin(), [](auto c) { return std::toupper(c); }); 
-  // if(layer_name.contains("WALL"))
-  // {
-  //   for (const auto& v : data.vertlist)
-  //   {
-  //     auto p = glm::dvec2{v->basePoint.x, v->basePoint.y};
-  //     poly.points.push_back(p);
-  //   }
-  //   polylines.push_back(poly);
-  // }
+  if (vertices.size() < 2)
+    return;
+
+  std::ranges::transform(layer_name, layer_name.begin(), [](auto c) { return std::toupper(c); }); 
+  if(layer_name.contains("WALL"))
+  {
+    // Decompose into individual segments: one per consecutive pair of vertices.
+    for (auto i = 0u; i < vertices.size() - 1; ++i)
+    {
+      auto p0 = vertices.at(i);
+      auto p1 = vertices.at(i+1);
+      wall_segments.push_back(Segment{
+        .p1 = glm::dvec2{ p0->basePoint.x, p0->basePoint.y },
+        .p2 = glm::dvec2{ p1->basePoint.x, p1->basePoint.y },
+      });
+    }
+  
+    // If closed, add the closing segment from last vertex back to first.
+    if (is_closed)
+    {
+      auto p0 = vertices.front();
+      auto p_last = vertices.back();
+      wall_segments.push_back(Segment{
+        .p1 = glm::dvec2{ p_last->basePoint.x, p_last->basePoint.y },
+        .p2 = glm::dvec2{ p0->basePoint.x, p0->basePoint.y },
+      });
+    }   
+  }
 }
 
 void DRWParser::addLWPolyline(const DRW_LWPolyline& data)
 {
   auto layer_name = data.layer;
   auto is_closed = data.flags & 1;
-  auto& vertices =  data.vertlist;
+  auto& vertices = data.vertlist;
   std::println("LWPolyline: layer_name=`{}`, nr_vertices = {}, closed = {}", layer_name, vertices.size(), is_closed);
 
-  // auto poly = Polyline{};
-  // poly.closed = is_closed;
-  // std::ranges::transform(layer_name, layer_name.begin(), [](auto c) { return std::toupper(c); }); 
-  // if(layer_name.contains("WALL"))
-  // {
-  //   for (const auto& v : data.vertlist) 
-  //   {
-  //     auto p = glm::dvec2{v->x, v->y};
-  //     poly.points.push_back(p);
-  //   }
-  //   polylines.push_back(poly);
-  // }
+  if (vertices.size() < 2)
+    return;
+
+  std::ranges::transform(layer_name, layer_name.begin(), [](auto c) { return std::toupper(c); }); 
+  if(layer_name.contains("WALL"))
+  {
+    // Decompose into individual segments: one per consecutive pair of vertices.
+    for (auto i = 0u; i < vertices.size() - 1; ++i)
+    {
+      auto p0 = vertices.at(i);
+      auto p1 = vertices.at(i+1);
+      wall_segments.push_back(Segment{
+        .p1 = glm::dvec2{ p0->x, p0->y },
+        .p2 = glm::dvec2{ p1->x, p1->y },
+      });
+    }
+  
+    // If closed, add the closing segment from last vertex back to first.
+    if (is_closed)
+    {
+      auto p0 = vertices.front();
+      auto p_last = vertices.back();
+      wall_segments.push_back(Segment{
+        .p1 = glm::dvec2{ p_last->x, p_last->y },
+        .p2 = glm::dvec2{ p0->x, p0->y },
+      });
+    }   
+  }
 }
+
+// void DRWParser::addInsert(const DRW_Insert& data)
+// {
+//   std::println("Insert: layer_name=`{}`, block_name=`{}`", data.layer, data.name);
+// }
+// 
+// void DRWParser::addArc(const DRW_Arc& data)
+// {
+//   std::println("Arc: layer_name=`{}`", data.layer);
+// }

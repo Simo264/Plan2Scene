@@ -3,8 +3,6 @@
 Install Conan package manager with pip:
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate.fish
 pip install conan
 ```
 

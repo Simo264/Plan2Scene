@@ -16,9 +16,9 @@ public:
   
   virtual void addInsert([[maybe_unused]] const DRW_Insert& data) override {}
   virtual void addArc([[maybe_unused]] const DRW_Arc& data) override {}
+  virtual void addSpline([[maybe_unused]] const DRW_Spline* data) override {}
   virtual void addEllipse([[maybe_unused]] const DRW_Ellipse& data) override {}
   virtual void addCircle([[maybe_unused]] const DRW_Circle& data) override {}
-  virtual void addSpline([[maybe_unused]] const DRW_Spline* data) override {}
   virtual void addSolid([[maybe_unused]] const DRW_Solid& data) override {}
   virtual void add3dFace([[maybe_unused]] const DRW_3Dface& data) override {}
   virtual void addPoint([[maybe_unused]] const DRW_Point& data) override {}
@@ -63,7 +63,6 @@ public:
   virtual void writeObjects() override {}
   virtual void writeAppId() override {}
 
-  std::vector<Segment> segments;
-  std::vector<Polyline> polylines;
+  std::vector<Segment> wall_segments;
   f32 unit_scale = 0.0f;
 };

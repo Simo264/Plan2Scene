@@ -18,7 +18,7 @@ enum class LayerType : i32
 
 struct Segment
 {
-  glm::dvec2 p1{ 0.f}, p2{ 0.f};
+  glm::dvec2 p1{ 0.0 }, p2{ 0.0 };
   LayerType layer { LayerType::NONE };
 };
 

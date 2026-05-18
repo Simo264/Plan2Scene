@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "geometry.hpp"
+#include "spatial_hashing.hpp"
 #include "io/drw_parser.hpp"
 #include "io/gltf_exporter.hpp"
 #include "graphics/mesh_visualizer.hpp"
@@ -194,12 +195,30 @@ void parse_cad(const std::filesystem::path& filename,
   if (!dxf.read(&parser, false))
     throw std::runtime_error(std::format("Error reading DXF file (code: {}): {}", static_cast<i32>(dxf.getError()), filename.string()));
 
-  std::println("Successfully parsed DXF file: segments: {}, polylines: {}", parser.wall_segments.size(), parser.wall_polylines.size());
+  auto& input_segments = parser.input_segments;
+  
+  std::println("Successfully parsed DXF file! Segments: {}", input_segments.size());
+  if(input_segments.empty())
+    throw std::runtime_error("No primitives found!");
+
+  auto hash = SpatialHash{ epsilon };
+  auto edges = std::vector<GraphEdge>{};
+  for (const auto& segment : input_segments) 
+  {
+    auto v1 = hash.snap(segment.p1);
+    auto v2 = hash.snap(segment.p2);
+    if (v1 == v2) 
+      continue;    
+    edges.push_back(GraphEdge{ v1, v2, segment.layer });
+  }
+  const auto& vertices = hash.vertices();
+  
+  
   exit(0);
+  
 
-  if(parser.wall_polylines.empty())
-    throw std::runtime_error("No wall polyline found");
 
+#if 0
   // With polylines we already have an ordered contour.
   auto& wall_polyline = parser.wall_polylines.front();
   std::println("Wall polyline has {} points.", wall_polyline.points.size());  
@@ -297,6 +316,7 @@ void parse_cad(const std::filesystem::path& filename,
   // takes both inner and outer polygons
   extrude_walls(out_vertices, out_indices, ceil_H, inner_wall, outer_wall);
   build_wall_top_cap(out_vertices, out_indices, ceil_H, inner_wall, outer_wall);
+#endif
 }
 
 int main(int argc, char* argv[])

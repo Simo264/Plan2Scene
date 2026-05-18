@@ -24,7 +24,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(libdxfrw)
 
-
 add_subdirectory("${CMAKE_SOURCE_DIR}/externals/glad")
 add_subdirectory("${CMAKE_SOURCE_DIR}/externals/imgui")
 add_subdirectory("${CMAKE_SOURCE_DIR}/externals/tinygltf/")
@@ -43,6 +42,7 @@ add_executable(${PROJECT_NAME}
 
   src/main.cpp
   src/geometry.cpp
+  src/spatial_hashing.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE

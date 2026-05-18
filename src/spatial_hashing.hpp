@@ -4,6 +4,7 @@
 #include "geometry.hpp"
 
 #include <unordered_map>
+#include <cmath>
 
 using VertexId = u32;
 
@@ -21,37 +22,37 @@ struct GraphEdge
 struct CellCoord 
 {
   i32 x, y;
+  bool operator==(const CellCoord&) const = default;
 };
 
 struct CellCoordHash 
 {
   size_t operator()(CellCoord c) const 
   {
+    auto hx = std::hash<i32>{}(c.x);
+    auto hy = std::hash<i32>{}(c.y);
+    return hx ^ (hy * 2654435761u);
   }
-
 };
 
 class SpatialHash
 {
 public:
-  explicit SpatialHash(f64 epsilon);
+  SpatialHash(f64 epsilon) : m_epsilon{ epsilon} {}
   
-  VertexId snap(glm::dvec2 p);
-
   auto& vertices() const { return m_vertices; }
 
-  void insert(VertexId vertex, glm::dvec2 position);
+  VertexId snap(glm::dvec2 p);
 
-  std::vector<VertexId> query(glm::dvec2 position) const;
-  
-  auto get_cell(glm::dvec2 p) { return CellCoord{
+  auto get_cell(glm::dvec2 p) const 
+  {
+    return CellCoord {
       static_cast<i32>(std::floor(p.x / m_epsilon)),
       static_cast<i32>(std::floor(p.y / m_epsilon))
     };
   }
 
 private:
-  // Used both for insertion and query
   f64 m_epsilon;
 
   // We want to use CellCoord as key in unordered_map.

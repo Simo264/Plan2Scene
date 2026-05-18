@@ -8,9 +8,18 @@
 
 #include "types.hpp"
 
+enum class LayerType : i32
+{ 
+  NONE,
+  WALL, 
+  WINDOW, 
+  DOOR 
+};
+
 struct Segment
 {
   glm::dvec2 p1{ 0.f}, p2{ 0.f};
+  LayerType layer { LayerType::NONE };
 };
 
 struct Polyline

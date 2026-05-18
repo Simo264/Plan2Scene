@@ -8,7 +8,7 @@
 
 #include "geometry.hpp"
 #include "spatial_hashing.hpp"
-#include "planarization.hpp"
+#include "arrangement.hpp"
 #include "io/drw_parser.hpp"
 #include "io/gltf_exporter.hpp"
 #include "graphics/mesh_visualizer.hpp"
@@ -19,7 +19,7 @@
 
 constexpr auto epsilon = static_cast<f64>(1e-4);
 
-void build_floor(std::vector<Vertex>& out_vertices, 
+void build_floor(std::vector<Vertex_PN>& out_vertices, 
                  std::vector<u32>& out_indices,
                  const std::vector<p2t::Triangle*> floor_triangles)
 {
@@ -32,7 +32,7 @@ void build_floor(std::vector<Vertex>& out_vertices,
       auto idx = static_cast<u32>(out_vertices.size());
       out_indices.push_back(idx);
 
-      auto v = Vertex{};
+      auto v = Vertex_PN{};
       v.position.x = static_cast<f32>(p->x);
       v.position.y = 0.f;
       v.position.z = static_cast<f32>(p->y);
@@ -42,7 +42,7 @@ void build_floor(std::vector<Vertex>& out_vertices,
   }
 }
 
-void build_ceil(std::vector<Vertex>& out_vertices, 
+void build_ceil(std::vector<Vertex_PN>& out_vertices, 
                 std::vector<u32>& out_indices,
                 f32 H,
                 const std::vector<p2t::Triangle*> triangle_list)
@@ -57,7 +57,7 @@ void build_ceil(std::vector<Vertex>& out_vertices,
       auto idx = static_cast<u32>(out_vertices.size());
       out_indices.push_back(idx);
 
-      auto v = Vertex{};
+      auto v = Vertex_PN{};
       v.position.x = static_cast<f32>(p->x);
       v.position.y = H;
       v.position.z = static_cast<f32>(p->y);
@@ -67,7 +67,7 @@ void build_ceil(std::vector<Vertex>& out_vertices,
   }
 }
 
-void extrude_walls(std::vector<Vertex>& vertices, 
+void extrude_walls(std::vector<Vertex_PN>& vertices, 
                    std::vector<u32>& out_indices,
                    f32 H,
                    const std::vector<glm::dvec2>& inner_points,
@@ -87,10 +87,10 @@ void extrude_walls(std::vector<Vertex>& vertices,
     auto edge = glm::vec3(f32(p2.x - p1.x), 0.0f, f32(p2.y - p1.y));
     auto normal = -glm::normalize(glm::cross(edge, up));
 
-    auto BL = Vertex{ .position={f32(p1.x), 0.f, f32(p1.y)}, .normal=normal };
-    auto BR = Vertex{ .position={f32(p2.x), 0.f, f32(p2.y)}, .normal=normal };
-    auto TR = Vertex{ .position={f32(p2.x), H, f32(p2.y)},   .normal=normal };
-    auto TL = Vertex{ .position={f32(p1.x), H, f32(p1.y)},   .normal=normal };
+    auto BL = Vertex_PN{ .position={f32(p1.x), 0.f, f32(p1.y)}, .normal=normal };
+    auto BR = Vertex_PN{ .position={f32(p2.x), 0.f, f32(p2.y)}, .normal=normal };
+    auto TR = Vertex_PN{ .position={f32(p2.x), H, f32(p2.y)},   .normal=normal };
+    auto TL = Vertex_PN{ .position={f32(p1.x), H, f32(p1.y)},   .normal=normal };
 
     auto base = static_cast<u32>(vertices.size());
     vertices.push_back(BL);
@@ -116,10 +116,10 @@ void extrude_walls(std::vector<Vertex>& vertices,
     auto edge = glm::vec3(f32(p2.x - p1.x), 0.0f, f32(p2.y - p1.y));
     auto normal = glm::normalize(glm::cross(edge, up));
 
-    auto BL = Vertex{ .position={f32(p1.x), 0.f, f32(p1.y)}, .normal=normal };
-    auto BR = Vertex{ .position={f32(p2.x), 0.f, f32(p2.y)}, .normal=normal };
-    auto TR = Vertex{ .position={f32(p2.x), H, f32(p2.y)},   .normal=normal };
-    auto TL = Vertex{ .position={f32(p1.x), H, f32(p1.y)},   .normal=normal };
+    auto BL = Vertex_PN{ .position={f32(p1.x), 0.f, f32(p1.y)}, .normal=normal };
+    auto BR = Vertex_PN{ .position={f32(p2.x), 0.f, f32(p2.y)}, .normal=normal };
+    auto TR = Vertex_PN{ .position={f32(p2.x), H, f32(p2.y)},   .normal=normal };
+    auto TL = Vertex_PN{ .position={f32(p1.x), H, f32(p1.y)},   .normal=normal };
 
     auto base = static_cast<u32>(vertices.size());
     vertices.push_back(BL);
@@ -136,7 +136,7 @@ void extrude_walls(std::vector<Vertex>& vertices,
   } 
 }
 
-void build_wall_top_cap(std::vector<Vertex>& out_vertices,
+void build_wall_top_cap(std::vector<Vertex_PN>& out_vertices,
                         std::vector<u32>& out_indices,
                         f32 H,
                         const std::vector<glm::dvec2>& inner_points,
@@ -186,11 +186,11 @@ void build_wall_top_cap(std::vector<Vertex>& out_vertices,
 }
 
 void parse_cad(const std::filesystem::path& filename, 
-               std::vector<Vertex>& out_vertices, 
+               std::vector<Vertex_PN>& out_vertices, 
                std::vector<u32>& out_indices)
 {
-  // --- Step 1: parsing DXF file to retrieve segments and polylines ---
-  // -------------------------------------------------------------------
+  // --- Parsing DXF file: collect segments ---
+  // ------------------------------------------
   auto parser = DRWParser{};
   auto dxf = dxfRW(filename.string().c_str());
   if (!dxf.read(&parser, false))
@@ -202,6 +202,8 @@ void parse_cad(const std::filesystem::path& filename,
   if(input_segments.empty())
     throw std::runtime_error("No primitives found!");
 
+  // --- Vertex snapping with spatial hashing data structure ---
+  // -----------------------------------------------------------
   auto hash = SpatialHash{ epsilon };
   auto edges = std::vector<GraphEdge>{};
   for (const auto& segment : input_segments) 
@@ -213,6 +215,16 @@ void parse_cad(const std::filesystem::path& filename,
     edges.push_back(GraphEdge{ v1, v2, segment.layer });
   }
   const auto& vertices = hash.vertices();
+  
+  // --- Intersection + subdivision with CGAL ---
+  // --------------------------------------------
+  auto arrangement = Arrangement{};
+  auto observer = LayerObserver{};
+  observer.attach(arrangement);
+  for (const auto& edge : edges)
+  {
+    
+  }
   
   exit(0);
   
@@ -335,7 +347,7 @@ int main(int argc, char* argv[])
   if(!std::filesystem::exists(file_path))
     throw std::runtime_error(std::format("Input file not found: {}", file_path.string()));
   
-  auto vertices = std::vector<Vertex>{};
+  auto vertices = std::vector<Vertex_PN>{};
   auto indices = std::vector<u32>{};
   if(is_load)
   {

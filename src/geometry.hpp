@@ -10,10 +10,7 @@
 
 enum class LayerType : i32
 { 
-  NONE,
-  WALL, 
-  WINDOW, 
-  DOOR 
+  NONE, WALL, WINDOW, DOOR 
 };
 
 struct Segment
@@ -24,11 +21,11 @@ struct Segment
 
 struct Polyline
 {
-  std::vector<glm::dvec2> points;
+  std::vector<glm::dvec2> vertices;
   bool closed{ false };
 };
 
-struct Vertex
+struct Vertex_PN
 {
   glm::vec3 position{ 0.f };
   glm::vec3 normal{ 0.f };
@@ -46,7 +43,7 @@ auto calculate_signed_area(const Polyline& contour) -> f32;
 // Calculates the bounding box for 2D points. The Z-coordinate is set to 0.0f by default.
 auto calculate_bounding_box(const std::vector<glm::dvec2>& points) -> BoundingBox;
 // Calculates the bounding box for 3D points
-auto calculate_bounding_box(const std::vector<Vertex>& vertices) -> BoundingBox;
+auto calculate_bounding_box(const std::vector<Vertex_PN>& vertices) -> BoundingBox;
 
 // Calculate the unit scale based on the geometry
 auto detect_unit_scale(const std::vector<glm::dvec2>& points) -> f32;

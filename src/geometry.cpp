@@ -41,7 +41,7 @@ auto calculate_bounding_box(const std::vector<glm::dvec2>& points) -> BoundingBo
   return BoundingBox{ min, max };
 }
 
-auto calculate_bounding_box(const std::vector<Vertex>& vertices) -> BoundingBox 
+auto calculate_bounding_box(const std::vector<Vertex_PN>& vertices) -> BoundingBox 
 {
   if (vertices.empty())
     return BoundingBox{};

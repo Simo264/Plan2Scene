@@ -44,7 +44,7 @@ add_executable(${PROJECT_NAME}
   src/main.cpp
   src/geometry.cpp
   src/spatial_hashing.cpp
-  src/planarization.cpp
+  src/arrangement.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE

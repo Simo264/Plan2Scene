@@ -271,7 +271,7 @@ void MeshVisualizer::show_mesh_props()
 
   if (ImGui::CollapsingHeader("Video memory (VRAM)")) 
   {
-    auto vbo_size = m_mesh->nr_vertices() * sizeof(Vertex); // 24 bytes per vertice
+    auto vbo_size = m_mesh->nr_vertices() * sizeof(Vertex_PN); // 24 bytes per vertice
     auto ibo_size = m_mesh->nr_indices() * sizeof(u32);     // 4 bytes per indice
     auto total_kb = (vbo_size + ibo_size) / 1024.0f;
 

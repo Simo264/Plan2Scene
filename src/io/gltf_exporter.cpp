@@ -5,7 +5,7 @@
 #include <tiny_gltf.h>
 #include <glm/common.hpp>
 
-void export_to_gltf(const std::vector<Vertex>& vertices,
+void export_to_gltf(const std::vector<Vertex_PN>& vertices,
                     const std::vector<u32>& indices,
                     const std::filesystem::path& output_path)
 {
@@ -138,7 +138,7 @@ void export_to_gltf(const std::vector<Vertex>& vertices,
 }
 
 void import_gltf(const std::filesystem::path& filename, 
-                 std::vector<Vertex>& out_vertices, 
+                 std::vector<Vertex_PN>& out_vertices, 
                  std::vector<u32>& out_indices)
 {
   auto model = tinygltf::Model{};

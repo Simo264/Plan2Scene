@@ -3,6 +3,7 @@ glfw/3.4
 glm/1.0.1
 poly2tri/cci.20130502
 clipper2/2.0.1
+cgal/6.1.1
 
 [generators]
 CMakeDeps

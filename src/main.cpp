@@ -8,6 +8,7 @@
 
 #include "geometry.hpp"
 #include "spatial_hashing.hpp"
+#include "planarization.hpp"
 #include "io/drw_parser.hpp"
 #include "io/gltf_exporter.hpp"
 #include "graphics/mesh_visualizer.hpp"
@@ -212,7 +213,6 @@ void parse_cad(const std::filesystem::path& filename,
     edges.push_back(GraphEdge{ v1, v2, segment.layer });
   }
   const auto& vertices = hash.vertices();
-  
   
   exit(0);
   

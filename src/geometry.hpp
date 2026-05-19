@@ -21,7 +21,7 @@ struct Segment
 
 struct Polyline
 {
-  std::vector<glm::dvec2> vertices;
+  std::vector<glm::dvec2> points;
   bool closed{ false };
 };
 

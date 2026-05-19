@@ -171,7 +171,7 @@ void build_wall_top_cap(std::vector<Vertex_PN>& out_vertices,
       auto idx = static_cast<u32>(out_vertices.size());
       out_indices.push_back(idx);
 
-      auto v = Vertex{};
+      auto v = Vertex_PN{};
       v.position.x = static_cast<f32>(p->x);
       v.position.y = H;
       v.position.z = static_cast<f32>(p->y);
@@ -197,7 +197,6 @@ void parse_cad(const std::filesystem::path& filename,
     throw std::runtime_error(std::format("Error reading DXF file (code: {}): {}", static_cast<i32>(dxf.getError()), filename.string()));
 
   auto& input_segments = parser.input_segments;
-  
   std::println("Successfully parsed DXF file! Segments: {}", input_segments.size());
   if(input_segments.empty())
     throw std::runtime_error("No primitives found!");
@@ -214,18 +213,12 @@ void parse_cad(const std::filesystem::path& filename,
       continue;    
     edges.push_back(GraphEdge{ v1, v2, segment.layer });
   }
-  const auto& vertices = hash.vertices();
-  
-  // --- Intersection + subdivision with CGAL ---
-  // --------------------------------------------
-  auto arrangement = Arrangement{};
-  auto observer = LayerObserver{};
-  observer.attach(arrangement);
-  for (const auto& edge : edges)
-  {
-    
-  }
-  
+
+  // --- Detect and resolve T-junction ---
+  // -------------------------------------
+  auto& vertices = hash.vertices();
+  resolve_tjunctions(vertices, edges);
+  std::println("T-junctions successfully resolved!");
   exit(0);
   
 

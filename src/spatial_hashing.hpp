@@ -19,6 +19,12 @@ struct GraphEdge
   LayerType layer{ LayerType::NONE };
 };
 
+struct GraphData
+{
+  std::vector<GraphVertex> vertices;
+  std::vector<GraphEdge> edges;
+};
+
 struct CellCoord 
 {
   i32 x, y;
@@ -40,7 +46,7 @@ class SpatialHash
 public:
   SpatialHash(f64 epsilon) : m_epsilon{ epsilon} {}
   
-  auto& vertices() const { return m_vertices; }
+  auto& vertices() { return m_vertices; }
 
   VertexId snap(glm::dvec2 p);
 

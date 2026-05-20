@@ -67,13 +67,14 @@ void parse_cad(const std::filesystem::path& filename,
       std::print("{} ", static_cast<i32>(layer));
     std::println();
   }
+
+  //auto room_faces = filter_faces_by_area(faces);
+  //std::println("After faces classification: rooms faces: {}", room_faces.size());
   exit(0);
 
 
 #if 0
-  // With polylines we already have an ordered contour.
-  auto& wall_polyline = parser.wall_polylines.front();
-  std::println("Wall polyline has {} points.", wall_polyline.points.size());  
+
 
   // Is polyline closed: we should check the distance between them v[0] and v[last] and if their 
   // distance is less than epsilon they represent the same logical point. 

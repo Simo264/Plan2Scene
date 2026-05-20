@@ -82,22 +82,5 @@ struct GraphEdge
   LayerType layer{ LayerType::NONE };
 };
 
-struct GraphData
-{
-  std::vector<GraphVertex> vertices;
-  std::vector<GraphEdge> edges;
-};
 
-struct Face
-{
-  // Ordered list of 2D vertices forming the polygon boundary
-  // in counter-clockwise orientation (CGAL guarantees this for
-  // bounded faces via the outer CCB traversal)
-  std::vector<glm::dvec2> vertices;
-
-  // Per-edge layer type, parallel to vertices:
-  // edge_layers[i] is the LayerType of the edge from
-  // vertices[i] to vertices[(i+1) % vertices.size()]
-  std::vector<LayerType> edge_layers;
-};
 

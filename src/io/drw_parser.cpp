@@ -68,11 +68,14 @@ void DRWParser::addHeader(const DRW_Header* data)
   std::println("Header: INSUNITS = {}, scale = {}", units, unit_scale);
 }
 
+void DRWParser::addLayer([[maybe_unused]] const DRW_Layer& data)
+{
+  // std::println("Layer: layer_name=`{}`", data.name);
+}
+
 void DRWParser::addLine(const DRW_Line& data)
 {
   auto layer_name = data.layer;
-  std::println("Line: layer_name=`{}`", layer_name);
-  
   std::ranges::transform(layer_name, layer_name.begin(), [](auto c) { return std::toupper(c); });
 
   auto layer_type = classify_layer(layer_name);
@@ -80,6 +83,8 @@ void DRWParser::addLine(const DRW_Line& data)
      layer_type == LayerType::WINDOW || 
      layer_type == LayerType::DOOR)
   {  
+    std::println("Line: layer_name=`{}`, color={}", layer_name, data.color);
+
     input_segments.push_back(Segment{
       .p1 = glm::dvec2{ data.basePoint.x, data.basePoint.y },
       .p2 = glm::dvec2{ data.secPoint.x, data.secPoint.y },
@@ -93,8 +98,6 @@ void DRWParser::addPolyline(const DRW_Polyline& data)
   auto layer_name = data.layer;
   auto is_closed = data.flags & 1;
   auto& vertices = data.vertlist;
-  std::println("Polyline: layer_name=`{}`, nr_vertices = {}, closed = {}", layer_name, vertices.size(), is_closed);
-
   if (vertices.size() < 2)
     return;
 
@@ -104,6 +107,8 @@ void DRWParser::addPolyline(const DRW_Polyline& data)
      layer_type == LayerType::WINDOW || 
      layer_type == LayerType::DOOR)
   {
+    std::println("Polyline: layer_name=`{}`, nr_vertices = {}, closed = {}", layer_name, vertices.size(), is_closed);
+    
     // Decompose into individual segments: one per consecutive pair of vertices.
     for (auto i = 0u; i < vertices.size() - 1; ++i)
     {
@@ -135,8 +140,6 @@ void DRWParser::addLWPolyline(const DRW_LWPolyline& data)
   auto layer_name = data.layer;
   auto is_closed = data.flags & 1;
   auto& vertices = data.vertlist;
-  std::println("LWPolyline: layer_name=`{}`, nr_vertices = {}, closed = {}", layer_name, vertices.size(), is_closed);
-
   if (vertices.size() < 2)
     return;
 
@@ -147,6 +150,8 @@ void DRWParser::addLWPolyline(const DRW_LWPolyline& data)
      layer_type == LayerType::WINDOW || 
      layer_type == LayerType::DOOR)
   {
+    std::println("LWPolyline: layer_name=`{}`, nr_vertices = {}, closed = {}", layer_name, vertices.size(), is_closed);
+
     // Decompose into individual segments: one per consecutive pair of vertices.
     for (auto i = 0u; i < vertices.size() - 1; ++i)
     {
@@ -173,12 +178,46 @@ void DRWParser::addLWPolyline(const DRW_LWPolyline& data)
   }
 }
 
-// void DRWParser::addInsert(const DRW_Insert& data)
-// {
-//   std::println("Insert: layer_name=`{}`, block_name=`{}`", data.layer, data.name);
-// }
-// 
-// void DRWParser::addArc(const DRW_Arc& data)
-// {
-//   std::println("Arc: layer_name=`{}`", data.layer);
-// }
+void DRWParser::addInsert(const DRW_Insert& data)
+{
+  auto layer_name = data.layer;
+  std::ranges::transform(layer_name, layer_name.begin(), [](auto c) { return std::toupper(c); }); 
+  auto layer_type = classify_layer(layer_name);
+  if(layer_type == LayerType::WALL || 
+     layer_type == LayerType::WINDOW || 
+     layer_type == LayerType::DOOR)
+  {
+    std::println("Insert: layer_name=`{}`", data.layer);
+  }
+}
+
+void DRWParser::addArc(const DRW_Arc& data)
+{  
+  auto layer_name = data.layer;
+  std::ranges::transform(layer_name, layer_name.begin(), [](auto c) { return std::toupper(c); }); 
+  auto layer_type = classify_layer(layer_name);
+  if(layer_type == LayerType::WALL || 
+     layer_type == LayerType::WINDOW || 
+     layer_type == LayerType::DOOR)
+  {
+    std::println("Arc: layer_name=`{}`", data.layer);
+  }
+}
+
+void DRWParser::addPoint(const DRW_Point& data)
+{
+  auto layer_name = data.layer;
+  std::ranges::transform(layer_name, layer_name.begin(), [](auto c) { return std::toupper(c); }); 
+  auto layer_type = classify_layer(layer_name);
+  if(layer_type == LayerType::WALL || 
+     layer_type == LayerType::WINDOW || 
+     layer_type == LayerType::DOOR)
+  {
+    std::println("Point: layer_name=`{}`", data.layer);
+  }
+}
+
+void DRWParser::addBlock(const DRW_Block& data)
+{
+  std::println("Block: layer_name=`{}`", data.layer);
+}

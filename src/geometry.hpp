@@ -1,41 +1,9 @@
 #pragma once
 
-#include <glm/ext/vector_double2.hpp>
-#include <glm/ext/vector_double3.hpp>
-#include <glm/ext/vector_float3.hpp>
-
-#include <vector>
-
 #include "types.hpp"
 
-enum class LayerType : i32
-{ 
-  NONE, WALL, WINDOW, DOOR 
-};
-
-struct Segment
-{
-  glm::dvec2 p1{ 0.0 }, p2{ 0.0 };
-  LayerType layer { LayerType::NONE };
-};
-
-struct Polyline
-{
-  std::vector<glm::dvec2> points;
-  bool closed{ false };
-};
-
-struct Vertex_PN
-{
-  glm::vec3 position{ 0.f };
-  glm::vec3 normal{ 0.f };
-};
-
-struct BoundingBox
-{
-  glm::vec3 min{ 0.f };  // the bottom left corner
-  glm::vec3 max{ 0.f };  // the top right corner
-};
+#include <poly2tri/sweep/cdt.h>
+#include <vector>
 
 // Calculate the signed area of the contour using the shoelace formula.
 auto calculate_signed_area(const Polyline& contour) -> f32;
@@ -50,3 +18,26 @@ auto detect_unit_scale(const std::vector<glm::dvec2>& points) -> f32;
 
 auto compute_polygon_offsetting(const std::vector<glm::dvec2>& inner_points, 
                                 f32 thickness) -> std::vector<glm::dvec2>;
+
+void build_floor(std::vector<Vertex_PN>& out_vertices,
+                 std::vector<u32>& out_indices,
+                 const std::vector<p2t::Triangle*> floor_triangles);
+
+void build_ceil(std::vector<Vertex_PN>& out_vertices, 
+                std::vector<u32>& out_indices,
+                f32 H,
+                const std::vector<p2t::Triangle*> triangle_list);
+
+
+void extrude_walls(std::vector<Vertex_PN>& vertices, 
+                   std::vector<u32>& out_indices,
+                   f32 H,
+                   const std::vector<glm::dvec2>& inner_points,
+                   const std::vector<glm::dvec2>& outer_points);
+                
+void build_wall_top_cap(std::vector<Vertex_PN>& out_vertices,
+                        std::vector<u32>& out_indices,
+                        f32 H,
+                        const std::vector<glm::dvec2>& inner_points,
+                        const std::vector<glm::dvec2>& outer_points);
+

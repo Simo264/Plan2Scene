@@ -1,122 +1,144 @@
 #include "arrangement.hpp"
-#include "spatial_hashing.hpp"
-#include "types.hpp"
 
-#include <glm/geometric.hpp>
-
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
-#include <CGAL/Arr_segment_traits_2.h>
-#include <CGAL/Arrangement_2.h>
-#include <CGAL/Arr_naive_point_location.h>
-#include <CGAL/Arr_walk_along_line_point_location.h>
-#include <CGAL/Arr_non_caching_segment_traits_2.h>
-#include <CGAL/Arr_observer.h>
-
-using Kernel = CGAL::Exact_predicates_exact_constructions_kernel;
-using Point_2 = Kernel::Point_2;
-using Segment_2 = Kernel::Segment_2;
-using Traits = CGAL::Arr_segment_traits_2<Kernel>;
-using Arrangement = CGAL::Arrangement_2<Traits>;
-using Vertex_handle = Arrangement::Vertex_handle;
-using Halfedge_handle = Arrangement::Halfedge_handle;
-
-static auto glm_to_cgal(const glm::dvec2& p) { return Point_2(p.x, p.y); }
-static auto CGAL_to_glm(const Point_2& p) { return glm::dvec2(CGAL::to_double(p.x()), CGAL::to_double(p.y())); }
-
-void resolve_tjunctions(std::vector<GraphVertex>& vertices, std::vector<GraphEdge>& edges)
+static inline Point2 glm_to_cgal(const glm::dvec2& p)
 {
-  struct RawSegment { Segment_2 seg; LayerType layer; };
+  return Point2(p.x, p.y);
+}
+static inline glm::dvec2 CGAL_to_glm(const Point2& p)
+{
+  return glm::dvec2{ CGAL::to_double(p.x()), CGAL::to_double(p.y()) };
+}
 
-  // 1. Collect original segments
-  std::vector<RawSegment> raw_segments;
-  raw_segments.reserve(edges.size());
-  for (const auto& e : edges)
-  {
-      const auto& p1 = vertices[e.v1].position;
-      const auto& p2 = vertices[e.v2].position;
-
-      if (p1 == p2)
-        continue;
-
-      raw_segments.push_back(RawSegment{ 
-        .seg=Segment_2{ glm_to_cgal(p1), glm_to_cgal(p2) },
-        .layer=e.layer
-      });
-  }
+// Returns true if the CGAL point M lies on segment (A, B), including at the endpoints.
+static inline bool point_on_segment(const Point2& A, const Point2& B, const Point2& M)
+{
+  // CGAL exact predicates — no epsilon needed
+  if (CGAL::collinear(A, B, M) == false) return false;
+  return CGAL::collinear_are_ordered_along_line(A, M, B);
+}
 
 
-  // 2. Build arrangement (CGAL resolves T-junctions here)
-  Arrangement arr;
+auto build_arrangement(const std::vector<GraphVertex>& vertices, 
+                       const std::vector<GraphEdge>& edges) -> Arrangement
+{
+    // ----------------------------------------------------------------
+    // 1. Convert GraphEdges to CGAL Segment2, skip degenerate ones
+    // ----------------------------------------------------------------
+    struct TaggedSegment { Segment2 segment; LayerType layer; };
 
-  std::vector<Segment_2> cgal_segments;
-  cgal_segments.reserve(raw_segments.size());
-  for (const auto& rs : raw_segments)
-    cgal_segments.push_back(rs.seg);
+    auto tagged = std::vector<TaggedSegment>{};
+    tagged.reserve(edges.size());
 
-  CGAL::insert(arr, cgal_segments.begin(), cgal_segments.end());
+    for (const auto& e : edges)
+    {
+        const auto& p1 = vertices[e.v1].position;
+        const auto& p2 = vertices[e.v2].position;
 
-  // 3. Export vertices
-  std::vector<GraphVertex> new_vertices;
-  std::unordered_map<Arrangement::Vertex_const_handle, VertexId> vertex_map;
-  new_vertices.reserve(arr.number_of_vertices());
-  for (auto vit = arr.vertices_begin(); vit != arr.vertices_end(); ++vit)
-  {
-      VertexId id = static_cast<VertexId>(new_vertices.size());
-      new_vertices.push_back(GraphVertex{ 
-        .position=CGAL_to_glm(vit->point())
-      });
-      vertex_map.emplace(vit, id);
-  }
+        Point2 A = glm_to_cgal(p1);
+        Point2 B = glm_to_cgal(p2);
+
+        // Skip degenerate segments (should not exist after snapping,
+        // but guard anyway)
+        if (A == B) continue;
+
+        tagged.push_back(TaggedSegment{
+            .segment = Segment2(A, B),
+            .layer   = e.layer
+        });
+    }
+
+    // ----------------------------------------------------------------
+    // 2. Insert all segments — CGAL resolves all T-junctions and
+    //    intersections internally
+    // ----------------------------------------------------------------
+    Arrangement arr;
+
+    auto raw_segments = std::vector<Segment2>{};
+    raw_segments.reserve(tagged.size());
+    for (const auto& ts : tagged)
+        raw_segments.push_back(ts.segment);
+
+    CGAL::insert(arr, raw_segments.begin(), raw_segments.end());
+
+    // ----------------------------------------------------------------
+    // 3. Propagate LayerType onto each halfedge
+    //
+    //    For every halfedge h in the arrangement, its underlying curve
+    //    is a sub-segment of exactly one of our original tagged segments.
+    //    We find that parent segment and assign its LayerType.
+    //
+    //    We set the same value on both h and h->twin() because the
+    //    layer is a property of the wall/door/window, not of direction.
+    // ----------------------------------------------------------------
+    for (auto eit = arr.edges_begin(); eit != arr.edges_end(); ++eit)
+    {
+        // The curve stored on the halfedge after insertion is a
+        // sub-segment (or the full segment) of one of our inputs.
+        // Its source and target are exact CGAL points.
+        const Point2& src = eit->source()->point();
+        const Point2& tgt = eit->target()->point();
+
+        // Midpoint of this halfedge — used to identify the parent
+        // segment unambiguously even when src or tgt sit on a
+        // junction shared by multiple segments.
+        // EPECK supports exact arithmetic on midpoints via:
+        Point2 mid = CGAL::midpoint(src, tgt);
+
+        LayerType layer = LayerType::NONE;
+
+        for (const auto& ts : tagged)
+        {
+            const Point2& A = ts.segment.source();
+            const Point2& B = ts.segment.target();
+
+            if (point_on_segment(A, B, mid))
+            {
+                layer = ts.layer;
+                break;
+            }
+        }
+
+        // Set on both twins — layer belongs to the edge, not the direction
+        eit->set_data(layer);
+        eit->twin()->set_data(layer);
+    }
+
+    return arr;
+}
 
 
-  // 4. Export subdivided edges
-  std::vector<GraphEdge> new_edges;
-  new_edges.reserve(arr.number_of_edges());
+auto extract_faces(const Arrangement& arr) -> std::vector<Face>
+{
+    auto faces = std::vector<Face>{};
 
-  for (auto eit = arr.edges_begin();eit != arr.edges_end();++eit)
-  {
-      const auto src = eit->source()->point();
-      const auto tgt = eit->target()->point();
-      if (src == tgt)
-        continue;
+    for (auto fit = arr.faces_begin(); fit != arr.faces_end(); ++fit)
+    {
+        // Skip the unbounded face
+        if (fit->is_unbounded()) continue;
 
-  
-      // Recover layer:
-      // find original segment that contains both endpoints
-      LayerType layer = LayerType::NONE;
-      for (const auto& rs : raw_segments)
-      {
-        const auto& s = rs.seg;
+        // Skip faces with no outer boundary (should not happen
+        // in a well-formed arrangement, but guard anyway)
+        if (!fit->has_outer_ccb()) continue;
 
-        bool src_on_segment = CGAL::collinear(s.source(), s.target(), src) &&
-            CGAL::collinear_are_ordered_along_line(s.source(), src, s.target());
+        auto face = Face{};
 
-        if (!src_on_segment)
-          continue;
+        // Walk the outer CCB (counter-clockwise boundary chain)
+        // Each step gives us one halfedge of the face boundary
+        auto curr = fit->outer_ccb();
+        auto first = curr;
 
-        bool tgt_on_segment = CGAL::collinear(s.source(), s.target(), tgt) &&
-            CGAL::collinear_are_ordered_along_line(s.source(),tgt,s.target());
+        do {
+            face.vertices.push_back(CGAL_to_glm(curr->source()->point()));
+            face.edge_layers.push_back(curr->data());
+            ++curr;
+        } while (curr != first);
 
-        if (!tgt_on_segment)
-          continue;
+        // Discard degenerate faces
+        if (face.vertices.size() < 3)
+            continue;
 
-        layer = rs.layer;
-        break;
-      }
+        faces.push_back(std::move(face));
+    }
 
-      if (layer == LayerType::NONE)
-        continue;
-
-      VertexId v1 = vertex_map.at(eit->source());
-      VertexId v2 = vertex_map.at(eit->target());
-
-      if (v1 == v2)
-        continue;
-
-      new_edges.push_back(GraphEdge{ v1, v2, layer});
-  }
-
-  vertices = std::move(new_vertices);
-  edges = std::move(new_edges);
+    return faces;
 }

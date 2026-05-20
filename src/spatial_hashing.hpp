@@ -1,29 +1,9 @@
 #pragma once
 
 #include "types.hpp"
-#include "geometry.hpp"
 
 #include <unordered_map>
 #include <cmath>
-
-using VertexId = u32;
-
-struct GraphVertex
-{
-  glm::dvec2 position;
-};
-
-struct GraphEdge
-{
-  VertexId v1, v2;
-  LayerType layer{ LayerType::NONE };
-};
-
-struct GraphData
-{
-  std::vector<GraphVertex> vertices;
-  std::vector<GraphEdge> edges;
-};
 
 struct CellCoord 
 {

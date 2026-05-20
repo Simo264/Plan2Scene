@@ -10,13 +10,17 @@ The vast majority of CAD models we will not have a single closed polyline entity
 To resolve this problem, once we have the complete list of segments we must merging the vertices (**vertex snapping**): two neighboring vertices that are less than $\epsilon$ apart can be considered as a single vertex.
 The **Spatial Hash** data structure is intended for efficient fixed-radius proximity queries. It solves the following problem: "given a point $p$, find all points $p'$ such that $\text{distance}(p, p') < r$.
 
-We need to resolve all inconsistencies, such as the **T-junctions**, which occurs when the end of a segment ends in the middle of another segment. You need to detect them and split the segment into two separate segments. This process is called *segment subdivision*. After this step, no vertices should be inside any segments. `CGAL` is particularly useful for this.
+We need to resolve all inconsistencies, such as the **T-junctions**, which occurs when the end of a segment ends in the middle of another segment. You need to detect them and split the segment into two separate segments. This process is called *segment subdivision*. After this step, no vertices should be inside any segments.
 Also pay attention to **dangling segments** which are those segments of internal wall (dividers) that touch the border on one side but not on the other. It is necessary to identify them and discard them.
+
+> Tip: when you divide the T-junctions into two separate segments you will always have to take into account the LayerType because they are useful during the extrusion phase: walls, doors and windows are generated differently.
 
 Next, we need to represent the set of disconnected primitives as a **planar embedded graph**. Some distinctions: a *Planar Graph* is a type of graph that CAN be drawn on a flat surface (such as a piece of paper) without any of its edges crossing each other. A *planar embedded graph* is a planar graph that has ACTUALLY been mapped onto a plane such that no two edges intersect except at their common vertices. Once a graph is embedded, we can formally talk about its faces.
 The goal is to build a valid planar embedded graph from which polygonal faces can emerge naturally. As result we obtain a *planar straight-line graph* (PSLG), often called *planar subdivisions*, that is an embedding of a planar graph in the plane such that its edges are mapped into straight-line segments.
 There exist three well-known data structures for representing PSLGs, one of these is the **Halfedge**. The halfedge data structure stores both orientations of an edge and links them properly, simplifying operations and the storage scheme.
 Once the Half-Edge structure is built, our output isn't just a list of lines anymore, but is a collection of isolated, explicit 2D polygons (faces). 
+
+> Tip: consider to use `CGAL` library
 
 After that, we need to perform Polygon Triangulation using Constrained Delaunay Triangulation algorithm, the Polygon Offsetting algorithm, that is usefull to create the thickness effect on walls, and proceed with the extrusion of the walls by a height H (re-perform Polygon Triangulation to cap the top of those walls).
 Finally, we are ready to export the 3D mesh as GLTF with the following vertex information: position (xyz) and normals (xyz).

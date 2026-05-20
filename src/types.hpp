@@ -2,6 +2,10 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <vector>
+#include <glm/ext/vector_double2.hpp>
+#include <glm/ext/vector_double3.hpp>
+#include <glm/ext/vector_float3.hpp>
 
 // ----------------------------------------------------------------------------
 // Byte type
@@ -30,3 +34,70 @@ using i64 = int64_t;
 // ----------------------------------------------------------------------------
 using f32 = float;
 using f64 = double;
+
+ 
+// ----------------------------------------------------------------------------
+// Geometric types
+// ----------------------------------------------------------------------------
+
+enum class LayerType : i32
+{ 
+  NONE = 0, WALL = 1, WINDOW = 2, DOOR = 3
+};
+
+struct Segment
+{
+  glm::dvec2 p1{ 0.0 }, p2{ 0.0 };
+  LayerType layer { LayerType::NONE };
+};
+
+struct Polyline
+{
+  std::vector<glm::dvec2> points;
+  bool closed{ false };
+};
+
+struct Vertex_PN
+{
+  glm::vec3 position{ 0.f };
+  glm::vec3 normal{ 0.f };
+};
+
+struct BoundingBox
+{
+  glm::vec3 min{ 0.f };  // the bottom left corner
+  glm::vec3 max{ 0.f };  // the top right corner
+};
+
+using VertexId = u32;
+
+struct GraphVertex
+{
+  glm::dvec2 position;
+};
+
+struct GraphEdge
+{
+  VertexId v1, v2;
+  LayerType layer{ LayerType::NONE };
+};
+
+struct GraphData
+{
+  std::vector<GraphVertex> vertices;
+  std::vector<GraphEdge> edges;
+};
+
+struct Face
+{
+  // Ordered list of 2D vertices forming the polygon boundary
+  // in counter-clockwise orientation (CGAL guarantees this for
+  // bounded faces via the outer CCB traversal)
+  std::vector<glm::dvec2> vertices;
+
+  // Per-edge layer type, parallel to vertices:
+  // edge_layers[i] is the LayerType of the edge from
+  // vertices[i] to vertices[(i+1) % vertices.size()]
+  std::vector<LayerType> edge_layers;
+};
+

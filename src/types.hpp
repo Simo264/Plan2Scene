@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <cstddef>
-#include <vector>
 #include <glm/ext/vector_double2.hpp>
 #include <glm/ext/vector_double3.hpp>
 #include <glm/ext/vector_float3.hpp>
@@ -47,40 +46,26 @@ enum class LayerType : i32
 
 struct Segment
 {
-  glm::dvec2 p1{ 0.0 }, p2{ 0.0 };
-  LayerType layer { LayerType::NONE };
-};
-
-struct Polyline
-{
-  std::vector<glm::dvec2> points;
-  bool closed{ false };
+  glm::dvec2 p1, p2;
+  LayerType layer;
 };
 
 struct Vertex_PN
 {
-  glm::vec3 position{ 0.f };
-  glm::vec3 normal{ 0.f };
+  glm::vec3 position;
+  glm::vec3 normal;
 };
 
 struct BoundingBox
 {
-  glm::vec3 min{ 0.f };  // the bottom left corner
-  glm::vec3 max{ 0.f };  // the top right corner
+  glm::vec3 min;
+  glm::vec3 max;
 };
 
 using VertexId = u32;
 
-struct GraphVertex
-{
-  glm::dvec2 position;
-};
-
 struct GraphEdge
 {
   VertexId v1, v2;
-  LayerType layer{ LayerType::NONE };
+  LayerType layer;
 };
-
-
-

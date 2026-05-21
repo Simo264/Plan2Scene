@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <cstdlib>
 #include <memory>
 #include <print>
 #include <filesystem>
@@ -17,7 +16,7 @@
 #include <glm/geometric.hpp>
 
 constexpr auto epsilon = static_cast<f64>(1e-4);
-constexpr auto ceil_H = 3.f;
+constexpr auto ceil_H = 0.5f;
 constexpr auto wall_thickness = 0.125f;
 
 void parse_cad(const std::filesystem::path& filename, 
@@ -48,100 +47,44 @@ void parse_cad(const std::filesystem::path& filename,
       continue;    
     edges.push_back(GraphEdge{ v1, v2, segment.layer });
   }
-
-  // --- Detect and resolve T-junction ---
-  // -------------------------------------
-  auto& vertices = hash.vertices();
-  auto arrangement = build_arrangement(vertices, edges);
-  std::println("After arrangement:");
-  std::println("Vertices: {}", arrangement.number_of_vertices());
-  std::println("Edges: {}",arrangement.number_of_edges());
-  std::println("Faces: {}",arrangement.number_of_faces());
+  std::println("Vertex snapping completed.");
   
+  auto& vertices = hash.vertices();
+  normalize_vertices(parser.unit_scale, vertices);
+
+  // Detect and resolve T-junction 
+  auto arrangement = build_arrangement(vertices, edges);
+  std::println("After successfully completed: vertices={}, edges={}, faces={}", arrangement.number_of_vertices(), arrangement.number_of_edges(), arrangement.number_of_faces());
+  // face extraction
   auto faces = extract_faces(arrangement);
-  std::println("After face extraction:");
-  for (const auto& f : faces)
+  std::println("Extracted faces: {}", faces.size());
+
+  for (const auto& face : faces)
   {
-    std::print("Polygon with {} vertices, edges: ", f.vertices.size());
-    for (auto layer : f.edge_layers)
-      std::print("{} ", static_cast<i32>(layer));
-    std::println();
+    // Ensure CCW winding
+    auto contour = face.vertices;
+    if (calculate_signed_area(contour) < 0.0)
+      std::ranges::reverse(contour);
+
+    auto p2t_points = std::vector<p2t::Point*>{};
+    p2t_points.reserve(contour.size());
+    for (const auto& p : contour)
+      p2t_points.push_back(new p2t::Point{ p.x, p.y });
+
+    auto cdt = p2t::CDT{ p2t_points };
+    cdt.Triangulate();
+    auto floor_triangles = cdt.GetTriangles();
+
+    build_floor(out_vertices, out_indices, floor_triangles);
+    // build_ceil(out_vertices, out_indices, ceil_H, floor_triangles);
+
+    for (auto* pt : p2t_points) delete pt;
   }
 
-  //auto room_faces = filter_faces_by_area(faces);
-  //std::println("After faces classification: rooms faces: {}", room_faces.size());
-  exit(0);
+
 
 
 #if 0
-
-
-  // Is polyline closed: we should check the distance between them v[0] and v[last] and if their 
-  // distance is less than epsilon they represent the same logical point. 
-  // We can drop the last vertex so the contour doesn't have a near-duplicate.
-  if(wall_polyline.closed)
-  {
-    auto first_point = wall_polyline.points.front();
-    auto last_point = wall_polyline.points.back();
-    std::println("Polyline is closed. First point: ({}, {}), last point: ({}, {})", first_point.x, first_point.y, last_point.x, last_point.y);
-    if(glm::distance(first_point, last_point) < epsilon)
-    {
-      std::println("Merge the first and last points");
-      wall_polyline.points.pop_back();
-    }
-  }
-  else 
-  {
-    // Polyline is open: we should check if the first and last point are close enough to be considered the same point.
-    auto first_point = wall_polyline.points.front();
-    auto last_point = wall_polyline.points.back();
-    std::println("Polyline is not closed. First point: ({}, {}), last point: ({}, {})", first_point.x, first_point.y, last_point.x, last_point.y);
-    if(glm::distance(first_point, last_point) < epsilon)
-    {
-      std::println("First and last point are closer than epsilon. Drop the last point to avoid near-duplicate and consider it as closed.");
-      wall_polyline.points.pop_back();
-      wall_polyline.closed = true;
-    }
-    else 
-      throw std::runtime_error("First and last point are not closer than epsilon. Exit with error because we need a closed contour for triangulation.");
-  }
-
-  if(parser.unit_scale == 0.0f)
-  {
-    std::println("Unit scale not specified in DXF header. Detecting unit scale from geometry...");
-    parser.unit_scale = detect_unit_scale(wall_polyline.points);
-    std::println("Detected unit scale: {}", parser.unit_scale);
-  }
-
-  for (auto& p : wall_polyline.points)
-  {
-    p.x *= parser.unit_scale;
-    p.y *= parser.unit_scale;
-  } 
-  
-  // --- Step 2: triangulation of the contour using poly2tri ---
-  // ----------------------------------------------------------
-  // poly2tri expects the outer polygon to be counter-clockwise (CCW) and holes to be clockwise (CW).
-  // If signed_area < 0 the order is CW: we must reverse the vertices before passing to poly2tri.
-  auto area = calculate_signed_area(wall_polyline);
-  std::println("Signed area of the contour: {}", area);
-  if(area < 0.0f)
-    std::ranges::reverse(wall_polyline.points);
-   
-  auto floor_contour = std::vector<p2t::Point*>{};
-  floor_contour.reserve(wall_polyline.points.size());
-  for(const auto& p : wall_polyline.points)
-    floor_contour.push_back(new p2t::Point{p.x, p.y});
-    
-  auto cdt = p2t::CDT(floor_contour);
-  cdt.Triangulate();
-  auto floor_triangles = cdt.GetTriangles();
-  std::println("Triangulation completed. Number of floor triangles: {}", floor_triangles.size());
-
-  // --- Step 3: extrusion and mesh creation ---
-  // -------------------------------------------
-
-
   auto& inner_wall = wall_polyline.points;
   auto outer_wall = compute_polygon_offsetting(inner_wall, wall_thickness);
 
@@ -198,23 +141,21 @@ int main(int argc, char* argv[])
     parse_cad(file_path, vertices, indices);
    
     // exporting mesh in GLTF
-    auto gltf_path = file_path.filename().replace_extension("gltf");
-    std::println("Model will be exported to: {}", gltf_path.string());
-    export_to_gltf(vertices, indices, gltf_path);
+    // auto gltf_path = file_path.filename().replace_extension("gltf");
+    // std::println("Model will be exported to: {}", gltf_path.string());
+    // export_to_gltf(vertices, indices, gltf_path);
   }
 
 
   // --- visualize mesh ---
   // ----------------------
 
-  // Get the bounds of the extruded 3D room
-  auto bbox = calculate_bounding_box(vertices);
-  auto center = (bbox.min + bbox.max) * 0.5f; 
-  // Center the model at the origin (0, 0, 0)
-  auto transform = Transformation{};
-  transform.position = -center;
-  transform.update_tranformation();
-  
+  auto bbox = calculate_bounding_box(vertices); 
+  auto center = (bbox.min + bbox.max) * 0.5f;   
+  auto transform = Transformation{}; 
+  transform.position = -center; 
+  transform.update_tranformation(); 
+
   auto visualizer = MeshVisualizer(1024, 768);
   visualizer.set_mesh(std::make_shared<StaticMesh>(
     vertices.data(), 

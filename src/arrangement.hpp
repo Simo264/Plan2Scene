@@ -7,8 +7,6 @@
 #include <CGAL/Arr_segment_traits_2.h>
 #include <CGAL/Arr_extended_dcel.h>
 
-#include <algorithm>
-
 using Kernel   = CGAL::Exact_predicates_exact_constructions_kernel;
 using Traits   = CGAL::Arr_segment_traits_2<Kernel>;
 using Point2   = Traits::Point_2;
@@ -24,7 +22,7 @@ struct Face
 };
 
 auto build_arrangement(
-  const std::vector<GraphVertex>& vertices,
+  const std::vector<glm::dvec2>& vertices,
   const std::vector<GraphEdge>& edges) -> Arrangement;
 
 auto extract_faces(const Arrangement& arr) -> std::vector<Face>; 

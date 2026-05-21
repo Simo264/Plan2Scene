@@ -3,6 +3,7 @@
 #include "types.hpp"
 
 #include <unordered_map>
+#include <vector>
 #include <cmath>
 
 struct CellCoord 
@@ -45,5 +46,5 @@ private:
   // Maps each occupied cell to the list of vertex indices that fall inside it.
   std::unordered_map<CellCoord, std::vector<VertexId>, CellCoordHash> m_grid;
 
-  std::vector<GraphVertex> m_vertices;
+  std::vector<glm::dvec2> m_vertices;
 };

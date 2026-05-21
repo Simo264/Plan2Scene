@@ -21,7 +21,7 @@ static inline bool point_on_segment(const Point2& A, const Point2& B, const Poin
 }
 
 
-auto build_arrangement(const std::vector<GraphVertex>& vertices, 
+auto build_arrangement(const std::vector<glm::dvec2>& vertices, 
                        const std::vector<GraphEdge>& edges) -> Arrangement
 {
   // Convert GraphEdges to CGAL Segment2
@@ -32,8 +32,8 @@ auto build_arrangement(const std::vector<GraphVertex>& vertices,
   tagged.reserve(edges.size());
   for (const auto& e : edges)
   {
-    const auto& p1 = vertices[e.v1].position;
-    const auto& p2 = vertices[e.v2].position;
+    const auto& p1 = vertices[e.v1];
+    const auto& p2 = vertices[e.v2];
     Point2 A = glm_to_cgal(p1);
     Point2 B = glm_to_cgal(p2);
 

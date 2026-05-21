@@ -18,7 +18,7 @@ VertexId SpatialHash::snap(glm::dvec2 p)
       // If found, return its id (reuse it)
       for (auto vertex : it->second) 
       {
-        if (glm::distance(m_vertices[vertex].position, p) < m_epsilon)
+        if (glm::distance(m_vertices[vertex], p) < m_epsilon)
           return vertex;
       }
     }
@@ -26,7 +26,7 @@ VertexId SpatialHash::snap(glm::dvec2 p)
 
   // If no existing vertex found => create a new one
   auto new_vertex = static_cast<VertexId>(m_vertices.size());
-  m_vertices.push_back(GraphVertex{ p });
+  m_vertices.push_back(glm::dvec2{ p });
 
   auto [it, inserted] = m_grid.try_emplace(cell);
   it->second.push_back(new_vertex);

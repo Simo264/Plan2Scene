@@ -83,7 +83,7 @@ void DRWParser::addLine(const DRW_Line& data)
      layer_type == LayerType::WINDOW || 
      layer_type == LayerType::DOOR)
   {  
-    std::println("Line: layer_name=`{}`, color={}", layer_name, data.color);
+    std::println("Line: layer_name=`{}`", layer_name);
 
     input_segments.push_back(Segment{
       .p1 = glm::dvec2{ data.basePoint.x, data.basePoint.y },
@@ -217,7 +217,7 @@ void DRWParser::addPoint(const DRW_Point& data)
   }
 }
 
-void DRWParser::addBlock(const DRW_Block& data)
+void DRWParser::addBlock([[maybe_unused]]const DRW_Block& data)
 {
-  std::println("Block: layer_name=`{}`", data.layer);
+  //std::println("Block: layer_name=`{}`", data.layer);
 }

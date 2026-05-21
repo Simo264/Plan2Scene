@@ -7,25 +7,21 @@
 #include <clipper2/clipper.h>
 #include <print>
 
-auto calculate_signed_area(const Polyline& contour) -> f32
+auto calculate_signed_area(const std::vector<glm::dvec2>& contour) -> f32
 {
-  const auto& points = contour.points;
-  
-  auto area =  0.f;
-  for(auto i = 0u; i < points.size(); ++i)
+  auto area = 0.0;
+  auto n = contour.size();
+  for (size_t i = 0; i < n; ++i)
   {
-    auto p1 = points.at(i);
-    auto p2 = points.at((i + 1) % points.size());
+    auto p1 = contour.at(i);
+    auto p2 = contour.at((i + 1) % n);
     area += (p1.x * p2.y - p2.x * p1.y);
   }
-  return area * 0.5f;
+  return area * 0.5;
 }
 
 auto calculate_bounding_box(const std::vector<glm::dvec2>& points) -> BoundingBox 
-{
-  if (points.empty())
-    return BoundingBox{};
-  
+{ 
   auto min = glm::vec3{ std::numeric_limits<float>::max() };
   auto max = glm::vec3{ std::numeric_limits<float>::lowest() };
   for (const auto& p : points) 
@@ -60,9 +56,6 @@ auto calculate_bounding_box(const std::vector<Vertex_PN>& vertices) -> BoundingB
 
 auto detect_unit_scale(const std::vector<glm::dvec2>& points) -> f32 
 {
-  if (points.empty()) 
-    return 1.0f;
-
   auto bbox = calculate_bounding_box(points);
 
   // Calculate the diagonal distance of the floor plan (the "extent")
@@ -80,6 +73,22 @@ auto detect_unit_scale(const std::vector<glm::dvec2>& points) -> f32
     return 0.1f;
 
   return 1.0f; // Already in meters
+}
+
+void normalize_vertices(f32 unit_scale, std::vector<glm::dvec2>& vertices)
+{
+  if(unit_scale == 0.0f)
+    unit_scale = detect_unit_scale(vertices);
+
+  std::println("Unit scale: {}", unit_scale);
+  
+  for (auto i = 0u; i < vertices.size(); i++)
+    vertices.at(i) *= unit_scale;
+
+  auto bb = calculate_bounding_box(vertices);
+  auto center = (bb.min + bb.max) * 0.5f;
+  std::println("Geometry bounds: min=({}, {}, {}) max=({}, {}, {})", bb.min.x, bb.min.y, bb.min.z, bb.max.x, bb.max.y, bb.max.z);
+  std::println("Geometry center: {}, {}, {}", center.x, center.y, center.z);
 }
 
 auto compute_polygon_offsetting(const std::vector<glm::dvec2>& inner_points, 

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../types.hpp"
-#include "../geometry.hpp"
 
 #include <libdxfrw.h>
 #include <drw_interface.h>

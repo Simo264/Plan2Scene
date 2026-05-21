@@ -1,4 +1,5 @@
 #include "geometry.hpp"
+#include "types.hpp"
 
 #include <glm/ext/vector_double2.hpp>
 #include <glm/geometric.hpp>
@@ -22,8 +23,8 @@ auto calculate_signed_area(const std::vector<glm::dvec2>& contour) -> f32
 
 auto calculate_bounding_box(const std::vector<glm::dvec2>& points) -> BoundingBox 
 { 
-  auto min = glm::vec3{ std::numeric_limits<float>::max() };
-  auto max = glm::vec3{ std::numeric_limits<float>::lowest() };
+  auto min = glm::vec3{ std::numeric_limits<f32>::max() };
+  auto max = glm::vec3{ std::numeric_limits<f32>::lowest() };
   for (const auto& p : points) 
   {
     auto px = static_cast<f32>(p.x);
@@ -75,20 +76,26 @@ auto detect_unit_scale(const std::vector<glm::dvec2>& points) -> f32
   return 1.0f; // Already in meters
 }
 
-void normalize_vertices(f32 unit_scale, std::vector<glm::dvec2>& vertices)
+void normalize_segments(f32 unit, std::vector<Segment>& segments)
 {
-  if(unit_scale == 0.0f)
-    unit_scale = detect_unit_scale(vertices);
+  if(unit == 0.0f)
+  {
+    auto points = std::vector<glm::dvec2>{};
+    points.reserve(segments.size() * 2);
+    for(const auto& seg : segments)
+    {
+      points.push_back(seg.p1);
+      points.push_back(seg.p2);
+    }
+    unit = detect_unit_scale(points);
+  }
 
-  std::println("Unit scale: {}", unit_scale);
-  
-  for (auto i = 0u; i < vertices.size(); i++)
-    vertices.at(i) *= unit_scale;
-
-  auto bb = calculate_bounding_box(vertices);
-  auto center = (bb.min + bb.max) * 0.5f;
-  std::println("Geometry bounds: min=({}, {}, {}) max=({}, {}, {})", bb.min.x, bb.min.y, bb.min.z, bb.max.x, bb.max.y, bb.max.z);
-  std::println("Geometry center: {}, {}, {}", center.x, center.y, center.z);
+  std::println("Unit scale: {}", unit);
+  for(auto& seg : segments)
+  {
+    seg.p1 *= unit;
+    seg.p2 *= unit;
+  }
 }
 
 auto compute_polygon_offsetting(const std::vector<glm::dvec2>& inner_points, 

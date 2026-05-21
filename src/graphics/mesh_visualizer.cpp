@@ -180,17 +180,19 @@ void MeshVisualizer::create_pipeline_object()
 
 void MeshVisualizer::handle_camera_input()
 {
+  constexpr auto velocity = 0.1f;
+  
   if (glfwGetKey(m_context, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetWindowShouldClose(m_context, GLFW_TRUE);
   if (glfwGetKey(m_context, GLFW_KEY_UP) == GLFW_PRESS) m_camera.rotate_pitch(+glm::radians(1.0f));
   if (glfwGetKey(m_context, GLFW_KEY_DOWN) == GLFW_PRESS) m_camera.rotate_pitch(-glm::radians(1.0f));
   if (glfwGetKey(m_context, GLFW_KEY_LEFT) == GLFW_PRESS) m_camera.rotate_yaw(+glm::radians(1.0f));
   if (glfwGetKey(m_context, GLFW_KEY_RIGHT) == GLFW_PRESS) m_camera.rotate_yaw(-glm::radians(1.0f));
-  if (glfwGetKey(m_context, GLFW_KEY_W) == GLFW_PRESS) m_camera.eye += m_camera.gaze() * 0.1f;
-  if (glfwGetKey(m_context, GLFW_KEY_S) == GLFW_PRESS) m_camera.eye -= m_camera.gaze() * 0.1f;
-  if (glfwGetKey(m_context, GLFW_KEY_A) == GLFW_PRESS) m_camera.eye -= m_camera.right() * 0.1f;
-  if (glfwGetKey(m_context, GLFW_KEY_D) == GLFW_PRESS) m_camera.eye += m_camera.right() * 0.1f;
-  if (glfwGetKey(m_context, GLFW_KEY_SPACE) == GLFW_PRESS) m_camera.eye += m_camera.up() * 0.1f;
-  if (glfwGetKey(m_context, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) m_camera.eye -= m_camera.up() * 0.1f;
+  if (glfwGetKey(m_context, GLFW_KEY_W) == GLFW_PRESS) m_camera.eye += m_camera.gaze() * velocity;
+  if (glfwGetKey(m_context, GLFW_KEY_S) == GLFW_PRESS) m_camera.eye -= m_camera.gaze() * velocity;
+  if (glfwGetKey(m_context, GLFW_KEY_A) == GLFW_PRESS) m_camera.eye -= m_camera.right() * velocity;
+  if (glfwGetKey(m_context, GLFW_KEY_D) == GLFW_PRESS) m_camera.eye += m_camera.right() * velocity;
+  if (glfwGetKey(m_context, GLFW_KEY_SPACE) == GLFW_PRESS) m_camera.eye += m_camera.up() * velocity;
+  if (glfwGetKey(m_context, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) m_camera.eye -= m_camera.up() * velocity;
 }
 
 void MeshVisualizer::show_camera_props() 

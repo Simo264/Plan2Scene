@@ -15,8 +15,8 @@
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
 
-constexpr auto epsilon = static_cast<f64>(1e-4);
-constexpr auto ceil_H = 0.5f;
+constexpr auto epsilon = static_cast<f64>(1e-6);
+constexpr auto ceil_H = 0.25f;
 constexpr auto wall_thickness = 0.125f;
 
 void parse_cad(const std::filesystem::path& filename, 
@@ -31,9 +31,22 @@ void parse_cad(const std::filesystem::path& filename,
     throw std::runtime_error(std::format("Error reading DXF file (code: {}): {}", static_cast<i32>(dxf.getError()), filename.string()));
 
   auto& input_segments = parser.input_segments;
-  std::println("Successfully parsed DXF file! Segments: {}", input_segments.size());
+  auto input_n_vertices = input_segments.size() * 2;
+  std::println("Successfully parsed DXF file! Segments: {}, points: {}", input_segments.size(), input_n_vertices);
   if(input_segments.empty())
     throw std::runtime_error("No primitives found!");
+
+  normalize_segments(parser.unit_scale, input_segments);
+
+  auto minX=1e100, maxX=-1e100, minY=1e100, maxY=-1e100;
+  for (const auto& seg : input_segments) 
+  {
+    minX = std::min({minX, seg.p1.x, seg.p2.x});
+    maxX = std::max({maxX, seg.p1.x, seg.p2.x});
+    minY = std::min({minY, seg.p1.y, seg.p2.y});
+    maxY = std::max({maxY, seg.p1.y, seg.p2.y});
+  }
+  std::println("Geometry size: {}x{}", (maxX-minX), (maxY-minY));
 
   // --- Vertex snapping with spatial hashing data structure ---
   // -----------------------------------------------------------
@@ -47,38 +60,45 @@ void parse_cad(const std::filesystem::path& filename,
       continue;    
     edges.push_back(GraphEdge{ v1, v2, segment.layer });
   }
-  std::println("Vertex snapping completed.");
-  
   auto& vertices = hash.vertices();
-  normalize_vertices(parser.unit_scale, vertices);
-
+  std::println("Vertex snapping completed. Number of vertices: {}, snapped: {}", vertices.size(), input_n_vertices - vertices.size());
+  
   // Detect and resolve T-junction 
   auto arrangement = build_arrangement(vertices, edges);
-  std::println("After successfully completed: vertices={}, edges={}, faces={}", arrangement.number_of_vertices(), arrangement.number_of_edges(), arrangement.number_of_faces());
+  std::println("Arrangement successfully completed: vertices={}, edges={}, faces={}", arrangement.number_of_vertices(), arrangement.number_of_edges(), arrangement.number_of_faces());
+  
   // face extraction
   auto faces = extract_faces(arrangement);
   std::println("Extracted faces: {}", faces.size());
 
   for (const auto& face : faces)
   {
+    // auto area = std::abs(calculate_signed_area(face.vertices));
+    // std::println("Face: num_vertices={}, area={}m^2", face.vertices.size(), area);
+    
     // Ensure CCW winding
     auto contour = face.vertices;
-    if (calculate_signed_area(contour) < 0.0)
+    if (calculate_signed_area(contour) < 0.0f)
       std::ranges::reverse(contour);
-
+    
     auto p2t_points = std::vector<p2t::Point*>{};
     p2t_points.reserve(contour.size());
     for (const auto& p : contour)
       p2t_points.push_back(new p2t::Point{ p.x, p.y });
-
+      
     auto cdt = p2t::CDT{ p2t_points };
     cdt.Triangulate();
     auto floor_triangles = cdt.GetTriangles();
-
+    
     build_floor(out_vertices, out_indices, floor_triangles);
     // build_ceil(out_vertices, out_indices, ceil_H, floor_triangles);
-
     for (auto* pt : p2t_points) delete pt;
+    
+    auto outer_wall = std::vector<glm::dvec2>{};
+    extrude_walls(out_vertices, out_indices, ceil_H, contour, outer_wall);
+
+    //extrude_walls(out_vertices, out_indices, ceil_H, inner_wall, outer_wall);
+    //build_wall_top_cap(out_vertices, out_indices, ceil_H, inner_wall, outer_wall);
   }
 
 

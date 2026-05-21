@@ -1,6 +1,7 @@
 #include "spatial_hashing.hpp"
 
 #include <glm/geometric.hpp>
+#include <print>
 
 VertexId SpatialHash::snap(glm::dvec2 p)
 {

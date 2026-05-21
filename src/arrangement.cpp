@@ -31,7 +31,7 @@ auto build_arrangement(const std::vector<glm::dvec2>& vertices,
   auto tagged = std::vector<TaggedSegment>{};
   tagged.reserve(edges.size());
   for (const auto& e : edges)
-  {
+  { 
     const auto& p1 = vertices[e.v1];
     const auto& p2 = vertices[e.v2];
     Point2 A = glm_to_cgal(p1);
@@ -55,7 +55,7 @@ auto build_arrangement(const std::vector<glm::dvec2>& vertices,
   CGAL::insert(arr, raw_segments.begin(), raw_segments.end());
 
   // Propagate LayerType onto each halfedge.
-  
+   
   for (auto eit = arr.edges_begin(); eit != arr.edges_end(); ++eit)
   {
     const Point2& src = eit->source()->point();
@@ -71,7 +71,10 @@ auto build_arrangement(const std::vector<glm::dvec2>& vertices,
       const Point2& B = ts.segment.target();
       // the priority is DOOR > WINDOW > WALL > NONE
       if (point_on_segment(A, B, mid))
-        best_layer = std::max(best_layer, ts.layer);
+      {
+        if (static_cast<int>(ts.layer) > static_cast<int>(best_layer)) 
+          best_layer = ts.layer;
+      }
     }
 
     eit->set_data(best_layer);

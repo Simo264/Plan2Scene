@@ -16,7 +16,7 @@ auto calculate_bounding_box(const std::vector<Vertex_PN>& vertices) -> BoundingB
 // Calculate the unit scale based on the geometry
 auto detect_unit_scale(const std::vector<glm::dvec2>& points) -> f32;
 
-void normalize_vertices(f32 unit_scale, std::vector<glm::dvec2>& vertices);
+void normalize_segments(f32 unit, std::vector<Segment>& segments);
 
 auto compute_polygon_offsetting(const std::vector<glm::dvec2>& inner_points, 
                                 f32 thickness) -> std::vector<glm::dvec2>;

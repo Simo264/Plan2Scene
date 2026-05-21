@@ -79,7 +79,7 @@ void DRWParser::addLine(const DRW_Line& data)
   std::ranges::transform(layer_name, layer_name.begin(), [](auto c) { return std::toupper(c); });
 
   auto layer_type = classify_layer(layer_name);
-  if(layer_type == LayerType::WALL || 
+  if(layer_type == LayerType::WALL ||
      layer_type == LayerType::WINDOW || 
      layer_type == LayerType::DOOR)
   {  

@@ -63,6 +63,8 @@ void parse_cad(const std::filesystem::path& filename,
   auto faces = extract_faces(arrangement);
   std::println("Extracted faces: {}", faces.size());
 
+  exit(0);
+  
   for (const auto& face : faces)
   {
     // Ensure CCW winding

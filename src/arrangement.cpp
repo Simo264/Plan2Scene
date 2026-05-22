@@ -93,7 +93,7 @@ auto extract_faces(const Arrangement& arr) -> std::vector<Face>
   {
     // Skip the unbounded face
     if (fit->is_unbounded()) 
-      continue;
+      continue; 
     // Skip faces with no outer boundary (should not happen in a well-formed arrangement)
     if (!fit->has_outer_ccb()) 
       continue;
@@ -103,7 +103,8 @@ auto extract_faces(const Arrangement& arr) -> std::vector<Face>
     // Walk the outer CCB (counter-clockwise boundary chain)
     auto curr = fit->outer_ccb();
     auto first = curr;
-    do {
+    do 
+    {
       face.vertices.push_back(CGAL_to_glm(curr->source()->point()));
       face.edge_layers.push_back(curr->data());
       ++curr;

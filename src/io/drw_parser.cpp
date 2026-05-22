@@ -8,13 +8,13 @@
 
 static auto classify_layer(std::string_view name) 
 {
-  if (name.contains("WALL")) 
+  if (name == "WALL") 
     return LayerType::WALL;
-  if (name.contains("WINDOW")) 
-    return LayerType::WINDOW;
-  if (name.contains("DOOR"))
-    return LayerType::DOOR;
-  
+  //  if (name == "WINDOW") 
+  //    return LayerType::WINDOW;
+  //  if (name == "DOOR")
+  //    return LayerType::DOOR;
+   
   return LayerType::NONE;
 } 
 

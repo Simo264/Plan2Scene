@@ -292,3 +292,7 @@ void build_wall_top_cap(std::vector<Vertex_PN>& out_vertices,
   for (auto* pt : outer_contour) delete pt;
   for (auto* pt : inner_hole)  delete pt;
 }
+
+
+
+

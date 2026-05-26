@@ -1,7 +1,7 @@
 #include "arrangement.hpp"
-#include <algorithm>
 #include <print>
 #include <vector>
+#include <iostream>
 
 static inline Point2 glm_to_cgal(const glm::dvec2& p)
 {
@@ -83,7 +83,6 @@ auto build_arrangement(const std::vector<glm::dvec2>& vertices,
 
   return arr;
 }
-
 
 auto extract_faces(const Arrangement& arr) -> std::vector<Face>
 {

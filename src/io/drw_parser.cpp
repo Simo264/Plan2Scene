@@ -4,18 +4,14 @@
 
 #include <cmath>
 #include <print>
-#include <algorithm>
 #include <string_view>
 
 static auto classify_layer(std::string_view name) 
 {
-  if (name == "WALL") 
-    return LayerType::WALL;
-  if (name == "WINDOW") 
-    return LayerType::WINDOW;
-  if (name == "DOOR")
-    return LayerType::DOOR;
-   
+  if (name == "WALL")      return LayerType::WALL;
+  if (name == "GLAZ")      return LayerType::GLAZ;
+  if (name == "GLAZ-SILL") return LayerType::GLAZ_SILL;
+  if (name == "DOOR")      return LayerType::DOOR;
   return LayerType::NONE;
 } 
 
@@ -92,7 +88,11 @@ void DRWParser::addLine(const DRW_Line& data)
 
 void DRWParser::addPolyline(const DRW_Polyline& data)
 {
-//  auto layer_name = data.layer;
+  auto layer_name = data.layer;
+  auto is_closed = data.flags & 1;
+  auto& vertices = data.vertlist;
+  std::println("Polyline: layer_name=`{}`, nr_vertices = {}, closed = {}", layer_name, vertices.size(), is_closed);
+
 //  auto is_closed = data.flags & 1;
 //  auto& vertices = data.vertlist;
 //  if (vertices.size() < 2)
@@ -134,7 +134,11 @@ void DRWParser::addPolyline(const DRW_Polyline& data)
 
 void DRWParser::addLWPolyline(const DRW_LWPolyline& data)
 {
-// auto layer_name = data.layer;
+  auto layer_name = data.layer;
+  auto is_closed = data.flags & 1;
+  auto& vertices = data.vertlist;
+  std::println("LWPolyline: layer_name=`{}`, nr_vertices = {}, closed = {}", layer_name, vertices.size(), is_closed);
+
 // auto is_closed = data.flags & 1;
 // auto& vertices = data.vertlist;
 // if (vertices.size() < 2)
@@ -174,11 +178,7 @@ void DRWParser::addLWPolyline(const DRW_LWPolyline& data)
 void DRWParser::addInsert(const DRW_Insert& data)
 {
   auto layer_name = data.layer;
-  auto layer_type = classify_layer(layer_name);
-  if(layer_type == LayerType::WALL || layer_type == LayerType::WINDOW || layer_type == LayerType::DOOR)
-  {
-    std::println("Insert: layer_name=`{}`", data.layer);
-  }
+  std::println("Insert: layer_name=`{}`", data.layer);
 }
 
 void DRWParser::addArc(const DRW_Arc& data)
@@ -206,11 +206,7 @@ void DRWParser::addArc(const DRW_Arc& data)
 void DRWParser::addPoint(const DRW_Point& data)
 {
   auto layer_name = data.layer;
-  auto layer_type = classify_layer(layer_name);
-  if(layer_type == LayerType::WALL || layer_type == LayerType::WINDOW || layer_type == LayerType::DOOR)
-  {
-    std::println("Point: layer_name=`{}`", data.layer);
-  }
+  std::println("Point: layer_name=`{}`", data.layer);
 }
 
 void DRWParser::addBlock([[maybe_unused]]const DRW_Block& data)

@@ -16,6 +16,62 @@
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
 
+std::vector<glm::dvec2> chain_polygon(
+    const std::vector<glm::dvec2>& vertices,
+    const std::vector<GraphEdge>& edges)
+{
+    // build adjacency list
+    auto adj = std::vector<std::vector<std::pair<int, LayerType>>>(vertices.size());
+    for (const auto& e : edges) {
+        adj[e.v1].push_back({ e.v2, e.layer });
+        adj[e.v2].push_back({ e.v1, e.layer });
+    }
+
+    // find a degree-1 vertex (gap endpoint) as starting point
+    int start = -1;
+    for (int i = 0; i < (int)vertices.size(); ++i) {
+        if (adj[i].size() == 1) {
+            start = i;
+            break;
+        }
+    }
+
+    // fallback: if no degree-1 vertex found, start from vertex 0
+    if (start == -1) start = 0;
+
+    // walk the chain
+    auto ordered = std::vector<glm::dvec2>{};
+    auto visited_edges = std::set<std::pair<int,int>>{};
+    ordered.reserve(vertices.size());
+
+    int current = start;
+    int prev = -1;
+
+    while (true) {
+        ordered.push_back(vertices[current]);
+
+        // find next unvisited neighbor
+        int next = -1;
+        for (const auto& [neighbor, layer] : adj[current]) {
+            auto key = std::make_pair(std::min(current, neighbor),
+                                      std::max(current, neighbor));
+            if (visited_edges.count(key)) continue;
+            if (neighbor == prev) continue;
+            next = neighbor;
+            visited_edges.insert(key);
+            break;
+        }
+
+        if (next == -1) break; // dead end or full loop
+        if (next == start) break; // closed the loop
+
+        prev = current;
+        current = next;
+    }
+
+    return ordered;
+}
+
 // constexpr auto epsilon = static_cast<f64>(1e-4);
 // constexpr auto ceil_H = 0.25f;
 // constexpr auto wall_thickness = 0.125f;
@@ -40,10 +96,7 @@ void parse_cad(const std::filesystem::path& filename,
 
   // detect the unit scale and normalize
   {
-    auto segments_view = std::array<std::span<const Segment>, 2>{
-      wall_segments, 
-      door_segments
-    };
+    auto segments_view = std::array{wall_segments, door_segments };
     
     if(parser.unit_scale == 0.0f)
       parser.unit_scale = detect_unit_scale(segments_view | std::views::join);
@@ -53,42 +106,33 @@ void parse_cad(const std::filesystem::path& filename,
     normalize_segments(parser.unit_scale, door_segments);
   }
 
-   
-  // Vertex snapping with spatial hashing data structure 
-   
-  {
-    auto hash = SpatialHash{ 1e-6 };
-    auto edges = std::vector<GraphEdge>{};
-    auto all_segments = std::array<std::span<const Segment>, 2>{
-      wall_segments, 
-      door_segments
-    };
-    for (const auto& seg : all_segments | std::views::join)
-    {
-      auto v1 = hash.snap(seg.p1);
-      auto v2 = hash.snap(seg.p2);
-      if (v1 != v2)
-        edges.push_back({ v1, v2, seg.layer });
-    }
-    
-    auto& vertices = hash.vertices();
-    std::println("Vertex snapping completed. Number of vertices: {}", vertices.size());
-  }
- 
-  exit(0);
- 
-#if 0 
+  // Vertex snapping with spatial hashing data structure  
 
- 
+  auto hash = SpatialHash{ 1e-6 };
+  auto edges = std::vector<GraphEdge>{};
+  auto all_segments = std::array{wall_segments,  door_segments };
+  for (const auto& seg : all_segments | std::views::join)
+  {
+    auto v1 = hash.snap(seg.p1);
+    auto v2 = hash.snap(seg.p2);
+    if (v1 != v2)
+      edges.push_back({ v1, v2, seg.layer });
+  }  
+  auto& vertices = hash.vertices();
+  std::println("Vertex snapping completed. Number of vertices: {}", vertices.size());
+
+#if 0
   // Arrangement + Halfedge
   
   auto arrangement = build_arrangement(vertices, edges);
-  std::println("Arrangement successfully completed: vertices={}, edges={}, faces={}", arrangement.number_of_vertices(), arrangement.number_of_edges(), arrangement.number_of_faces());
-  
+  std::println("Arrangement successfully completed: vertices={}, edges={}, faces={}", 
+    arrangement.number_of_vertices(), arrangement.number_of_edges(), arrangement.number_of_faces());
+
   // face extraction
 
   auto faces = extract_faces(arrangement);
   std::println("Extracted faces: {}", faces.size());
+
   for (const auto& face : faces)
   {
     // Ensure CCW winding
@@ -117,8 +161,6 @@ void parse_cad(const std::filesystem::path& filename,
     // extrude_walls(out_vertices, out_indices, ceil_H, contour, outer_wall);
   }
 #endif
-
-
 
 #if 0
   auto& inner_wall = wall_polyline.points;

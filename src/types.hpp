@@ -41,7 +41,11 @@ using f64 = double;
 
 enum class LayerType : i32
 { 
-  NONE = 0, WALL = 1, WINDOW = 2, DOOR = 3
+  NONE      = 0, 
+  WALL      = 1,
+  GLAZ      = 2,
+  GLAZ_SILL = 3,
+  DOOR      = 4
 };
 
 struct Segment

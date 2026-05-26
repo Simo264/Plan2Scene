@@ -26,11 +26,12 @@ class SpatialHash
 {
 public:
   SpatialHash(f64 epsilon) : m_epsilon{ epsilon} {}
+
+  VertexId snap(glm::dvec2 p);
   
   auto& vertices() { return m_vertices; }
 
-  VertexId snap(glm::dvec2 p);
-
+private:  
   auto get_cell(glm::dvec2 p) const 
   {
     return CellCoord {
@@ -39,7 +40,7 @@ public:
     };
   }
 
-private:
+  
   f64 m_epsilon;
 
   // We want to use CellCoord as key in unordered_map.
@@ -47,4 +48,5 @@ private:
   std::unordered_map<CellCoord, std::vector<VertexId>, CellCoordHash> m_grid;
 
   std::vector<glm::dvec2> m_vertices;
+  std::vector<GraphEdge> m_edges;
 };

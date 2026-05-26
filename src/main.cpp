@@ -16,13 +16,13 @@
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
 
-constexpr auto epsilon = static_cast<f64>(1e-4);
+// constexpr auto epsilon = static_cast<f64>(1e-4);
 // constexpr auto ceil_H = 0.25f;
 // constexpr auto wall_thickness = 0.125f;
 
 void parse_cad(const std::filesystem::path& filename, 
-               std::vector<Vertex_PN>& out_vertices, 
-               std::vector<u32>& out_indices)
+               [[maybe_unused]] std::vector<Vertex_PN>& out_vertices, 
+               [[maybe_unused]] std::vector<u32>& out_indices)
 {
   // parsing DXF model to extract segments
 
@@ -31,28 +31,55 @@ void parse_cad(const std::filesystem::path& filename,
   if (!dxf.read(&parser, false))
     throw std::runtime_error(std::format("Error reading DXF file (code: {}): {}", static_cast<i32>(dxf.getError()), filename.string()));
 
-  auto& input_segments = parser.input_segments;
-  std::println("Successfully parsed DXF file! Segments: {}, points: {}", input_segments.size(), input_segments.size() * 2);
-  if(input_segments.empty())
-    throw std::runtime_error("No primitives found!");
-    
-  normalize_segments(parser.unit_scale, input_segments);
-
-  // Vertex snapping with spatial hashing data structure 
-
-  auto hash = SpatialHash{ epsilon };
-  auto edges = std::vector<GraphEdge>{};
-  for (const auto& segment : input_segments) 
-  {
-    auto v1 = hash.snap(segment.p1);
-    auto v2 = hash.snap(segment.p2);
-    if (v1 == v2) 
-      continue;    
-    edges.push_back(GraphEdge{ v1, v2, segment.layer });
-  }
-  auto& vertices = hash.vertices();
-  std::println("Vertex snapping completed. Number of vertices: {}, snapped: {}", vertices.size(), (input_segments.size() * 2) - vertices.size());
+  auto& wall_segments = parser.wall_segments;
+  auto& door_segments = parser.door_segments;
+  std::println("Successfully parsed DXF file! Wall segments: {}, door segments: {}", wall_segments.size(), door_segments.size());
   
+  if(wall_segments.empty())
+    throw std::runtime_error("No primitives found!");
+
+  // detect the unit scale and normalize
+  {
+    auto segments_view = std::array<std::span<const Segment>, 2>{
+      wall_segments, 
+      door_segments
+    };
+    
+    if(parser.unit_scale == 0.0f)
+      parser.unit_scale = detect_unit_scale(segments_view | std::views::join);
+
+    std::println("Unit scale: {}", parser.unit_scale);
+    normalize_segments(parser.unit_scale, wall_segments);
+    normalize_segments(parser.unit_scale, door_segments);
+  }
+
+   
+  // Vertex snapping with spatial hashing data structure 
+   
+  {
+    auto hash = SpatialHash{ 1e-6 };
+    auto edges = std::vector<GraphEdge>{};
+    auto all_segments = std::array<std::span<const Segment>, 2>{
+      wall_segments, 
+      door_segments
+    };
+    for (const auto& seg : all_segments | std::views::join)
+    {
+      auto v1 = hash.snap(seg.p1);
+      auto v2 = hash.snap(seg.p2);
+      if (v1 != v2)
+        edges.push_back({ v1, v2, seg.layer });
+    }
+    
+    auto& vertices = hash.vertices();
+    std::println("Vertex snapping completed. Number of vertices: {}", vertices.size());
+  }
+ 
+  exit(0);
+ 
+#if 0 
+
+ 
   // Arrangement + Halfedge
   
   auto arrangement = build_arrangement(vertices, edges);
@@ -62,9 +89,6 @@ void parse_cad(const std::filesystem::path& filename,
 
   auto faces = extract_faces(arrangement);
   std::println("Extracted faces: {}", faces.size());
-
-  exit(0);
-  
   for (const auto& face : faces)
   {
     // Ensure CCW winding
@@ -92,7 +116,7 @@ void parse_cad(const std::filesystem::path& filename,
     // auto outer_wall = std::vector<glm::dvec2>{};
     // extrude_walls(out_vertices, out_indices, ceil_H, contour, outer_wall);
   }
-
+#endif
 
 
 
@@ -162,7 +186,7 @@ int main(int argc, char* argv[])
   // --- visualize mesh ---
   // ----------------------
 
-  auto bbox = calculate_bounding_box(vertices); 
+  auto bbox = calculate_bounding_box_3D(vertices); 
   auto center = (bbox.min + bbox.max) * 0.5f;   
   auto transform = Transformation{}; 
   transform.position = -center; 

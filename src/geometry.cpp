@@ -21,25 +21,7 @@ auto calculate_signed_area(const std::vector<glm::dvec2>& contour) -> f32
   return area * 0.5;
 }
 
-auto calculate_bounding_box(const std::vector<glm::dvec2>& points) -> BoundingBox 
-{ 
-  auto min = glm::vec3{ std::numeric_limits<f32>::max() };
-  auto max = glm::vec3{ std::numeric_limits<f32>::lowest() };
-  for (const auto& p : points) 
-  {
-    auto px = static_cast<f32>(p.x);
-    auto py = static_cast<f32>(p.y);
-    min.x = glm::min(min.x, px);
-    min.y = glm::min(min.y, py);
-    max.x = glm::max(max.x, px);
-    max.y = glm::max(max.y, py);
-  }
-  min.z = 0.f;
-  max.z = 0.f;
-  return BoundingBox{ min, max };
-}
-
-auto calculate_bounding_box(const std::vector<Vertex_PN>& vertices) -> BoundingBox 
+auto calculate_bounding_box_3D(const std::vector<Vertex_PN>& vertices) -> BoundingBox 
 {
   if (vertices.empty())
     return BoundingBox{};
@@ -55,43 +37,9 @@ auto calculate_bounding_box(const std::vector<Vertex_PN>& vertices) -> BoundingB
   return BoundingBox{ min, max };
 }
 
-auto detect_unit_scale(const std::vector<glm::dvec2>& points) -> f32 
+void normalize_segments(f32 unit, std::span<Segment> segments)
 {
-  auto bbox = calculate_bounding_box(points);
-
-  // Calculate the diagonal distance of the floor plan (the "extent")
-  auto extent = glm::distance(bbox.min, bbox.max);
-
-  // Heuristic unit detection:
-  // If extent > 5000, it's likely millimeters (e.g., 5000mm = 5m) -> scale 0.001
-  // If extent > 500, it's likely centimeters (e.g., 500cm = 5m)   -> scale 0.01
-  // If extent > 50, it's likely decimeters (e.g., 50dm = 5m)      -> scale 0.1
-  if (extent > 5000.0f)
-    return 0.001f;
-  else if (extent > 500.0f)
-    return 0.01f;
-  else if (extent > 50.0f) 
-    return 0.1f;
-
-  return 1.0f; // Already in meters
-}
-
-void normalize_segments(f32 unit, std::vector<Segment>& segments)
-{
-  if(unit == 0.0f)
-  {
-    auto points = std::vector<glm::dvec2>{};
-    points.reserve(segments.size() * 2);
-    for(const auto& seg : segments)
-    {
-      points.push_back(seg.p1);
-      points.push_back(seg.p2);
-    }
-    unit = detect_unit_scale(points);
-  }
-
-  std::println("Unit scale: {}", unit);
-  for(auto& seg : segments)
+  for (auto& seg : segments)
   {
     seg.p1 *= unit;
     seg.p2 *= unit;

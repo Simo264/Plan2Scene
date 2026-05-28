@@ -20,9 +20,8 @@ static inline bool point_on_segment(const Point2& A, const Point2& B, const Poin
   return CGAL::collinear_are_ordered_along_line(A, M, B);
 }
 
-
-auto build_arrangement(const std::vector<glm::dvec2>& vertices, 
-                       const std::vector<GraphEdge>& edges) -> Arrangement
+Arrangement build_arrangement(const std::vector<glm::dvec2>& vertices, 
+                       const std::vector<GraphEdge>& edges)
 {
   // Convert GraphEdges to CGAL Segment2
   
@@ -84,7 +83,7 @@ auto build_arrangement(const std::vector<glm::dvec2>& vertices,
   return arr;
 }
 
-auto extract_faces(const Arrangement& arr) -> std::vector<Face>
+std::vector<Face> extract_faces(const Arrangement& arr)
 {
   auto faces = std::vector<Face>{};
 
@@ -112,42 +111,48 @@ auto extract_faces(const Arrangement& arr) -> std::vector<Face>
     if (face.vertices.size() < 3)
       continue;
 
+    face.type = classify_face(face);
+    
     faces.push_back(std::move(face));
   }
 
   return faces;
 }
 
-
-auto filter_faces_by_area(const std::vector<Face>& faces, f32 threshold) -> std::vector<u32>
+FaceType classify_face(const Face& face) 
 {
-  auto result = std::vector<u32>{};
-  for (auto i = 0u; i < faces.size(); i++)
+  auto wall_count = 0u;
+  auto door_count = 0u;
+  auto window_count = 0u;
+  for (LayerType layer : face.edge_layers) 
   {
-    const auto& face = faces.at(i);
-    if (face.vertices.size() < 3)
-      continue;
-
-    // Compute signed area via shoelace formula
-    f64 area = 0.0;
-    const auto n = face.vertices.size();
-    for (auto k = 0u; k < n; ++i)
-    {
-      const auto& a = face.vertices[k];
-      const auto& b = face.vertices[(k + 1) % n];
-      area += a.x * b.y - b.x * a.y;
-    }
-    area = std::abs(area) * 0.5;
-
-    // Discard faces below area threshold (slivers, zero-area artifacts)
-    if (area < threshold)
-    {
-      std::println("Discarding face with area {} < {}", area, threshold); 
-      continue;
-    }
-    
-    result.push_back(i);
+    if (layer == LayerType::WALL) 
+      wall_count++;
+    else if (layer == LayerType::DOOR) 
+      door_count++;
+    else if (layer == LayerType::WINDOW) 
+      window_count++;
   }
 
-  return result;
+  
+  auto total_edges = static_cast<u32>(face.edge_layers.size());
+
+  // Door face
+  
+  if (total_edges == 4 && wall_count == 2 && door_count == 2) 
+    return FaceType::DOOR;
+
+  // Window face
+  
+  if (total_edges == 4 && wall_count == 2 && window_count == 2)
+    return FaceType::WINDOW;
+
+  // Wall face
+
+  if (wall_count == total_edges) 
+    return FaceType::WALL;
+
+  // Room face
+
+  return FaceType::ROOM;
 }

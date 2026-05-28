@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <vector>
 #include <glm/ext/vector_double2.hpp>
 #include <glm/ext/vector_double3.hpp>
 #include <glm/ext/vector_float3.hpp>
@@ -38,19 +39,42 @@ using f64 = double;
 // ----------------------------------------------------------------------------
 // Geometric types
 // ----------------------------------------------------------------------------
+using VertexId = u32;
+constexpr VertexId INVALID_VERTEX_ID = std::numeric_limits<VertexId>::max();
 
 enum class LayerType : i32
 { 
   NONE      = 0, 
   WALL      = 1,
-  GLAZ      = 2,
-  GLAZ_SILL = 3,
-  DOOR      = 4
+  WINDOW    = 2,
+  DOOR      = 3
 };
 
 struct Segment
 {
   glm::dvec2 p1, p2;
+  LayerType layer;
+};
+
+enum class FaceType : i32
+{
+  NONE,
+  ROOM,
+  WINDOW,
+  DOOR,
+  WALL
+};
+
+struct Face
+{
+  std::vector<glm::dvec2> vertices;
+  std::vector<LayerType> edge_layers;
+  FaceType type{ FaceType::NONE };
+};
+
+struct GraphEdge
+{
+  VertexId v1, v2;
   LayerType layer;
 };
 
@@ -64,12 +88,4 @@ struct BoundingBox
 {
   glm::vec3 min;
   glm::vec3 max;
-};
-
-using VertexId = u32;
-
-struct GraphEdge
-{
-  VertexId v1, v2;
-  LayerType layer;
 };

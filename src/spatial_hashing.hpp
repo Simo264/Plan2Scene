@@ -28,11 +28,12 @@ public:
   SpatialHash(f64 epsilon) : m_epsilon{ epsilon} {}
 
   VertexId snap(glm::dvec2 p);
+  VertexId find_nearest(glm::dvec2 p) const;
   
   auto& vertices() { return m_vertices; }
 
 private:  
-  auto get_cell(glm::dvec2 p) const 
+  auto get_cell(glm::dvec2 p) const -> CellCoord
   {
     return CellCoord {
       static_cast<i32>(std::floor(p.x / m_epsilon)),
@@ -48,5 +49,4 @@ private:
   std::unordered_map<CellCoord, std::vector<VertexId>, CellCoordHash> m_grid;
 
   std::vector<glm::dvec2> m_vertices;
-  std::vector<GraphEdge> m_edges;
 };

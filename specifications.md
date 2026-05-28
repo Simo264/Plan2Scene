@@ -9,8 +9,21 @@ In most cases, the wall is already a closed shape with thickness. It's drawn as 
 For windows, usually there is always a gap between the walls. The most common pattern is that there are two lines parallel and perpendicular to the wall, plus one/two lines parallel to the wall (the glass). Many architects use inserted symbol blocks as INSERT entities.
 Finally, as far as doors are concerned, in most cases, doors are represented by a gap in the wall, a line representing the door leaf and an arc representing the opening radius. Or, another way, the door is simply a rectangle, usually narrower, and placed near one end of the wall. In this case the information of the opening direction is lost. Here too, many architects use inserted symbol blocks as INSERT entities.
 
-Let's consider the simplest case: a simple model of a bathroom with one continuous thick wall polygon with an opening to make room for a door. The wall is already delimited and closed, it has its own internal area, but at its ends there is a gap to make room for the door. The door is a single segment with no thickness.
-Walls are LINE primitives only, the door has only one ARC primitive.
+Let's consider the simplest case: a simple model of a bathroom with one continuous thick wall polygon with an opening to make room for a door. The wall is already delimited and closed, it has its own internal area, but at its ends there is a gap to make room for the door. The door is a single segment with no thickness. Walls are LINE primitives only, the door has only one ARC primitive.
++-----------------------------------------+
+| +------------------------------------+  |
+| |                                    |  |
+| |                                    +--+
+| |                                        
+| |                                        
+| |                                        
+| |                                    +--+
+| |                                    |  |
+| |                                    |  |
+| |                                    |  |
+| |                                    |  |
+| +------------------------------------+  |
++-----------------------------------------+
 
 Broadly speaking, a possible idea could be the following.
 Perform a layer preprocessing step, that is, open the DXF file and rename the layers. Collect the primitives of interest: walls, windows, doors. Usually these are segments. Perform vertex collapse within $\epsilon$ (vertex snapping) using the spatial hash data structure.

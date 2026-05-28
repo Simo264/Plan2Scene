@@ -15,16 +15,9 @@ using Segment2 = Traits::X_monotone_curve_2;
 using Dcel        = CGAL::Arr_extended_dcel<Traits, int, LayerType, int>;
 using Arrangement = CGAL::Arrangement_2<Traits, Dcel>;
 
-struct Face
-{
-  std::vector<glm::dvec2> vertices;
-  std::vector<LayerType> edge_layers;
-};
+Arrangement build_arrangement(const std::vector<glm::dvec2>& vertices,
+                       const std::vector<GraphEdge>& edges);
 
-auto build_arrangement(
-  const std::vector<glm::dvec2>& vertices,
-  const std::vector<GraphEdge>& edges) -> Arrangement;
+std::vector<Face>  extract_faces(const Arrangement& arr); 
 
-auto extract_faces(const Arrangement& arr) -> std::vector<Face>; 
-
-auto filter_faces_by_area(const std::vector<Face>& faces, f32 threshold = 1.0) -> std::vector<u32>;
+FaceType classify_face(const Face& face);

@@ -37,8 +37,9 @@ void build_triangulated_face(std::vector<Vertex_PN>& out_vertices,
                              f32 height,
                              const glm::vec3& normal);
 
-void extrude_walls(std::vector<Vertex_PN>& vertices, 
-                   std::vector<u32>& out_indices,
-                   f32 height,
-                   const std::vector<glm::dvec2>& contour);
+void extrude_face(std::vector<Vertex_PN>& vertices, 
+                  std::vector<u32>& out_indices,
+                  f32 base_height,
+                  f32 top_height,
+                  const Face& face);
 

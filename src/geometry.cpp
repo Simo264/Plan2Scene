@@ -166,38 +166,34 @@ void build_triangulated_face(std::vector<Vertex_PN>& out_vertices,
   }
 }
 
-void extrude_walls(std::vector<Vertex_PN>& vertices, 
-                   std::vector<u32>& out_indices,
-                   f32 height,
-                   const std::vector<glm::dvec2>& contour)
+
+void extrude_face(std::vector<Vertex_PN>& vertices, 
+                  std::vector<u32>& out_indices,
+                  f32 base_height,
+                  f32 top_height,
+                  const Face& face)
 {
   constexpr glm::vec3 up(0.0f, 1.0f, 0.0f);
+  const auto& contour = face.vertices;
   
   for (auto i = 0u; i < contour.size(); ++i) 
   {
     auto p1 = contour[i];
     auto p2 = contour[(i + 1) % contour.size()];
-
     auto edge = glm::vec3(f32(p2.x - p1.x), 0.0f, f32(p2.y - p1.y));
     auto normal = glm::normalize(glm::cross(edge, up));
 
-    auto BL = Vertex_PN{ .position={f32(p1.x), 0.f,    f32(p1.y)}, .normal=normal };
-    auto BR = Vertex_PN{ .position={f32(p2.x), 0.f,    f32(p2.y)}, .normal=normal };
-    auto TR = Vertex_PN{ .position={f32(p2.x), height, f32(p2.y)}, .normal=normal };
-    auto TL = Vertex_PN{ .position={f32(p1.x), height, f32(p1.y)}, .normal=normal };
+    auto BL = Vertex_PN{ .position={f32(p1.x), base_height, f32(p1.y)}, .normal=normal };
+    auto BR = Vertex_PN{ .position={f32(p2.x), base_height, f32(p2.y)}, .normal=normal };
+    auto TR = Vertex_PN{ .position={f32(p2.x), top_height, f32(p2.y)},  .normal=normal };
+    auto TL = Vertex_PN{ .position={f32(p1.x), top_height, f32(p1.y)},  .normal=normal };
 
     auto base = static_cast<u32>(vertices.size());
-    vertices.push_back(BL);
-    vertices.push_back(BR);
-    vertices.push_back(TR);
-    vertices.push_back(TL);
+    vertices.push_back(BL); vertices.push_back(BR);
+    vertices.push_back(TR); vertices.push_back(TL);
 
-    out_indices.push_back(base + 0);
-    out_indices.push_back(base + 1);
-    out_indices.push_back(base + 2);
-    out_indices.push_back(base + 0);
-    out_indices.push_back(base + 2);
-    out_indices.push_back(base + 3);
+    out_indices.push_back(base + 0); out_indices.push_back(base + 1); out_indices.push_back(base + 2);
+    out_indices.push_back(base + 0); out_indices.push_back(base + 2); out_indices.push_back(base + 3);
   } 
 }
 

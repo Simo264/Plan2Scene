@@ -180,7 +180,7 @@ void MeshVisualizer::create_pipeline_object()
 
 void MeshVisualizer::handle_camera_input()
 {
-  constexpr auto velocity = 0.05f;
+  constexpr auto velocity = 0.1f;
   
   if (glfwGetKey(m_context, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetWindowShouldClose(m_context, GLFW_TRUE);
   if (glfwGetKey(m_context, GLFW_KEY_UP) == GLFW_PRESS) m_camera.rotate_pitch(+glm::radians(1.0f));

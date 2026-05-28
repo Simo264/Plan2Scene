@@ -34,8 +34,8 @@ void dump_door_vertices(const Segment& door_segment)
 }
 
 void parse_cad(const std::filesystem::path& filename, 
-               [[maybe_unused]] std::vector<Vertex_PN>& out_vertices, 
-               [[maybe_unused]] std::vector<u32>& out_indices)
+               std::vector<Vertex_PN>& out_vertices, 
+               std::vector<u32>& out_indices)
 {
   // parsing DXF model to extract segments
 
@@ -50,7 +50,7 @@ void parse_cad(const std::filesystem::path& filename,
 
   // detect the unit scale and normalize
    
-  {    
+  {
     if(parser.unit_scale == 0.0f)
       parser.unit_scale = detect_unit_scale(wall_segments);
 
@@ -95,12 +95,14 @@ void parse_cad(const std::filesystem::path& filename,
     // dump_door_vertices(door_seg);
 
     auto nbrs_A = find_neighboors(A_id, edges);
+    
     auto A_prime_id = get_adjacent_vertex(wall_dir, A_id, nbrs_A, vertices);
     // auto A = vertices[A_id];
     // auto A_prime = vertices[A_prime_id];
     // std::println("A: ({}, {}) A': ({}, {})", A.x, A.y, A_prime.x, A_prime.y);
     
     auto nbrs_B = find_neighboors(B_id, edges);
+    
     auto B_prime_id = get_adjacent_vertex(wall_dir, B_id, nbrs_B, vertices);
     // auto B = vertices[B_id];
     // auto B_prime = vertices[B_prime_id];
@@ -141,27 +143,28 @@ void parse_cad(const std::filesystem::path& filename,
     auto cdt = p2t::CDT{ p2t_ptr_points };
     cdt.Triangulate();
     auto triangles = cdt.GetTriangles();
-    
-    //constexpr auto ceil_height = 10.f;
+
+    constexpr auto CEIL_HEIGHT = 10.f;
     switch(face.type)
     {
       case FaceType::ROOM:
         std::println("Room face found!");
-        build_triangulated_face(out_vertices, out_indices, triangles, 0.f, {1.f, 0.f, 0.f}); // red
-        build_triangulated_face(out_vertices, out_indices, triangles, 10.f, {1.f, 0.f, 0.f}); // red
+        build_triangulated_face(out_vertices, out_indices, triangles, 0.f, {1.f, 0.f, 0.f});  // red
+        build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, {1.f, 0.f, 0.f}); // red
         break;
 
       case FaceType::WALL:
         std::println("Wall face found!");
-        build_triangulated_face(out_vertices, out_indices, triangles, 0.f, {0.f, 1.f, 0.f}); // green
-        build_triangulated_face(out_vertices, out_indices, triangles, 10.f, {0.f, 1.f, 0.f}); // green
-        extrude_walls(out_vertices, out_indices, 10.f, contour);
+        build_triangulated_face(out_vertices, out_indices, triangles, 0.f, {0.f, 1.f, 0.f});  // green
+        build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, {0.f, 1.f, 0.f}); // green
+        extrude_face(out_vertices, out_indices, 0, CEIL_HEIGHT, face);
         break;
 
       case FaceType::DOOR:
         std::println("Door face found!");
-        build_triangulated_face(out_vertices, out_indices, triangles, 0.f, {0.f, 0.f, 1.f}); // blue
-        build_triangulated_face(out_vertices, out_indices, triangles, 10.f, {0.f, 0.f, 1.f}); // blue
+        build_triangulated_face(out_vertices, out_indices, triangles, 0.f, {0.f, 0.f, 1.f});  // blue
+        build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, {0.f, 0.f, 1.f}); // blue
+        extrude_face(out_vertices, out_indices, 0.9, CEIL_HEIGHT, face);
         break; 
         
       case FaceType::WINDOW:
@@ -204,9 +207,9 @@ int main(int argc, char* argv[])
     parse_cad(file_path, vertices, indices);
    
     // exporting mesh in GLTF
-    // auto gltf_path = file_path.filename().replace_extension("gltf");
-    // std::println("Model will be exported to: {}", gltf_path.string());
-    // export_to_gltf(vertices, indices, gltf_path);
+    auto gltf_path = file_path.filename().replace_extension("gltf");
+    std::println("Model will be exported to: {}", gltf_path.string());
+    export_to_gltf(vertices, indices, gltf_path);
   }
 
 

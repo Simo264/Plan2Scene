@@ -21,11 +21,27 @@ auto calculate_signed_area(const std::vector<glm::dvec2>& contour) -> f32
   return area * 0.5;
 }
 
-auto calculate_bounding_box_3D(const std::vector<Vertex_PN>& vertices) -> BoundingBox 
+BoundingBox2D calculate_bbox_2D(std::span<const Segment> segments)
 {
-  if (vertices.empty())
-    return BoundingBox{};
+  auto min_x =  std::numeric_limits<f64>::max();
+  auto min_y =  std::numeric_limits<f64>::max();
+  auto max_x = -std::numeric_limits<f64>::max();
+  auto max_y = -std::numeric_limits<f64>::max();
+  for (const auto& seg : segments)
+  {
+    min_x = std::min({min_x, seg.p1.x, seg.p2.x});
+    min_y = std::min({min_y, seg.p1.y, seg.p2.y});
+    max_x = std::max({max_x, seg.p1.x, seg.p2.x});
+    max_y = std::max({max_y, seg.p1.y, seg.p2.y});
+  }
+  return BoundingBox2D{
+    .min = glm::vec2{ f32(min_x), f32(min_y) },
+    .max = glm::vec2{ f32(max_x), f32(max_y) }
+  };
+}
 
+BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PN>& vertices) 
+{
   auto min = vertices.front().position;
   auto max = min;
   for (const auto& p : vertices) 
@@ -33,8 +49,20 @@ auto calculate_bounding_box_3D(const std::vector<Vertex_PN>& vertices) -> Boundi
     min = glm::min(min, p.position);
     max = glm::max(max, p.position);
   }
+  return BoundingBox3D{ min, max };
+}
 
-  return BoundingBox{ min, max };
+f32 detect_unit_scale(const std::vector<Segment>& wall_segments)
+{
+  auto bbox = calculate_bbox_2D(wall_segments);
+  auto area = (bbox.max.x - bbox.min.x) * (bbox.max.y - bbox.min.y);
+
+  std::println("Bounding box area: {}", area);
+
+  if (area > 25'000'000.f)  return 0.001f;   // mm²
+  if (area >   250'000.f)   return 0.01f;    // cm²
+  if (area >     2'500.f)   return 0.1f;     // dm²
+  return 1.0f;                                 // m²
 }
 
 void normalize_segments(f32 unit, std::span<Segment> segments)

@@ -5,6 +5,7 @@
 #include <vector>
 #include <glm/ext/vector_double2.hpp>
 #include <glm/ext/vector_double3.hpp>
+#include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 
 // ----------------------------------------------------------------------------
@@ -84,7 +85,15 @@ struct Vertex_PN
   glm::vec3 normal;
 };
 
-struct BoundingBox
+struct BoundingBox2D
+{
+  glm::vec2 min;
+  glm::vec2 max;
+
+  f32 calculate_area() { return (max.x - min.x) * (max.y - min.y); }
+};
+
+struct BoundingBox3D
 {
   glm::vec3 min;
   glm::vec3 max;

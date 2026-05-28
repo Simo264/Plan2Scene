@@ -50,28 +50,32 @@ void parse_cad(const std::filesystem::path& filename,
 
   // detect the unit scale and normalize
    
-  {
-    auto segments_view = std::array{ wall_segments };
-    
+  {    
     if(parser.unit_scale == 0.0f)
-      parser.unit_scale = detect_unit_scale(segments_view | std::views::join);
+      parser.unit_scale = detect_unit_scale(wall_segments);
 
     std::println("Unit scale: {}", parser.unit_scale);
     normalize_segments(parser.unit_scale, wall_segments);
     normalize_segments(parser.unit_scale, door_segments);
+
+    auto bbox = calculate_bbox_2D(wall_segments);
+    auto area = bbox.calculate_area();
+    std::println("After normalization: box area={}", area);
   }
 
   // Vertex snapping with spatial hashing data structure: wall segments only
 
   auto hash = SpatialHash{ 1e-6 };
   auto edges = std::vector<GraphEdge>{};
-  auto segments_view = std::array{ wall_segments };
-  for (const auto& seg : segments_view | std::views::join)
   {
-    auto v1 = hash.snap(seg.p1);
-    auto v2 = hash.snap(seg.p2);
-    if (v1 != v2)
-      edges.push_back({ v1, v2, seg.layer });
+    auto wall_segments_view = std::array{ wall_segments };
+    for (const auto& seg : wall_segments_view | std::views::join)
+    {
+      auto v1 = hash.snap(seg.p1);
+      auto v2 = hash.snap(seg.p2);
+      if (v1 != v2)
+        edges.push_back({ v1, v2, seg.layer });
+    }
   }
   auto& vertices = hash.vertices();
   std::println("Vertex snapping completed. Number of vertices: {}", vertices.size());
@@ -209,11 +213,11 @@ int main(int argc, char* argv[])
   // --- visualize mesh ---
   // ----------------------
 
-  auto bbox = calculate_bounding_box_3D(vertices); 
-  auto center = (bbox.min + bbox.max) * 0.5f;   
+  auto bbox = calculate_bbox_3D(vertices); 
+  auto center = (bbox.min + bbox.max) * 0.5f;
   auto transform = Transformation{}; 
   transform.position = -center; 
-  transform.update_tranformation(); 
+  transform.update_tranformation();
 
   auto visualizer = MeshVisualizer(1024, 768);
   visualizer.set_mesh(std::make_shared<StaticMesh>(

@@ -186,10 +186,10 @@ void DRWParser::addArc([[maybe_unused]] const DRW_Arc& data)
   {
     auto center = glm::dvec2{ data.basePoint.x, data.basePoint.y };
     auto radius = data.radious;
-    auto p1 = glm::dvec2{
-      center.x + radius * std::cos(data.staangle),
-      center.y + radius * std::sin(data.staangle)
-    };
+    // auto p1 = glm::dvec2{
+    //   center.x + radius * std::cos(data.staangle),
+    //   center.y + radius * std::sin(data.staangle)
+    // };
     auto p2 = glm::dvec2{
       center.x + radius * std::cos(data.endangle),
       center.y + radius * std::sin(data.endangle)

@@ -5,40 +5,18 @@
 #include <poly2tri/sweep/cdt.h>
 #include <vector>
 #include <span>
-#include <ranges>
-#include <concepts>
-#include <limits>
 
 // Calculate the signed area of the contour using the shoelace formula.
-auto calculate_signed_area(const std::vector<glm::dvec2>& contour) -> f32;
+f32 calculate_signed_area(const std::vector<glm::dvec2>& contour);
+
+// Calculate the bounding box for 2D points
+BoundingBox2D calculate_bbox_2D(std::span<const Segment> segments);
 
 // Calculates the bounding box for 3D points
-auto calculate_bounding_box_3D(const std::vector<Vertex_PN>& vertices) -> BoundingBox;
+BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PN>& vertices);
 
-// Calculate the unit scale based on the geometry: accepts any range of Segment
-template<std::ranges::input_range R>
-requires std::same_as<std::ranges::range_value_t<R>, Segment>
-static auto detect_unit_scale(R&& segments) -> f32
-{
-  auto min_x =  std::numeric_limits<f64>::max();
-  auto min_y =  std::numeric_limits<f64>::max();
-  auto max_x = -std::numeric_limits<f64>::max();
-  auto max_y = -std::numeric_limits<f64>::max();
-  for (const auto& seg : segments) 
-  {
-    min_x = std::min({min_x, seg.p1.x, seg.p2.x});
-    min_y = std::min({min_y, seg.p1.y, seg.p2.y});
-    max_x = std::max({max_x, seg.p1.x, seg.p2.x});
-    max_y = std::max({max_y, seg.p1.y, seg.p2.y});
-  }
-
-  auto extent = std::hypot(max_x - min_x, max_y - min_y);
-
-  if (extent > 5000.0)  return 0.001f;
-  if (extent > 500.0)   return 0.01f;
-  if (extent > 50.0)    return 0.1f;
-  return 1.0f;
-}
+// Calculate the unit scale based on the geometry
+f32 detect_unit_scale(const std::vector<Segment>& wall_segments);
 
 void normalize_segments(f32 unit, std::span<Segment> segments);
 

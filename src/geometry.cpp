@@ -59,10 +59,10 @@ f32 detect_unit_scale(const std::vector<Segment>& wall_segments)
 
   std::println("Bounding box area: {}", area);
 
-  if (area > 25'000'000.f)  return 0.001f;   // mm²
-  if (area >   250'000.f)   return 0.01f;    // cm²
-  if (area >     2'500.f)   return 0.1f;     // dm²
-  return 1.0f;                                 // m²
+  if (area > 25'000'000.f)  return 0.001f;   // mm^2
+  if (area >   250'000.f)   return 0.01f;    // cm^2
+  if (area >     2'500.f)   return 0.1f;     // dm^2
+  return 1.0f;                               // m^2
 }
 
 void normalize_segments(f32 unit, std::span<Segment> segments)
@@ -112,34 +112,6 @@ VertexId get_adjacent_vertex(const glm::dvec2& wall_dir,
 
   return vertex_prime_id;
 }
-
-// auto compute_polygon_offsetting(const std::vector<glm::dvec2>& inner_points, 
-//                                 f32 thickness) -> std::vector<glm::dvec2>
-// {
-//   // Convert to Clipper2 format
-//   auto innerPath = Clipper2Lib::PathD{};
-//   for (const auto& p : inner_points) 
-//     innerPath.push_back(Clipper2Lib::PointD(p.x, p.y));
-// 
-//   // Inflate the polygon outward
-//   Clipper2Lib::PathsD solution = InflatePaths(
-//       Clipper2Lib::PathsD{innerPath}, 
-//       thickness, 
-//       Clipper2Lib::JoinType::Miter, // Good for architectural corners
-//       Clipper2Lib::EndType::Polygon // Closed polygon
-//   );
-// 
-//   // Convert back to glm::dvec2
-//   auto outer_points = std::vector<glm::dvec2>{};
-//   if (!solution.empty() && !solution[0].empty()) 
-//   {
-//     for (const auto& pt : solution[0]) 
-//     {
-//       outer_points.emplace_back(pt.x, pt.y);
-//     }
-//   }
-//   return outer_points;
-// }
 
 void build_triangulated_face(std::vector<Vertex_PN>& out_vertices,
                              std::vector<u32>& out_indices,
@@ -197,6 +169,14 @@ void extrude_face(std::vector<Vertex_PN>& vertices,
   } 
 }
 
-
-
-
+void center_mesh(std::vector<Vertex_PN>& vertices)
+{
+  auto bbox = calculate_bbox_3D(vertices);
+  auto center = (bbox.min + bbox.max) * 0.5f;
+  for (auto& v : vertices) 
+  {
+    v.position.x -= center.x;
+    v.position.y -= center.y;
+    v.position.z -= center.z;
+  }
+}

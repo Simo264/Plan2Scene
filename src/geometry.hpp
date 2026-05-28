@@ -28,9 +28,6 @@ VertexId get_adjacent_vertex(const glm::dvec2& wall_dir,
                              const std::array<VertexId, 2>& vertex_neighbors, 
                              const std::vector<glm::dvec2>& vertices);
 
-// auto compute_polygon_offsetting(const std::vector<glm::dvec2>& inner_points, 
-//                                 f32 thickness) -> std::vector<glm::dvec2>;
-
 void build_triangulated_face(std::vector<Vertex_PN>& out_vertices,
                              std::vector<u32>& out_indices,
                              const std::vector<p2t::Triangle*> triangles,
@@ -43,3 +40,4 @@ void extrude_face(std::vector<Vertex_PN>& vertices,
                   f32 top_height,
                   const Face& face);
 
+void center_mesh(std::vector<Vertex_PN>& vertices);

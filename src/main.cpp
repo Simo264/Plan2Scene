@@ -17,8 +17,6 @@
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
 
-// constexpr auto wall_thickness = 0.125f;
-
 void dump_wall_vertices(const std::vector<Segment>& wall_segments)
 {
   std::println("wall_segments = [");
@@ -49,19 +47,13 @@ void parse_cad(const std::filesystem::path& filename,
   std::println("Successfully parsed DXF file! Wall segments: {}, door segments: {}", wall_segments.size(), door_segments.size());
 
   // detect the unit scale and normalize
-   
-  {
-    if(parser.unit_scale == 0.0f)
-      parser.unit_scale = detect_unit_scale(wall_segments);
+  
+  if(parser.unit_scale == 0.0f)
+    parser.unit_scale = detect_unit_scale(wall_segments);
 
-    std::println("Unit scale: {}", parser.unit_scale);
-    normalize_segments(parser.unit_scale, wall_segments);
-    normalize_segments(parser.unit_scale, door_segments);
-
-    auto bbox = calculate_bbox_2D(wall_segments);
-    auto area = bbox.calculate_area();
-    std::println("After normalization: box area={}", area);
-  }
+  std::println("Unit scale: {}", parser.unit_scale);
+  normalize_segments(parser.unit_scale, wall_segments);
+  normalize_segments(parser.unit_scale, door_segments);
 
   // Vertex snapping with spatial hashing data structure: wall segments only
 
@@ -80,9 +72,6 @@ void parse_cad(const std::filesystem::path& filename,
   auto& vertices = hash.vertices();
   std::println("Vertex snapping completed. Number of vertices: {}", vertices.size());
 
-  // dump_wall_vertices(wall_segments);
-  // dump_door_vertices(door_seg);
-
   // Insert two edges for the door
   
   {
@@ -92,21 +81,12 @@ void parse_cad(const std::filesystem::path& filename,
     auto wall_dir = glm::normalize(vertices[A_id] - vertices[B_id]);
     door_seg.p1 = vertices[A_id];
     door_seg.p2 = vertices[B_id];
-    // dump_door_vertices(door_seg);
 
     auto nbrs_A = find_neighboors(A_id, edges);
-    
     auto A_prime_id = get_adjacent_vertex(wall_dir, A_id, nbrs_A, vertices);
-    // auto A = vertices[A_id];
-    // auto A_prime = vertices[A_prime_id];
-    // std::println("A: ({}, {}) A': ({}, {})", A.x, A.y, A_prime.x, A_prime.y);
     
     auto nbrs_B = find_neighboors(B_id, edges);
-    
     auto B_prime_id = get_adjacent_vertex(wall_dir, B_id, nbrs_B, vertices);
-    // auto B = vertices[B_id];
-    // auto B_prime = vertices[B_prime_id];
-    // std::println("B: ({}, {}) B': ({}, {})", B.x, B.y, B_prime.x, B_prime.y);
 
     edges.push_back(GraphEdge{ A_id, B_id, LayerType::DOOR });
     edges.push_back(GraphEdge{ A_prime_id, B_prime_id, LayerType::DOOR });
@@ -145,6 +125,7 @@ void parse_cad(const std::filesystem::path& filename,
     auto triangles = cdt.GetTriangles();
 
     constexpr auto CEIL_HEIGHT = 10.f;
+    constexpr auto DOOR_OFFSET = 9.0f;
     switch(face.type)
     {
       case FaceType::ROOM:
@@ -164,7 +145,7 @@ void parse_cad(const std::filesystem::path& filename,
         std::println("Door face found!");
         build_triangulated_face(out_vertices, out_indices, triangles, 0.f, {0.f, 0.f, 1.f});  // blue
         build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, {0.f, 0.f, 1.f}); // blue
-        extrude_face(out_vertices, out_indices, 0.9, CEIL_HEIGHT, face);
+        extrude_face(out_vertices, out_indices, DOOR_OFFSET, CEIL_HEIGHT, face);
         break; 
         
       case FaceType::WINDOW:
@@ -174,9 +155,6 @@ void parse_cad(const std::filesystem::path& filename,
       default:
         break;
     }
-    
-    // auto outer_wall = std::vector<glm::dvec2>{};
-    // extrude_walls(out_vertices, out_indices, ceil_H, contour, outer_wall);
   }
 }
 
@@ -189,8 +167,7 @@ int main(int argc, char* argv[])
   auto is_parse = mode == "--parse";
   auto is_load = mode == "--load";
   if(!is_load && ! is_parse)
-    throw std::runtime_error(
-      "Usage example:\n 1. /build/Plan2Scene --load <model/input.gltf>\n2. ./build/Plan2Scene --parse <cad/input.dxf>");
+    throw std::runtime_error("Usage example:\n 1. /build/Plan2Scene --load <model/input.gltf>\n2. ./build/Plan2Scene --parse <cad/input.dxf>");
 
   auto file_path = std::filesystem::path(argv[2]);
   if(!std::filesystem::exists(file_path))
@@ -205,6 +182,9 @@ int main(int argc, char* argv[])
   else if(is_parse)
   {
     parse_cad(file_path, vertices, indices);
+
+    // Center the vertices at the origin. No transform needed.
+    center_mesh(vertices);
    
     // exporting mesh in GLTF
     auto gltf_path = file_path.filename().replace_extension("gltf");
@@ -212,16 +192,8 @@ int main(int argc, char* argv[])
     export_to_gltf(vertices, indices, gltf_path);
   }
 
-
   // --- visualize mesh ---
   // ----------------------
-
-  auto bbox = calculate_bbox_3D(vertices); 
-  auto center = (bbox.min + bbox.max) * 0.5f;
-  auto transform = Transformation{}; 
-  transform.position = -center; 
-  transform.update_tranformation();
-
   auto visualizer = MeshVisualizer(1024, 768);
   visualizer.set_mesh(std::make_shared<StaticMesh>(
     vertices.data(), 
@@ -229,7 +201,6 @@ int main(int argc, char* argv[])
     indices.data(),  
     indices.size()
   ));
-  visualizer.set_mesh_transform(transform);
   visualizer.camera().eye = { 0.f, 2.f, 10.f };
   visualizer.camera().set_orientation(glm::radians(glm::vec3{ -5.f, 0.f, 0.f }));
   visualizer.render();

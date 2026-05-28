@@ -173,12 +173,12 @@ void DRWParser::addLWPolyline([[maybe_unused]] const DRW_LWPolyline& data)
   // }
 }
 
-void DRWParser::addInsert([[maybe_unused]] const DRW_Insert& data)
+void DRWParser::addInsert(const DRW_Insert& data)
 {
   // std::println("Insert: layer_name=`{}`", data.layer);
 }
 
-void DRWParser::addArc([[maybe_unused]] const DRW_Arc& data)
+void DRWParser::addArc(const DRW_Arc& data)
 {  
   std::println("Arc: `{}`", data.layer);
   auto layer_type = classify_layer(data.layer);

@@ -1,43 +1,46 @@
+import os
 import matplotlib.pyplot as plt
 
-wall_segments = [
-	((1153.6269105544307, -3621.644606780367), (1177.6269100179898, -3621.644606780364)),
-	((1152.7269105745481, -3623.1446067468396), (1178.5269099978743, -3623.1446067468373)),
-	((1179.5269099755214, -3601.544607229631), (1179.5269099755214, -3600.644607249749)),
-	((1177.6269100179898, -3601.544607229634), (1177.6269100179898, -3601.894607221811)),
-	((1178.5269099978743, -3611.3946070094703), (1178.5269099978743, -3623.1446067468373)),
-	((1178.5269099978732, -3601.544607229633), (1178.5269099978732, -3601.894607221811)),
-	((1152.7269105745493, -3600.6446072497515), (1179.5269099755214, -3600.6446072497497)),
-	((1177.626910017991, -3611.3946070094694), (1178.5269099978743, -3611.3946070094703)),
-	((1153.6269105544336, -3601.544607229635), (1177.6269100179898, -3601.544607229634)),
-	((1178.5269099978732, -3601.5446072296304), (1179.5269099755214, -3601.544607229632)),
-	((1177.626910017991, -3601.894607221811), (1178.5269099978743, -3601.894607221811)),
-	((1177.6269100179898, -3611.3946070094694), (1177.6269100179898, -3621.644606780367)),
-	((1153.6269105544336, -3601.544607229635), (1153.6269105544307, -3621.644606780367)),
-	((1152.7269105745493, -3600.6446072497515), (1152.7269105745481, -3623.1446067468396)),
-]
 
-A = (1177.6269100179898, -3601.894607221811)
-B = (1177.626910017991, -3611.3946070094694)
+def load_segments(filename):
+	if not os.path.exists(filename):
+		print(f"Error: file not found: '{filename}'")
+		return []
 
-A_prime = (1178.5269099978732, -3601.894607221811)
-B_prime = (1178.5269099978743, -3611.3946070094703)
+	segments = []
+	with open(filename, "r", encoding="utf-8") as f:
+		for row in f:
+			row = row.strip()
+			if not row: continue
 
-door_segment = (A_prime, B_prime)
+			try:
+				x1, y1, x2, y2 = map(float, row.split(","))
+				segments.append(((x1, y1), (x2, y2)))
+			except ValueError:
+				print(f"ignored the invalid row: {row}")
+
+	return segments
+
+
+wall_segments = load_segments("wall.txt")
+door_segments = load_segments("doors.txt")
 
 fig, ax = plt.subplots(figsize=(10, 8))
-for i, (p1, p2) in enumerate(wall_segments):
-    label = "Muri" if i == 0 else ""
-    ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color='black', linewidth=2.5, label=label)
 
-dp1, dp2 = door_segment
-ax.plot([dp1[0], dp2[0]], [dp1[1], dp2[1]], color='red', linewidth=2, label='Porta')
+if wall_segments:
+	for i, (p1, p2) in enumerate(wall_segments):
+		label = "Walls" if i == 0 else ""
+		ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color="black", linewidth=1, label=label,)
 
-ax.set_aspect('equal')
-#ax.set_title('Verifica Geometrica dei Segmenti CAD', fontsize=14, weight='bold')
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-ax.grid(True, linestyle=':', alpha=0.5)
-ax.legend(loc='upper left')
+if door_segments:
+	for i, (dp1, dp2) in enumerate(door_segments):
+		label = "Door" if i == 0 else ""
+		ax.plot([dp1[0], dp2[0]], [dp1[1], dp2[1]], color="red", linewidth=1.5, label=label,)
+
+ax.set_aspect("equal")
+ax.set_xlabel("X")
+ax.set_ylabel("Y")
+ax.grid(True, linestyle=":", alpha=0.5)
+ax.legend(loc="upper left")
 
 plt.show()

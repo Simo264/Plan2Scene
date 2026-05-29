@@ -13,15 +13,17 @@ public:
   virtual void addLine(const DRW_Line& data) override;
   virtual void addPolyline(const DRW_Polyline& data) override;
   virtual void addLWPolyline(const DRW_LWPolyline& data) override;
-  virtual void addInsert(const DRW_Insert& data) override;
   virtual void addArc(const DRW_Arc& data) override;
-  virtual void addPoint(const DRW_Point& data) override;
-  virtual void addBlock(const DRW_Block& data) override;
 
-  virtual void addSpline([[maybe_unused]] const DRW_Spline* data) override {}
-  virtual void addEllipse([[maybe_unused]] const DRW_Ellipse& data) override {}
-  virtual void addCircle([[maybe_unused]] const DRW_Circle& data) override {}
-  virtual void addSolid([[maybe_unused]] const DRW_Solid& data) override {}
+  virtual void addInsert([[maybe_unused]]const DRW_Insert& data) override {}
+  virtual void addBlock([[maybe_unused]]const DRW_Block& data) override {}
+  virtual void addHatch([[maybe_unused]]const DRW_Hatch* data) override {}
+  virtual void addCircle([[maybe_unused]]const DRW_Circle& data) override {}
+  virtual void addSolid([[maybe_unused]]const DRW_Solid& data) override {}
+  virtual void addSpline([[maybe_unused]]const DRW_Spline* data) override {}
+  virtual void addPoint([[maybe_unused]]const DRW_Point& data) override {}
+  virtual void addEllipse([[maybe_unused]]const DRW_Ellipse& data) override {}
+
   virtual void add3dFace([[maybe_unused]] const DRW_3Dface& data) override {}
   virtual void addText([[maybe_unused]] const DRW_Text& data) override {}
   virtual void addMText([[maybe_unused]] const DRW_MText& data) override {}
@@ -33,7 +35,6 @@ public:
   virtual void addDimAngular3P([[maybe_unused]] const DRW_DimAngular3p* data) override {}
   virtual void addDimOrdinate([[maybe_unused]] const DRW_DimOrdinate* data) override {}
   virtual void addLeader([[maybe_unused]] const DRW_Leader* data) override {}
-  virtual void addHatch([[maybe_unused]] const DRW_Hatch* data) override {}
   virtual void addViewport([[maybe_unused]] const DRW_Viewport& data) override {}
   virtual void addImage([[maybe_unused]] const DRW_Image* data) override {}
   virtual void linkImage([[maybe_unused]] const DRW_ImageDef* data) override {}
@@ -65,5 +66,6 @@ public:
 
   std::vector<Segment> wall_segments;
   std::vector<Segment> door_segments;
+  std::vector<Segment> window_segments;
   f32 unit_scale = 0.0f;
 };

@@ -1,4 +1,5 @@
 #include "drw_parser.hpp"
+#include "drw_objects.h"
 
 #include <glm/ext/vector_double2.hpp>
 
@@ -9,9 +10,9 @@
 static auto classify_layer(std::string_view name) 
 {
   if (name == "WALL")      return LayerType::WALL;
+  if (name == "DOOR")      return LayerType::DOOR;
   //if (name == "GLAZ")      return LayerType::GLAZ;
   //if (name == "GLAZ-SILL") return LayerType::GLAZ_SILL;
-  if (name == "DOOR")      return LayerType::DOOR;
   return LayerType::NONE;
 } 
 
@@ -67,29 +68,41 @@ void DRWParser::addHeader(const DRW_Header* data)
 
 void DRWParser::addLayer([[maybe_unused]] const DRW_Layer& data)
 {
-  // std::println("Layer: `{}`", data.name);
+  std::println("[Layer] name:`{}`, lineType:{}, tType:{}", data.name, data.lineType, (i32)data.tType);
 }
 
 void DRWParser::addLine(const DRW_Line& data)
 {
   auto layer_type = classify_layer(data.layer);
-  std::println("LINE: `{}`", data.layer);
-  if(layer_type == LayerType::WALL)
-  {  
-    wall_segments.push_back(Segment{
-      .p1 = glm::dvec2{ data.basePoint.x, data.basePoint.y },
-      .p2 = glm::dvec2{ data.secPoint.x, data.secPoint.y },
-      .layer = layer_type
-    });
+  std::println("[Line] name:`{}` type:{}", data.layer, (i32)layer_type);
+  switch (layer_type)
+  {
+    case LayerType::WALL:
+      wall_segments.push_back(Segment{
+        .p1 = glm::dvec2{ data.basePoint.x, data.basePoint.y },
+        .p2 = glm::dvec2{ data.secPoint.x, data.secPoint.y },
+        .layer = layer_type
+      });
+      break;
+    case LayerType::DOOR:
+      door_segments.push_back(Segment{
+        .p1 = glm::dvec2{ data.basePoint.x, data.basePoint.y },
+        .p2 = glm::dvec2{ data.secPoint.x, data.secPoint.y },
+        .layer = layer_type
+      });
+      break;
+    
+    default:
+      break;
   }
 }
 
 void DRWParser::addPolyline([[maybe_unused]] const DRW_Polyline& data)
 {
   // auto layer_name = data.layer;
-  // auto is_closed = data.flags & 1;
-  // auto& vertices = data.vertlist;
-  // std::println("Polyline: layer_name=`{}`, nr_vertices = {}, closed = {}", layer_name, vertices.size(), is_closed);
+  auto is_closed = data.flags & 1;
+  auto& vertices = data.vertlist;
+  std::println("[Polyline] name:`{}`, vertices:{}, is_closed:{}", data.layer, vertices.size(), is_closed);
 
   //  auto is_closed = data.flags & 1;
   //  auto& vertices = data.vertlist;
@@ -133,9 +146,9 @@ void DRWParser::addPolyline([[maybe_unused]] const DRW_Polyline& data)
 void DRWParser::addLWPolyline([[maybe_unused]] const DRW_LWPolyline& data)
 {
   // auto layer_name = data.layer;
-  // auto is_closed = data.flags & 1;
-  // auto& vertices = data.vertlist;
-  // std::println("LWPolyline: layer_name=`{}`, nr_vertices = {}, closed = {}", layer_name, vertices.size(), is_closed);
+  auto is_closed = data.flags & 1;
+  auto& vertices = data.vertlist;
+  std::println("[LWPolyline] name:`{}`, vertices:{}, is_closed:{}", data.layer, vertices.size(), is_closed);
 
   // auto is_closed = data.flags & 1;
   // auto& vertices = data.vertlist;
@@ -173,14 +186,9 @@ void DRWParser::addLWPolyline([[maybe_unused]] const DRW_LWPolyline& data)
   // }
 }
 
-void DRWParser::addInsert(const DRW_Insert& data)
-{
-  // std::println("Insert: layer_name=`{}`", data.layer);
-}
-
 void DRWParser::addArc(const DRW_Arc& data)
 {  
-  std::println("Arc: `{}`", data.layer);
+  std::println("[Arc] name:`{}`", data.layer);
   auto layer_type = classify_layer(data.layer);
   if(layer_type == LayerType::DOOR)
   {
@@ -196,14 +204,4 @@ void DRWParser::addArc(const DRW_Arc& data)
     };
     door_segments.push_back(Segment{ center, p2, layer_type });
   }
-}
-
-void DRWParser::addPoint([[maybe_unused]] const DRW_Point& data)
-{
-  // std::println("Point: layer_name=`{}`", data.layer);
-}
-
-void DRWParser::addBlock([[maybe_unused]]const DRW_Block& data)
-{
-  // std::println("Block: layer_name=`{}`", data.layer);
 }

@@ -17,19 +17,19 @@
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
 
-void dump_wall_vertices(const std::vector<Segment>& wall_segments)
+void dump_segments(const std::vector<Segment>& segments, std::string_view filename, LayerType target_layer)
 {
-  std::println("wall_segments = [");
-  for (const auto& seg : wall_segments)
-    std::println("\t(({}, {}), ({}, {})),", seg.p1.x, seg.p1.y, seg.p2.x, seg.p2.y);
-  std::println("\n]");
+  std::ofstream file(std::string(filename), std::ios::out | std::ios::trunc);
+  if (!file.is_open()) 
+    throw std::runtime_error(std::format("Error on opening file: '{}'", filename));
+
+  for (const auto& seg : segments) 
+  {
+    if (seg.layer == target_layer) 
+      file << std::format("{:.6f},{:.6f},{:.6f},{:.6f}\n", seg.p1.x, seg.p1.y, seg.p2.x, seg.p2.y);
+  }
 }
-void dump_door_vertices(const Segment& door_segment)
-{
-  const auto& p1 = door_segment.p1;
-  const auto& p2 = door_segment.p2;
-  std::println("door_segment = ( ({},{}), ({}, {}) )", p1.x, p1.y, p2.x, p2.y);
-}
+
 
 void parse_cad(const std::filesystem::path& filename, 
                std::vector<Vertex_PN>& out_vertices, 
@@ -45,6 +45,10 @@ void parse_cad(const std::filesystem::path& filename,
   auto& wall_segments = parser.wall_segments;
   auto& door_segments = parser.door_segments;
   std::println("Successfully parsed DXF file! Wall segments: {}, door segments: {}", wall_segments.size(), door_segments.size());
+
+  dump_segments(wall_segments, "wall.txt", LayerType::WALL);
+
+  exit(0);
 
   // detect the unit scale and normalize
   
@@ -187,9 +191,9 @@ int main(int argc, char* argv[])
     center_mesh(vertices);
    
     // exporting mesh in GLTF
-    auto gltf_path = file_path.filename().replace_extension("gltf");
-    std::println("Model will be exported to: {}", gltf_path.string());
-    export_to_gltf(vertices, indices, gltf_path);
+    // auto gltf_path = file_path.filename().replace_extension("gltf");
+    // std::println("Model will be exported to: {}", gltf_path.string());
+    // export_to_gltf(vertices, indices, gltf_path);
   }
 
   // --- visualize mesh ---

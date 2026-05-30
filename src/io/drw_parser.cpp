@@ -9,10 +9,9 @@
 
 static auto classify_layer(std::string_view name) 
 {
-  if (name == "WALL")      return LayerType::WALL;
   if (name == "DOOR")      return LayerType::DOOR;
-  //if (name == "GLAZ")      return LayerType::GLAZ;
-  //if (name == "GLAZ-SILL") return LayerType::GLAZ_SILL;
+  if (name == "WALL")      return LayerType::WALL;
+  if (name == "WINDOW")    return LayerType::WINDOW;
   return LayerType::NONE;
 } 
 
@@ -74,7 +73,7 @@ void DRWParser::addLayer([[maybe_unused]] const DRW_Layer& data)
 void DRWParser::addLine(const DRW_Line& data)
 {
   auto layer_type = classify_layer(data.layer);
-  std::println("[Line] name:`{}` type:{}", data.layer, (i32)layer_type);
+  std::println("[Line] name:`{}`", data.layer);
   switch (layer_type)
   {
     case LayerType::WALL:
@@ -86,6 +85,13 @@ void DRWParser::addLine(const DRW_Line& data)
       break;
     case LayerType::DOOR:
       door_segments.push_back(Segment{
+        .p1 = glm::dvec2{ data.basePoint.x, data.basePoint.y },
+        .p2 = glm::dvec2{ data.secPoint.x, data.secPoint.y },
+        .layer = layer_type
+      });
+      break;    
+    case LayerType::WINDOW:
+      window_segments.push_back(Segment{
         .p1 = glm::dvec2{ data.basePoint.x, data.basePoint.y },
         .p2 = glm::dvec2{ data.secPoint.x, data.secPoint.y },
         .layer = layer_type
@@ -187,7 +193,7 @@ void DRWParser::addLWPolyline([[maybe_unused]] const DRW_LWPolyline& data)
 }
 
 void DRWParser::addArc(const DRW_Arc& data)
-{  
+{
   std::println("[Arc] name:`{}`", data.layer);
   auto layer_type = classify_layer(data.layer);
   if(layer_type == LayerType::DOOR)
@@ -204,4 +210,35 @@ void DRWParser::addArc(const DRW_Arc& data)
     };
     door_segments.push_back(Segment{ center, p2, layer_type });
   }
+}
+
+void DRWParser::addInsert([[maybe_unused]]const DRW_Insert& data)
+{  
+  std::println("[Insert] name:`{}`, layer:`{}`", data.layer, data.name);
+  auto layer_type = classify_layer(data.layer);
+  switch (layer_type) 
+  {
+    case LayerType::DOOR:
+    {
+      auto angle_rad = data.angle;
+      auto door_width = 800.0 * data.xscale;
+    
+      auto hinge = glm::dvec2{ data.basePoint.x, data.basePoint.y };
+      auto tip = glm::dvec2{
+        hinge.x + door_width * std::cos(angle_rad),
+        hinge.y + door_width * std::sin(angle_rad)
+      };
+    
+      door_segments.push_back(Segment{ hinge, tip, LayerType::DOOR });
+      break;
+    }
+
+    default:
+      break;
+  }
+}
+
+void DRWParser::addBlock([[maybe_unused]]const DRW_Block& data)
+{
+  std::println("[Block] name:`{}`", data.layer);
 }

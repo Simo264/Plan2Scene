@@ -16,7 +16,7 @@ using Dcel        = CGAL::Arr_extended_dcel<Traits, int, LayerType, int>;
 using Arrangement = CGAL::Arrangement_2<Traits, Dcel>;
 
 Arrangement build_arrangement(const std::vector<glm::dvec2>& vertices,
-                       const std::vector<GraphEdge>& edges);
+                       const std::vector<Edge>& edges);
 
 std::vector<Face>  extract_faces(const Arrangement& arr); 
 

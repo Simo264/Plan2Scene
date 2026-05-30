@@ -14,9 +14,9 @@ public:
   virtual void addPolyline(const DRW_Polyline& data) override;
   virtual void addLWPolyline(const DRW_LWPolyline& data) override;
   virtual void addArc(const DRW_Arc& data) override;
-
-  virtual void addInsert([[maybe_unused]]const DRW_Insert& data) override {}
-  virtual void addBlock([[maybe_unused]]const DRW_Block& data) override {}
+  virtual void addInsert([[maybe_unused]]const DRW_Insert& data) override;
+  virtual void addBlock([[maybe_unused]]const DRW_Block& data) override;
+  
   virtual void addHatch([[maybe_unused]]const DRW_Hatch* data) override {}
   virtual void addCircle([[maybe_unused]]const DRW_Circle& data) override {}
   virtual void addSolid([[maybe_unused]]const DRW_Solid& data) override {}

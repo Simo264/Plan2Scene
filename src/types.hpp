@@ -73,7 +73,7 @@ struct Face
   FaceType type{ FaceType::NONE };
 };
 
-struct GraphEdge
+struct Edge
 {
   VertexId v1, v2;
   LayerType layer;

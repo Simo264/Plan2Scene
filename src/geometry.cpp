@@ -65,7 +65,7 @@ f32 detect_unit_scale(const std::vector<Segment>& wall_segments)
   return 1.0f;                               // m^2
 }
 
-void normalize_segments(f32 unit, std::span<Segment> segments)
+void normalize_segments(f32 unit, std::vector<Segment>& segments)
 {
   for (auto& seg : segments)
   {
@@ -75,7 +75,7 @@ void normalize_segments(f32 unit, std::span<Segment> segments)
 }
 
 
-std::array<VertexId, 2> find_neighboors(VertexId vertex, const std::vector<GraphEdge>& edges)
+std::array<VertexId, 2> find_neighboors(VertexId vertex, const std::vector<Edge>& edges)
 {
   std::array<VertexId, 2> nbrs = { INVALID_VERTEX_ID, INVALID_VERTEX_ID };
   auto count = 0;

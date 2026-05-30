@@ -21,7 +21,7 @@ static inline bool point_on_segment(const Point2& A, const Point2& B, const Poin
 }
 
 Arrangement build_arrangement(const std::vector<glm::dvec2>& vertices, 
-                       const std::vector<GraphEdge>& edges)
+                       const std::vector<Edge>& edges)
 {
   // Convert GraphEdges to CGAL Segment2
   
@@ -36,10 +36,7 @@ Arrangement build_arrangement(const std::vector<glm::dvec2>& vertices,
     Point2 A = glm_to_cgal(p1);
     Point2 B = glm_to_cgal(p2);
 
-    tagged.push_back(TaggedSegment {
-      .segment = Segment2(A, B),
-      .layer   = e.layer
-    });
+    tagged.push_back(TaggedSegment { Segment2(A, B), e.layer });
   }
 
   // Insert all segments. CGAL resolves all T-junctions and intersections internally
@@ -89,16 +86,13 @@ std::vector<Face> extract_faces(const Arrangement& arr)
 
   for (auto fit = arr.faces_begin(); fit != arr.faces_end(); ++fit)
   {
-    // Skip the unbounded face
     if (fit->is_unbounded()) 
       continue; 
-    // Skip faces with no outer boundary (should not happen in a well-formed arrangement)
     if (!fit->has_outer_ccb()) 
       continue;
 
     auto face = Face{};
 
-    // Walk the outer CCB (counter-clockwise boundary chain)
     auto curr = fit->outer_ccb();
     auto first = curr;
     do 
@@ -112,7 +106,6 @@ std::vector<Face> extract_faces(const Arrangement& arr)
       continue;
 
     face.type = classify_face(face);
-    
     faces.push_back(std::move(face));
   }
 
@@ -126,15 +119,11 @@ FaceType classify_face(const Face& face)
   auto window_count = 0u;
   for (LayerType layer : face.edge_layers) 
   {
-    if (layer == LayerType::WALL) 
-      wall_count++;
-    else if (layer == LayerType::DOOR) 
-      door_count++;
-    else if (layer == LayerType::WINDOW) 
-      window_count++;
+    if (layer == LayerType::WALL)         wall_count++;
+    else if (layer == LayerType::DOOR)    door_count++;
+    else if (layer == LayerType::WINDOW)  window_count++;
   }
 
-  
   auto total_edges = static_cast<u32>(face.edge_layers.size());
 
   // Door face

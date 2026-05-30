@@ -18,10 +18,10 @@ BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PN>& vertices);
 // Calculate the unit scale based on the geometry
 f32 detect_unit_scale(const std::vector<Segment>& wall_segments);
 
-void normalize_segments(f32 unit, std::span<Segment> segments);
+void normalize_segments(f32 unit, std::vector<Segment>& segments);
 
 std::array<VertexId, 2> find_neighboors(VertexId vertex, 
-                                        const std::vector<GraphEdge>& edges);
+                                        const std::vector<Edge>& edges);
 
 VertexId get_adjacent_vertex(const glm::dvec2& wall_dir, 
                              VertexId vertex_id,

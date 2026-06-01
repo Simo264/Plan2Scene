@@ -15,6 +15,9 @@ BoundingBox2D calculate_bbox_2D(std::span<const Segment> segments);
 // Calculates the bounding box for 3D points
 BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PN>& vertices);
 
+// Check if a single point is inside the Bounding Box
+bool is_point_inside_bbox(const BoundingBox2D& bbox, const glm::dvec2& p);
+
 // Calculate the unit scale based on the geometry
 f32 detect_unit_scale(const std::vector<Segment>& wall_segments);
 

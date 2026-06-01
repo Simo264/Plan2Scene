@@ -19,7 +19,12 @@
 
 void dump_segments(const std::vector<Segment>& segments, std::string_view filename)
 {
-  std::ofstream file(std::string(filename), std::ios::out | std::ios::trunc);
+  if(segments.empty())
+  {
+    std::println("Empty segments: {}", filename);
+  }
+
+  std::ofstream file(filename.data(), std::ios::out | std::ios::trunc);
   if (!file.is_open()) 
     throw std::runtime_error(std::format("Error on opening file: '{}'", filename));
 
@@ -45,6 +50,22 @@ void parse_cad(const std::filesystem::path& filename,
   std::println("Successfully parsed DXF file:\n wall segments: {}\n door segments: {}\n window segments: {}", 
     wall_segments.size(), door_segments.size(), window_segments.size());
 
+  // culling segments
+  {
+    auto room_bbox = calculate_bbox_2D(wall_segments);
+    
+    // culling door segments
+    std::erase_if(door_segments, [&room_bbox](const Segment& door) {
+      return !is_point_inside_bbox(room_bbox, door.p1);
+    });
+    // culling window segments
+    std::erase_if(window_segments, [&room_bbox](const Segment& door) {
+      return !is_point_inside_bbox(room_bbox, door.p1);
+    });
+
+    std::println("After culling:\n door segments: {}\n window segments: {}", door_segments.size(), window_segments.size());
+  }
+
   // detect the unit scale and normalize
   
   if(parser.unit_scale == 0.0f)
@@ -55,26 +76,37 @@ void parse_cad(const std::filesystem::path& filename,
   normalize_segments(parser.unit_scale, door_segments);
   normalize_segments(parser.unit_scale, window_segments);
   
+  // dump_segments(wall_segments, "walls.txt");
+  // dump_segments(door_segments, "doors.txt");
+  // dump_segments(window_segments, "windows.txt");
+
   // Vertex snapping with spatial hashing data structure: wall segments only
 
   auto hash = SpatialHash{ 1e-6 };
   auto edges = std::vector<Edge>{};
   {
+    auto wall_segments_snapped = std::vector<Segment>{}; 
+
     auto wall_segments_view = std::array{ wall_segments };
     for (const auto& seg : wall_segments_view | std::views::join)
     {
       auto v1 = hash.snap(seg.p1);
       auto v2 = hash.snap(seg.p2);
       if (v1 != v2)
+      {
         edges.push_back(Edge{ v1, v2, seg.layer });
+        wall_segments_snapped.push_back(Segment{ hash.vertices()[v1], hash.vertices()[v2], LayerType::WALL });
+      }
     }
+    dump_segments(wall_segments_snapped, "walls.txt");
   }
   auto& vertices = hash.vertices();
   std::println("Vertex snapping completed. Vertices: {}, edges: {}", vertices.size(), edges.size());
 
+  
   // Reconstruct door segments by snapping their endpoints to the nearest vertices on the wall segments. 
   // This ensures that doors are properly connected to walls in the arrangement. 
-
+  
   for(auto& door_segment : door_segments)
   {
     auto A_id = hash.find_nearest(door_segment.p1);
@@ -92,9 +124,12 @@ void parse_cad(const std::filesystem::path& filename,
     edges.push_back(Edge{ A_id, B_id, LayerType::DOOR });
     edges.push_back(Edge{ A_prime_id, B_prime_id, LayerType::DOOR });
   }
+  // dump_segments(door_segments, "doors.txt");
+  // exit(0);
   
   // Reconstruct window segments using bounding box of window segments and snapping to nearest vertices on wall segments.
-  
+ 
+  if(!window_segments.empty())
   {
     auto bbox = calculate_bbox_2D(window_segments);
     
@@ -112,7 +147,7 @@ void parse_cad(const std::filesystem::path& filename,
     edges.push_back(Edge{ C, D, LayerType::WINDOW });
   }
   
-  // Arrangement + Halfedge
+  // Halfedge
   
   auto arrangement = build_arrangement(vertices, edges);
   std::println("Arrangement successfully completed: vertices={}, edges={}, faces={}", 

@@ -40,6 +40,11 @@ BoundingBox2D calculate_bbox_2D(std::span<const Segment> segments)
   };
 }
 
+bool is_point_inside_bbox(const BoundingBox2D& bbox, const glm::dvec2& p)
+{
+  return (p.x >= bbox.min.x && p.x <= bbox.max.x && p.y >= bbox.min.y && p.y <= bbox.max.y);
+}
+
 BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PN>& vertices) 
 {
   auto min = vertices.front().position;

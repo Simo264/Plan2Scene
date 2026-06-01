@@ -221,7 +221,7 @@ void DRWParser::addInsert([[maybe_unused]]const DRW_Insert& data)
     case LayerType::DOOR:
     {
       auto angle_rad = data.angle;
-      auto door_width = 800.0 * data.xscale;
+      auto door_width = 500 * data.xscale;
     
       auto hinge = glm::dvec2{ data.basePoint.x, data.basePoint.y };
       auto tip = glm::dvec2{

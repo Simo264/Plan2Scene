@@ -1,4 +1,5 @@
 #include "arrangement.hpp"
+#include "types.hpp"
 #include <print>
 #include <vector>
 #include <iostream>

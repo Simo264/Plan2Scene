@@ -42,6 +42,7 @@ add_executable(${PROJECT_NAME}
   src/graphics/transformation.cpp
 
   src/main.cpp
+  src/utils.cpp
   src/geometry.cpp
   src/spatial_hashing.cpp
   src/arrangement.cpp

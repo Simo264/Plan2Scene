@@ -20,10 +20,9 @@ def load_segments(filename):
 
 	return segments
 
-
-wall_segments = load_segments("walls.txt")
-door_segments = load_segments("doors.txt")
-window_segments = load_segments("windows.txt")
+wall_segments = load_segments("walls_segments.txt")
+door_segments = load_segments("doors_segments.txt")
+window_segments = load_segments("windows_segments.txt")
 
 fig, ax = plt.subplots(figsize=(10, 8))
 

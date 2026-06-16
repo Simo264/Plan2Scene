@@ -65,7 +65,7 @@ public:
   virtual void writeAppId() override {}
 
   std::vector<Segment> wall_segments;
-  std::vector<Segment> door_segments;
-  std::vector<Segment> window_segments;
+  std::vector<Segment> doors_segments;
+  std::vector<Segment> windows_segments;
   f32 unit_scale = 0.0f;
 };

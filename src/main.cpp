@@ -1,40 +1,25 @@
 #include <algorithm>
-#include <array>
 #include <memory>
 #include <print>
 #include <filesystem>
 #include <stdexcept>
 #include <vector>
 
+#include "types.hpp"
+#include "utils.hpp"
 #include "geometry.hpp"
 #include "spatial_hashing.hpp"
+
 #include "arrangement.hpp"
 #include "io/drw_parser.hpp"
 #include "io/gltf_exporter.hpp"
 #include "graphics/mesh_visualizer.hpp"
-#include "types.hpp"
 
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
 
-void dump_segments(const std::vector<Segment>& segments, std::string_view filename)
-{
-  if(segments.empty())
-  {
-    std::println("Empty segments: {}", filename);
-  }
-
-  std::ofstream file(filename.data(), std::ios::out | std::ios::trunc);
-  if (!file.is_open()) 
-    throw std::runtime_error(std::format("Error on opening file: '{}'", filename));
-
-  for (const auto& seg : segments) 
-    file << std::format("{:.6f},{:.6f},{:.6f},{:.6f}\n", seg.p1.x, seg.p1.y, seg.p2.x, seg.p2.y);
-}
-
-
-void parse_cad(const std::filesystem::path& filename, 
-               std::vector<Vertex_PN>& out_vertices, 
+void parse_cad(const std::filesystem::path& filename,
+               std::vector<Vertex_PN>& out_vertices,
                std::vector<u32>& out_indices)
 {
   // parsing DXF model to extract segments
@@ -44,70 +29,48 @@ void parse_cad(const std::filesystem::path& filename,
   if (!dxf.read(&parser, false))
     throw std::runtime_error(std::format("Error reading DXF file (code: {}): {}", static_cast<i32>(dxf.getError()), filename.string()));
 
-  auto& wall_segments = parser.wall_segments;
-  auto& door_segments = parser.door_segments;
-  auto& window_segments = parser.window_segments;
+  auto& walls_segments = parser.wall_segments;
+  auto& doors_segments = parser.doors_segments;
+  auto& windows_segments = parser.windows_segments;
   std::println("Successfully parsed DXF file:\n wall segments: {}\n door segments: {}\n window segments: {}", 
-    wall_segments.size(), door_segments.size(), window_segments.size());
+    walls_segments.size(), doors_segments.size(), windows_segments.size());
+
+  auto room_bbox = calculate_bbox_2D(walls_segments);
 
   // culling segments
-  {
-    auto room_bbox = calculate_bbox_2D(wall_segments);
-    
-    // culling door segments
-    std::erase_if(door_segments, [&room_bbox](const Segment& door) {
-      return !is_point_inside_bbox(room_bbox, door.p1);
-    });
-    // culling window segments
-    std::erase_if(window_segments, [&room_bbox](const Segment& door) {
-      return !is_point_inside_bbox(room_bbox, door.p1);
-    });
 
-    std::println("After culling:\n door segments: {}\n window segments: {}", door_segments.size(), window_segments.size());
-  }
+  // std::erase_if(windows_segments, [&room_bbox](const Segment& door) { return !is_point_inside_bbox(room_bbox, door.p1); });
+  std::erase_if(doors_segments, [&room_bbox](const Segment& door) { return !room_bbox.contains(door.p1); });
+  std::println("After culling:\n door segments: {}\n window segments: {}", doors_segments.size(), windows_segments.size());
 
   // detect the unit scale and normalize
   
   if(parser.unit_scale == 0.0f)
-    parser.unit_scale = detect_unit_scale(wall_segments);
+    parser.unit_scale = detect_unit_scale(walls_segments);
 
   std::println("Unit scale: {}", parser.unit_scale);
-  normalize_segments(parser.unit_scale, wall_segments);
-  normalize_segments(parser.unit_scale, door_segments);
-  normalize_segments(parser.unit_scale, window_segments);
+  normalize_segments(parser.unit_scale, walls_segments);
+  normalize_segments(parser.unit_scale, doors_segments);
+  normalize_segments(parser.unit_scale, windows_segments);
   
-  // dump_segments(wall_segments, "walls.txt");
-  // dump_segments(door_segments, "doors.txt");
-  // dump_segments(window_segments, "windows.txt");
-
   // Vertex snapping with spatial hashing data structure: wall segments only
 
   auto hash = SpatialHash{ 1e-6 };
-  auto edges = std::vector<Edge>{};
-  {
-    auto wall_segments_snapped = std::vector<Segment>{}; 
-
-    auto wall_segments_view = std::array{ wall_segments };
-    for (const auto& seg : wall_segments_view | std::views::join)
-    {
-      auto v1 = hash.snap(seg.p1);
-      auto v2 = hash.snap(seg.p2);
-      if (v1 != v2)
-      {
-        edges.push_back(Edge{ v1, v2, seg.layer });
-        wall_segments_snapped.push_back(Segment{ hash.vertices()[v1], hash.vertices()[v2], LayerType::WALL });
-      }
-    }
-    dump_segments(wall_segments_snapped, "walls.txt");
-  }
+  auto edges = vertex_snapping(walls_segments, hash);
   auto& vertices = hash.vertices();
+
   std::println("Vertex snapping completed. Vertices: {}, edges: {}", vertices.size(), edges.size());
 
-  
+  dump_segments(walls_segments, "walls_segments.txt");
+  dump_vertices(vertices, "walls_vertices.txt");
+  // dump_segments(windows_segments, "windows_segments.txt");
+  // dump_segments(doors_segments, "doors_segments.txt");
+
+#if 0
   // Reconstruct door segments by snapping their endpoints to the nearest vertices on the wall segments. 
   // This ensures that doors are properly connected to walls in the arrangement. 
   
-  for(auto& door_segment : door_segments)
+  for(auto& door_segment : doors_segments)
   {
     auto A_id = hash.find_nearest(door_segment.p1);
     auto B_id = hash.find_nearest(door_segment.p2);
@@ -124,29 +87,30 @@ void parse_cad(const std::filesystem::path& filename,
     edges.push_back(Edge{ A_id, B_id, LayerType::DOOR });
     edges.push_back(Edge{ A_prime_id, B_prime_id, LayerType::DOOR });
   }
-  // dump_segments(door_segments, "doors.txt");
-  // exit(0);
-  
+#endif
+
+#if 0
   // Reconstruct window segments using bounding box of window segments and snapping to nearest vertices on wall segments.
  
-  if(!window_segments.empty())
+  for(auto& window : windows_segments)
   {
-    auto bbox = calculate_bbox_2D(window_segments);
+    auto bbox = calculate_bbox_2D(window);
     
     auto p00 = glm::dvec2{ bbox.min.x, bbox.min.y };
     auto p01 = glm::dvec2{ bbox.min.x, bbox.max.y };
     auto p10 = glm::dvec2{ bbox.max.x, bbox.min.y };
     auto p11 = glm::dvec2{ bbox.max.x, bbox.max.y };
-
+  
     auto A = hash.find_nearest(p00);
     auto B = hash.find_nearest(p01);
     auto C = hash.find_nearest(p10);
     auto D = hash.find_nearest(p11);
-
+  
     edges.push_back(Edge{ A, B, LayerType::WINDOW });
     edges.push_back(Edge{ C, D, LayerType::WINDOW });
   }
-  
+#endif
+
   // Halfedge
   
   auto arrangement = build_arrangement(vertices, edges);
@@ -158,7 +122,7 @@ void parse_cad(const std::filesystem::path& filename,
   auto faces = extract_faces(arrangement);
   std::println("Extracted faces: {}", faces.size());
   
-  for (const auto& face : faces)
+  for(const auto& face : faces)
   {
     // Ensure CCW winding
     auto contour = face.vertices;
@@ -180,13 +144,13 @@ void parse_cad(const std::filesystem::path& filename,
     auto triangles = cdt.GetTriangles();
 
     constexpr auto CEIL_HEIGHT = 10.f;
-    constexpr auto DOOR_OFFSET = 9.0f;
+    // constexpr auto DOOR_OFFSET = 9.0f;
     switch(face.type)
     {
       case FaceType::ROOM:
         std::println("Room face found!");
-        build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 1.f, 0.f, 0.f });         // red
-        build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, { 1.f, 0.f, 0.f }); // red
+        // build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 1.f, 0.f, 0.f });         // red
+        // build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, { 1.f, 0.f, 0.f }); // red
         break;
 
       case FaceType::WALL:
@@ -198,19 +162,19 @@ void parse_cad(const std::filesystem::path& filename,
 
       case FaceType::DOOR:
         std::println("Door face found!");
-        build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 0.f, 0.f, 1.f });         // blue
-        build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, { 0.f, 0.f, 1.f }); // blue
-        extrude_face(out_vertices, out_indices, DOOR_OFFSET, CEIL_HEIGHT, face);
+        // build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 0.f, 0.f, 1.f });         // blue
+        // build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, { 0.f, 0.f, 1.f }); // blue
+        // extrude_face(out_vertices, out_indices, DOOR_OFFSET, CEIL_HEIGHT, face);
         break; 
         
       case FaceType::WINDOW:
         std::println("Window face found!");
-        build_triangulated_face(out_vertices, out_indices, triangles, 0.f, {1.f, 0.f, 1.f});  // purple
-        build_triangulated_face(out_vertices, out_indices, triangles, 2.f, {1.f, 0.f, 1.f});  // purple
-        build_triangulated_face(out_vertices, out_indices, triangles, 7.f, {1.f, 0.f, 1.f});  // purple
-        build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, {1.f, 0.f, 1.f});  // purple
-        extrude_face(out_vertices, out_indices, 0.0f, 2.0f, face);
-        extrude_face(out_vertices, out_indices, 7.0f, CEIL_HEIGHT, face);
+        // build_triangulated_face(out_vertices, out_indices, triangles, 0.f, {1.f, 0.f, 1.f});  // purple
+        // build_triangulated_face(out_vertices, out_indices, triangles, 2.f, {1.f, 0.f, 1.f});  // purple
+        // build_triangulated_face(out_vertices, out_indices, triangles, 7.f, {1.f, 0.f, 1.f});  // purple
+        // build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, {1.f, 0.f, 1.f});  // purple
+        // extrude_face(out_vertices, out_indices, 0.0f, 2.0f, face);
+        // extrude_face(out_vertices, out_indices, 7.0f, CEIL_HEIGHT, face);
         break; 
 
       default:
@@ -249,9 +213,9 @@ int main(int argc, char* argv[])
     center_mesh(vertices);
    
     // exporting mesh in GLTF
-    auto gltf_path = file_path.filename().replace_extension("gltf");
-    std::println("Model will be exported to: {}", gltf_path.string());
-    export_to_gltf(vertices, indices, gltf_path);
+    // auto gltf_path = file_path.filename().replace_extension("gltf");
+    // std::println("Model will be exported to: {}", gltf_path.string());
+    // export_to_gltf(vertices, indices, gltf_path);
   }
 
   // --- visualize mesh ---

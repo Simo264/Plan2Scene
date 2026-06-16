@@ -90,7 +90,10 @@ struct BoundingBox2D
   glm::vec2 min;
   glm::vec2 max;
 
-  f32 calculate_area() { return (max.x - min.x) * (max.y - min.y); }
+  auto calculate_area() { return (max.x - min.x) * (max.y - min.y); }
+  
+  // Check if a single point is inside the Bounding Box
+  auto contains(glm::dvec2 p){ return (p.x >= min.x && p.x <= max.x && p.y >= min.y && p.y <= max.y); }
 };
 
 struct BoundingBox3D

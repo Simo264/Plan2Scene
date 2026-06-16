@@ -84,14 +84,14 @@ void DRWParser::addLine(const DRW_Line& data)
       });
       break;
     case LayerType::DOOR:
-      door_segments.push_back(Segment{
+      doors_segments.push_back(Segment{
         .p1 = glm::dvec2{ data.basePoint.x, data.basePoint.y },
         .p2 = glm::dvec2{ data.secPoint.x, data.secPoint.y },
         .layer = layer_type
       });
       break;    
     case LayerType::WINDOW:
-      window_segments.push_back(Segment{
+      windows_segments.push_back(Segment{
         .p1 = glm::dvec2{ data.basePoint.x, data.basePoint.y },
         .p2 = glm::dvec2{ data.secPoint.x, data.secPoint.y },
         .layer = layer_type
@@ -208,7 +208,7 @@ void DRWParser::addArc(const DRW_Arc& data)
       center.x + radius * std::cos(data.endangle),
       center.y + radius * std::sin(data.endangle)
     };
-    door_segments.push_back(Segment{ center, p2, layer_type });
+    doors_segments.push_back(Segment{ center, p2, layer_type });
   }
 }
 
@@ -221,7 +221,7 @@ void DRWParser::addInsert([[maybe_unused]]const DRW_Insert& data)
     case LayerType::DOOR:
     {
       auto angle_rad = data.angle;
-      auto door_width = 500 * data.xscale;
+      auto door_width = 30 * data.xscale;
     
       auto hinge = glm::dvec2{ data.basePoint.x, data.basePoint.y };
       auto tip = glm::dvec2{
@@ -229,7 +229,7 @@ void DRWParser::addInsert([[maybe_unused]]const DRW_Insert& data)
         hinge.y + door_width * std::sin(angle_rad)
       };
     
-      door_segments.push_back(Segment{ hinge, tip, LayerType::DOOR });
+      doors_segments.push_back(Segment{ hinge, tip, LayerType::DOOR });
       break;
     }
 

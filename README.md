@@ -44,8 +44,7 @@ Conan generated several files under the **build** folder.
 To build the project:
 
 ```bash
-cmake -B ./build \
-  -DCMAKE_TOOLCHAIN_FILE=build/build/Debug/generators/conan_toolchain.cmake
+cmake -S . -B ./build -DCMAKE_TOOLCHAIN_FILE=build/build/Debug/generators/conan_toolchain.cmake
 ```
 
 To compile:

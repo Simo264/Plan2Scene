@@ -7,6 +7,7 @@
 
 #include <clipper2/clipper.h>
 #include <print>
+#include <utility>
 
 auto calculate_signed_area(const std::vector<glm::dvec2>& contour) -> f32
 {
@@ -21,7 +22,7 @@ auto calculate_signed_area(const std::vector<glm::dvec2>& contour) -> f32
   return area * 0.5;
 }
 
-BoundingBox2D calculate_bbox_2D(std::span<const Segment> segments)
+BoundingBox2D calculate_bbox_2D(const std::vector<Segment>& segments)
 {
   auto min_x =  std::numeric_limits<f64>::max();
   auto min_y =  std::numeric_limits<f64>::max();
@@ -38,11 +39,6 @@ BoundingBox2D calculate_bbox_2D(std::span<const Segment> segments)
     .min = glm::vec2{ f32(min_x), f32(min_y) },
     .max = glm::vec2{ f32(max_x), f32(max_y) }
   };
-}
-
-bool is_point_inside_bbox(const BoundingBox2D& bbox, const glm::dvec2& p)
-{
-  return (p.x >= bbox.min.x && p.x <= bbox.max.x && p.y >= bbox.min.y && p.y <= bbox.max.y);
 }
 
 BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PN>& vertices) 
@@ -79,6 +75,20 @@ void normalize_segments(f32 unit, std::vector<Segment>& segments)
   }
 }
 
+std::vector<Edge> vertex_snapping(const std::vector<Segment> walls_segments, SpatialHash& hash)
+{
+  auto edges = std::vector<Edge>{};
+
+  auto wall_segments_view = std::array{ walls_segments };
+  for (const auto& seg : wall_segments_view | std::views::join)
+  {
+    auto v1 = hash.snap(seg.p1);
+    auto v2 = hash.snap(seg.p2);
+    if (v1 != v2)
+      edges.push_back(Edge{ v1, v2, seg.layer });
+  }
+  return edges;
+}
 
 std::array<VertexId, 2> find_neighboors(VertexId vertex, const std::vector<Edge>& edges)
 {

@@ -18,6 +18,28 @@
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
 
+void dump_raw_faces(const Arrangement& arr, std::string_view filename) 
+{
+  std::ofstream file(filename.data());
+  if (!file.is_open()) return;
+
+  file << std::fixed << std::setprecision(6);
+  for (auto fit = arr.faces_begin(); fit != arr.faces_end(); ++fit) 
+  {
+      if (fit->is_unbounded() || !fit->has_outer_ccb()) continue;
+
+      auto curr = fit->outer_ccb();
+      auto first = curr;
+      do {
+          auto p1 = curr->source()->point();
+          auto p2 = curr->target()->point();
+          file << CGAL::to_double(p1.x()) << "," << CGAL::to_double(p1.y()) << "," << CGAL::to_double(p2.x()) << "," << CGAL::to_double(p2.y()) << "\n";
+          ++curr;
+      } while (curr != first);
+  }
+}
+
+
 void parse_cad(const std::filesystem::path& filename,
                std::vector<Vertex_PN>& out_vertices,
                std::vector<u32>& out_indices)
@@ -55,17 +77,18 @@ void parse_cad(const std::filesystem::path& filename,
   
   // Vertex snapping with spatial hashing data structure: wall segments only
 
-  auto hash = SpatialHash{ 1e-6 };
+  auto hash = SpatialHash{ 1e-4 };
   auto edges = vertex_snapping(walls_segments, hash);
   auto& vertices = hash.vertices();
 
   std::println("Vertex snapping completed. Vertices: {}, edges: {}", vertices.size(), edges.size());
 
-  dump_segments(walls_segments, "walls_segments.txt");
-  dump_vertices(vertices, "walls_vertices.txt");
+  // dump_segments(walls_segments, "walls_segments.txt");
+  // dump_vertices(vertices, "walls_vertices.txt");
   // dump_segments(windows_segments, "windows_segments.txt");
   // dump_segments(doors_segments, "doors_segments.txt");
-
+  // exit(0);
+  
 #if 0
   // Reconstruct door segments by snapping their endpoints to the nearest vertices on the wall segments. 
   // This ensures that doors are properly connected to walls in the arrangement. 
@@ -116,12 +139,27 @@ void parse_cad(const std::filesystem::path& filename,
   auto arrangement = build_arrangement(vertices, edges);
   std::println("Arrangement successfully completed: vertices={}, edges={}, faces={}", 
     arrangement.number_of_vertices(), arrangement.number_of_edges(), arrangement.number_of_faces());
- 
+
+  // dump_raw_faces(arrangement, "walls_segments.txt");
+  // exit(0);
+  
   // face extraction
   
   auto faces = extract_faces(arrangement);
   std::println("Extracted faces: {}", faces.size());
   
+  room_bbox = calculate_bbox_2D(walls_segments);
+  auto floor_face = Face{};
+  floor_face.vertices = {
+    glm::dvec2(room_bbox.min.x, room_bbox.min.y),
+    glm::dvec2(room_bbox.max.x, room_bbox.min.y),
+    glm::dvec2(room_bbox.max.x, room_bbox.max.y),
+    glm::dvec2(room_bbox.min.x, room_bbox.max.y) 
+  };
+  floor_face.edge_layers.assign(4, LayerType::NONE);
+  floor_face.type = FaceType::ROOM;
+  faces.push_back(std::move(floor_face));
+
   for(const auto& face : faces)
   {
     // Ensure CCW winding
@@ -149,8 +187,8 @@ void parse_cad(const std::filesystem::path& filename,
     {
       case FaceType::ROOM:
         std::println("Room face found!");
-        // build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 1.f, 0.f, 0.f });         // red
-        // build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, { 1.f, 0.f, 0.f }); // red
+        build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 1.f, 0.f, 0.f });         // red
+        //build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT + 0.001f, { 1.f, 0.f, 0.f }); // red
         break;
 
       case FaceType::WALL:

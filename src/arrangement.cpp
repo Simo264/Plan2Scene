@@ -1,23 +1,22 @@
 #include "arrangement.hpp"
 #include "types.hpp"
-#include <print>
 #include <vector>
-#include <iostream>
 
 static inline Point2 glm_to_cgal(const glm::dvec2& p)
 {
   return Point2(p.x, p.y);
 }
+
 static inline glm::dvec2 CGAL_to_glm(const Point2& p)
 {
   return glm::dvec2{ CGAL::to_double(p.x()), CGAL::to_double(p.y()) };
 }
+
 // Returns true if the CGAL point M lies on segment (A, B), including at the endpoints.
-static inline bool point_on_segment(const Point2& A, const Point2& B, const Point2& M)
+static bool point_on_segment(const Point2& A, const Point2& B, const Point2& M)
 {
   if (CGAL::collinear(A, B, M) == false) 
     return false;
-  
   return CGAL::collinear_are_ordered_along_line(A, M, B);
 }
 
@@ -69,7 +68,7 @@ Arrangement build_arrangement(const std::vector<glm::dvec2>& vertices,
       // the priority is DOOR > WINDOW > WALL > NONE
       if (point_on_segment(A, B, mid))
       {
-        if (static_cast<int>(ts.layer) > static_cast<int>(best_layer)) 
+        if (static_cast<i32>(ts.layer) > static_cast<i32>(best_layer)) 
           best_layer = ts.layer;
       }
     }
@@ -84,7 +83,6 @@ Arrangement build_arrangement(const std::vector<glm::dvec2>& vertices,
 std::vector<Face> extract_faces(const Arrangement& arr)
 {
   auto faces = std::vector<Face>{};
-
   for (auto fit = arr.faces_begin(); fit != arr.faces_end(); ++fit)
   {
     if (fit->is_unbounded()) 

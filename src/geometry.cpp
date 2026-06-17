@@ -123,6 +123,23 @@ VertexId get_adjacent_vertex(const glm::dvec2& wall_dir,
   return vertex_prime_id;
 }
 
+ProjResult project_onto_segment(const glm::dvec2& p, const glm::dvec2& v1, const glm::dvec2& v2) 
+{
+  auto v = v2 - v1;
+  auto w = p - v1;
+  double len_sq = glm::dot(v, v);
+  if (len_sq < 1e-6) 
+    return ProjResult{ v1, false };
+  
+  double t = glm::dot(w, v) / len_sq;
+  if (t > 1e-4 && t < (1.0 - 1e-4)) 
+      return { v1 + v * t, true };
+  return { v1, false };
+}
+
+
+
+
 void build_triangulated_face(std::vector<Vertex_PN>& out_vertices,
                              std::vector<u32>& out_indices,
                              const std::vector<p2t::Triangle*> triangles,

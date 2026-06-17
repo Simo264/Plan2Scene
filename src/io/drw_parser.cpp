@@ -107,64 +107,17 @@ void DRWParser::addLine(const DRW_Line& data)
   }
 }
 
-void DRWParser::addPolyline([[maybe_unused]] const DRW_Polyline& data)
+void DRWParser::addPolyline(const DRW_Polyline& data)
 {
-  // auto layer_name = data.layer;
   auto is_closed = data.flags & 1;
   auto& vertices = data.vertlist;
   std::println("[Polyline] name:`{}`, vertices:{}, is_closed:{}", data.layer, vertices.size(), is_closed);
 
-  if (!is_closed || vertices.size() < 2)
+  if (!is_closed)
     return;
-  
-  // auto layer_type = classify_layer(data.layer);
-  // switch (layer_type)
-  // {
-  //   case LayerType::DOOR:
-  //   {
-  //     break;
-  //   }
-  // 
-  //   default:
-  //     break;
-  // }
-
-
-  //  std::ranges::transform(layer_name, layer_name.begin(), [](auto c) { return std::toupper(c); }); 
-  //  auto layer_type = classify_layer(layer_name);
-  //  if(layer_type == LayerType::WALL || 
-  //     layer_type == LayerType::WINDOW || 
-  //     layer_type == LayerType::DOOR)
-  //  {
-  //    std::println("Polyline: layer_name=`{}`, nr_vertices = {}, closed = {}", layer_name, vertices.size(), is_closed);
-  //    
-  //    // Decompose into individual segments: one per consecutive pair of vertices.
-  //    for (auto i = 0u; i < vertices.size() - 1; ++i)
-  //    {
-  //      auto p0 = vertices.at(i);
-  //      auto p1 = vertices.at(i+1);
-  //      input_segments.push_back(Segment{
-  //        .p1 = glm::dvec2{ p0->basePoint.x, p0->basePoint.y },
-  //        .p2 = glm::dvec2{ p1->basePoint.x, p1->basePoint.y },
-  //        .layer = layer_type
-  //      });
-  //    }
-  //  
-  //    // If closed, add the closing segment from last vertex back to first.
-  //    if (is_closed)
-  //    {
-  //      auto p0 = vertices.front();
-  //      auto p_last = vertices.back();
-  //      input_segments.push_back(Segment{
-  //        .p1 = glm::dvec2{ p_last->basePoint.x, p_last->basePoint.y },
-  //        .p2 = glm::dvec2{ p0->basePoint.x, p0->basePoint.y },
-  //        .layer = layer_type
-  //      });
-  //    }   
-  //  }
 }
 
-void DRWParser::addLWPolyline([[maybe_unused]] const DRW_LWPolyline& data)
+void DRWParser::addLWPolyline(const DRW_LWPolyline& data)
 {
   if (s_is_parsing_block) 
   {
@@ -177,7 +130,7 @@ void DRWParser::addLWPolyline([[maybe_unused]] const DRW_LWPolyline& data)
   auto& vertices = data.vertlist;
   std::println("[LWPolyline] name:`{}`, vertices:{}, is_closed:{}", data.layer, vertices.size(), is_closed);
 
-  if (!is_closed || vertices.size() < 2)
+  if (!is_closed)
     return;
 
   auto layer_type = classify_layer(data.layer);
@@ -186,10 +139,9 @@ void DRWParser::addLWPolyline([[maybe_unused]] const DRW_LWPolyline& data)
     case LayerType::DOOR:
     {
       // We look for the longest side
-
+      
       auto start = glm::dvec2{};
       auto end = glm::dvec2{};
-
       auto max_len_sq = -1.0;
       for (auto i = 0; i < 4; ++i)
       {
@@ -211,30 +163,6 @@ void DRWParser::addLWPolyline([[maybe_unused]] const DRW_LWPolyline& data)
       break;
   }
 
-  //   // Decompose into individual segments: one per consecutive pair of vertices.
-  //   for (auto i = 0u; i < vertices.size() - 1; ++i)
-  //   {
-  //     auto p0 = vertices.at(i);
-  //     auto p1 = vertices.at(i+1);
-  //     input_segments.push_back(Segment{
-  //       .p1 = glm::dvec2{ p0->x, p0->y },
-  //       .p2 = glm::dvec2{ p1->x, p1->y },
-  //       .layer = layer_type
-  //     });
-  //   }
-  // 
-  //   // If closed, add the closing segment from last vertex back to first.
-  //   if (is_closed)
-  //   {
-  //     auto p0 = vertices.front();
-  //     auto p_last = vertices.back();
-  //     input_segments.push_back(Segment{
-  //       .p1 = glm::dvec2{ p_last->x, p_last->y },
-  //       .p2 = glm::dvec2{ p0->x, p0->y },
-  //       .layer = layer_type
-  //     });
-  //   }   
-  // }
 }
 
 void DRWParser::addArc(const DRW_Arc& data)

@@ -6,6 +6,12 @@
 #include <poly2tri/sweep/cdt.h>
 #include <vector>
 
+struct ProjResult 
+{
+  glm::dvec2 point;
+  bool is_inside;
+};
+
 // Calculate the signed area of the contour using the shoelace formula.
 f32 calculate_signed_area(const std::vector<glm::dvec2>& contour);
 
@@ -30,6 +36,8 @@ VertexId get_adjacent_vertex(const glm::dvec2& wall_dir,
                              VertexId vertex_id,
                              const std::array<VertexId, 2>& vertex_neighbors, 
                              const std::vector<glm::dvec2>& vertices);
+
+ProjResult project_onto_segment(const glm::dvec2& p, const glm::dvec2& v1, const glm::dvec2& v2);
 
 void build_triangulated_face(std::vector<Vertex_PN>& out_vertices,
                              std::vector<u32>& out_indices,

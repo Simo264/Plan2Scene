@@ -18,28 +18,6 @@
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
 
-void dump_raw_faces(const Arrangement& arr, std::string_view filename) 
-{
-  std::ofstream file(filename.data());
-  if (!file.is_open()) return;
-
-  file << std::fixed << std::setprecision(6);
-  for (auto fit = arr.faces_begin(); fit != arr.faces_end(); ++fit) 
-  {
-      if (fit->is_unbounded() || !fit->has_outer_ccb()) continue;
-
-      auto curr = fit->outer_ccb();
-      auto first = curr;
-      do {
-          auto p1 = curr->source()->point();
-          auto p2 = curr->target()->point();
-          file << CGAL::to_double(p1.x()) << "," << CGAL::to_double(p1.y()) << "," << CGAL::to_double(p2.x()) << "," << CGAL::to_double(p2.y()) << "\n";
-          ++curr;
-      } while (curr != first);
-  }
-}
-
-
 void parse_cad(const std::filesystem::path& filename,
                std::vector<Vertex_PN>& out_vertices,
                std::vector<u32>& out_indices)
@@ -58,12 +36,6 @@ void parse_cad(const std::filesystem::path& filename,
 
   auto room_bbox = calculate_bbox_2D(walls);
 
-  // culling segments
-
-  // std::erase_if(windows_segments, [&room_bbox](const Segment& door) { return !is_point_inside_bbox(room_bbox, door.p1); });
-  // std::erase_if(doors, [&room_bbox](const Segment& door) { return !room_bbox.contains(door.start); });
-  // std::println("After culling:\n door segments: {}\n window segments: {}", doors.size(), windows.size());
-
   // detect the unit scale and normalize
   
   if(parser.unit_scale == 0.0f)
@@ -74,10 +46,10 @@ void parse_cad(const std::filesystem::path& filename,
   normalize_segments(parser.unit_scale, doors);
   normalize_segments(parser.unit_scale, windows);
 
-  dump_segments(walls, "walls_segments.txt");
-  dump_segments(doors, "doors_segments.txt");
-  dump_segments(windows, "windows_segments.txt");
-  exit(0);
+  // dump_segments(walls, "walls_segments.txt");
+  // dump_segments(doors, "doors_segments.txt");
+  // dump_segments(windows, "windows_segments.txt");
+  // exit(0);
   
   // Vertex snapping with spatial hashing data structure: wall segments only
 
@@ -87,28 +59,76 @@ void parse_cad(const std::filesystem::path& filename,
 
   std::println("Vertex snapping completed. Vertices: {}, edges: {}", vertices.size(), edges.size());
   
-#if 0
+  // dump_vertices(vertices, "walls_vertices.txt");
+  // exit(0);
+
   // Reconstruct door segments by snapping their endpoints to the nearest vertices on the wall segments. 
   // This ensures that doors are properly connected to walls in the arrangement. 
   
-  for(auto& door_segment : doors_segments)
-  {
-    auto A_id = hash.find_nearest(door_segment.p1);
-    auto B_id = hash.find_nearest(door_segment.p2);
-    auto wall_dir = glm::normalize(vertices[A_id] - vertices[B_id]);
-    door_segment.p1 = vertices[A_id];
-    door_segment.p2 = vertices[B_id];
-
-    auto nbrs_A = find_neighboors(A_id, edges);
-    auto A_prime_id = get_adjacent_vertex(wall_dir, A_id, nbrs_A, vertices);
+  for(auto& door : doors) 
+  { 
+    auto B_id = hash.find_nearest(door.start); 
+    auto D_id = hash.find_nearest(door.end); 
+    auto wall_dir = glm::normalize(vertices[B_id] - vertices[D_id]); 
     
-    auto nbrs_B = find_neighboors(B_id, edges);
-    auto B_prime_id = get_adjacent_vertex(wall_dir, B_id, nbrs_B, vertices);
+    door.start = vertices[B_id]; 
+    door.end = vertices[D_id]; 
+    
+    auto nbrs_B = find_neighboors(B_id, edges); 
+    auto C_id = get_adjacent_vertex(wall_dir, B_id, nbrs_B, vertices); 
+    
+    auto nbrs_D = find_neighboors(D_id, edges); 
+    auto E_id = get_adjacent_vertex(wall_dir, D_id, nbrs_D, vertices); 
 
-    edges.push_back(Edge{ A_id, B_id, LayerType::DOOR });
-    edges.push_back(Edge{ A_prime_id, B_prime_id, LayerType::DOOR });
+    auto P_B = vertices[B_id];
+    auto P_D = vertices[D_id];
+    auto P_C = vertices[C_id];
+    auto P_E = vertices[E_id];
+
+    // Di default ipotizziamo che la porta si chiuda perfettamente tra C ed E
+    auto door_close_left = C_id;
+    auto door_close_right = E_id;
+
+    // Proviamo a proiettare E sul muro sinistro B->C
+    auto proj_E = project_onto_segment(P_E, P_B, P_C);      
+    if (proj_E.is_inside) 
+    {
+      // Trovato il punto E'! Lo aggiungiamo ai vertici
+      vertices.push_back(proj_E.point);
+      VertexId E_prime_id = vertices.size() - 1;
+
+      // Rimuoviamo il vecchio muro sinistro: B->C
+      std::erase_if(edges, [&](const Edge& e) { return (e.v1 == B_id && e.v2 == C_id) || (e.v1 == C_id && e.v2 == B_id); });
+
+      // Inseriamo i due nuovi segmenti del muro spezzato: B->E,' e E'->C
+      edges.push_back(Edge{ B_id, E_prime_id, LayerType::WALL });
+      edges.push_back(Edge{ E_prime_id, C_id, LayerType::WALL });
+
+      door_close_left = E_prime_id;
+    } 
+    else 
+    {
+      // Proviamo a proiettare C sul muro destro: D->E)
+      auto proj_C = project_onto_segment(P_C, P_D, P_E);
+      if (proj_C.is_inside) 
+      {
+        // Trovato il punto C'! Lo aggiungiamo ai vertici
+        vertices.push_back(proj_C.point);
+        VertexId C_prime_id = vertices.size() - 1;
+
+        // Rimuoviamo il vecchio muro destro: D->E
+        std::erase_if(edges, [&](const Edge& e) { return (e.v1 == D_id && e.v2 == E_id) || (e.v1 == E_id && e.v2 == D_id); });
+
+        edges.push_back(Edge{ D_id, C_prime_id, LayerType::WALL });
+        edges.push_back(Edge{ C_prime_id, E_id, LayerType::WALL });
+
+        door_close_right = C_prime_id;
+      }
+    }
+
+    edges.push_back(Edge{ B_id, D_id, LayerType::DOOR });
+    edges.push_back(Edge{ door_close_left, door_close_right, LayerType::DOOR });
   }
-#endif
 
 #if 0
   // Reconstruct window segments using bounding box of window segments and snapping to nearest vertices on wall segments.
@@ -138,7 +158,7 @@ void parse_cad(const std::filesystem::path& filename,
   std::println("Arrangement successfully completed: vertices={}, edges={}, faces={}", 
     arrangement.number_of_vertices(), arrangement.number_of_edges(), arrangement.number_of_faces());
 
-  dump_raw_faces(arrangement, "walls_segments.txt");
+  dump_faces(arrangement, "walls_segments.txt");
   exit(0);
   
   // face extraction
@@ -180,7 +200,7 @@ void parse_cad(const std::filesystem::path& filename,
     auto triangles = cdt.GetTriangles();
 
     constexpr auto CEIL_HEIGHT = 10.f;
-    // constexpr auto DOOR_OFFSET = 9.0f;
+    constexpr auto DOOR_OFFSET = 9.0f;
     switch(face.type)
     {
       case FaceType::ROOM:
@@ -191,16 +211,16 @@ void parse_cad(const std::filesystem::path& filename,
 
       case FaceType::WALL:
         std::println("Wall face found!");
-        build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 0.f, 1.f, 0.f });         // green
+        //build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 0.f, 1.f, 0.f });         // green
         build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, { 0.f, 1.f, 0.f }); // green
         extrude_face(out_vertices, out_indices, 0, CEIL_HEIGHT, face);
         break;
 
       case FaceType::DOOR:
         std::println("Door face found!");
-        // build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 0.f, 0.f, 1.f });         // blue
-        // build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, { 0.f, 0.f, 1.f }); // blue
-        // extrude_face(out_vertices, out_indices, DOOR_OFFSET, CEIL_HEIGHT, face);
+        //build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 0.f, 0.f, 1.f });         // blue
+        build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, { 0.f, 0.f, 1.f }); // blue
+        extrude_face(out_vertices, out_indices, DOOR_OFFSET, CEIL_HEIGHT, face);
         break; 
         
       case FaceType::WINDOW:

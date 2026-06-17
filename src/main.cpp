@@ -51,43 +51,41 @@ void parse_cad(const std::filesystem::path& filename,
   if (!dxf.read(&parser, false))
     throw std::runtime_error(std::format("Error reading DXF file (code: {}): {}", static_cast<i32>(dxf.getError()), filename.string()));
 
-  auto& walls_segments = parser.wall_segments;
-  auto& doors_segments = parser.doors_segments;
-  auto& windows_segments = parser.windows_segments;
-  std::println("Successfully parsed DXF file:\n wall segments: {}\n door segments: {}\n window segments: {}", 
-    walls_segments.size(), doors_segments.size(), windows_segments.size());
+  auto& walls = parser.walls;
+  auto& doors = parser.doors;
+  auto& windows = parser.windows;
+  std::println("Successfully parsed DXF file:\n walls: {}\n door: {}\n windows: {}", walls.size(), doors.size(), windows.size());
 
-  auto room_bbox = calculate_bbox_2D(walls_segments);
+  auto room_bbox = calculate_bbox_2D(walls);
 
   // culling segments
 
   // std::erase_if(windows_segments, [&room_bbox](const Segment& door) { return !is_point_inside_bbox(room_bbox, door.p1); });
-  std::erase_if(doors_segments, [&room_bbox](const Segment& door) { return !room_bbox.contains(door.p1); });
-  std::println("After culling:\n door segments: {}\n window segments: {}", doors_segments.size(), windows_segments.size());
+  // std::erase_if(doors, [&room_bbox](const Segment& door) { return !room_bbox.contains(door.start); });
+  // std::println("After culling:\n door segments: {}\n window segments: {}", doors.size(), windows.size());
 
   // detect the unit scale and normalize
   
   if(parser.unit_scale == 0.0f)
-    parser.unit_scale = detect_unit_scale(walls_segments);
+    parser.unit_scale = detect_unit_scale(room_bbox.calculate_area());
 
   std::println("Unit scale: {}", parser.unit_scale);
-  normalize_segments(parser.unit_scale, walls_segments);
-  normalize_segments(parser.unit_scale, doors_segments);
-  normalize_segments(parser.unit_scale, windows_segments);
+  normalize_segments(parser.unit_scale, walls);
+  normalize_segments(parser.unit_scale, doors);
+  normalize_segments(parser.unit_scale, windows);
+
+  dump_segments(walls, "walls_segments.txt");
+  dump_segments(doors, "doors_segments.txt");
+  dump_segments(windows, "windows_segments.txt");
+  exit(0);
   
   // Vertex snapping with spatial hashing data structure: wall segments only
 
-  auto hash = SpatialHash{ 1e-4 };
-  auto edges = vertex_snapping(walls_segments, hash);
+  auto hash = SpatialHash{ 1e-5 };
+  auto edges = vertex_snapping(walls, hash);
   auto& vertices = hash.vertices();
 
   std::println("Vertex snapping completed. Vertices: {}, edges: {}", vertices.size(), edges.size());
-
-  // dump_segments(walls_segments, "walls_segments.txt");
-  // dump_vertices(vertices, "walls_vertices.txt");
-  // dump_segments(windows_segments, "windows_segments.txt");
-  // dump_segments(doors_segments, "doors_segments.txt");
-  // exit(0);
   
 #if 0
   // Reconstruct door segments by snapping their endpoints to the nearest vertices on the wall segments. 
@@ -140,15 +138,15 @@ void parse_cad(const std::filesystem::path& filename,
   std::println("Arrangement successfully completed: vertices={}, edges={}, faces={}", 
     arrangement.number_of_vertices(), arrangement.number_of_edges(), arrangement.number_of_faces());
 
-  // dump_raw_faces(arrangement, "walls_segments.txt");
-  // exit(0);
+  dump_raw_faces(arrangement, "walls_segments.txt");
+  exit(0);
   
   // face extraction
   
   auto faces = extract_faces(arrangement);
   std::println("Extracted faces: {}", faces.size());
   
-  room_bbox = calculate_bbox_2D(walls_segments);
+  room_bbox = calculate_bbox_2D(walls);
   auto floor_face = Face{};
   floor_face.vertices = {
     glm::dvec2(room_bbox.min.x, room_bbox.min.y),

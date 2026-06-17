@@ -16,7 +16,7 @@ BoundingBox2D calculate_bbox_2D(const std::vector<Segment>& segments);
 BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PN>& vertices);
 
 // Calculate the unit scale based on the geometry
-f32 detect_unit_scale(const std::vector<Segment>& wall_segments);
+f32 detect_unit_scale(f32 area_bbox);
 
 void normalize_segments(f32 unit, std::vector<Segment>& segments);
 

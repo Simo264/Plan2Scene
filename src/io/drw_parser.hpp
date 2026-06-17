@@ -16,6 +16,7 @@ public:
   virtual void addArc(const DRW_Arc& data) override;
   virtual void addInsert([[maybe_unused]]const DRW_Insert& data) override;
   virtual void addBlock([[maybe_unused]]const DRW_Block& data) override;
+  virtual void endBlock() override;
   
   virtual void addHatch([[maybe_unused]]const DRW_Hatch* data) override {}
   virtual void addCircle([[maybe_unused]]const DRW_Circle& data) override {}
@@ -38,7 +39,7 @@ public:
   virtual void addViewport([[maybe_unused]] const DRW_Viewport& data) override {}
   virtual void addImage([[maybe_unused]] const DRW_Image* data) override {}
   virtual void linkImage([[maybe_unused]] const DRW_ImageDef* data) override {}
-  virtual void endBlock() override {}
+  
   virtual void addTextStyle([[maybe_unused]] const DRW_Textstyle& data) override {}
   virtual void addLType([[maybe_unused]] const DRW_LType& data) override {}
   virtual void addDimStyle([[maybe_unused]] const DRW_Dimstyle& data) override {}
@@ -64,8 +65,8 @@ public:
   virtual void writeObjects() override {}
   virtual void writeAppId() override {}
 
-  std::vector<Segment> wall_segments;
-  std::vector<Segment> doors_segments;
-  std::vector<Segment> windows_segments;
+  std::vector<Segment> walls;
+  std::vector<Segment> doors;
+  std::vector<Segment> windows;
   f32 unit_scale = 0.0f;
 };

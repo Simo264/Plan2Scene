@@ -30,10 +30,10 @@ BoundingBox2D calculate_bbox_2D(const std::vector<Segment>& segments)
   auto max_y = -std::numeric_limits<f64>::max();
   for (const auto& seg : segments)
   {
-    min_x = std::min({min_x, seg.p1.x, seg.p2.x});
-    min_y = std::min({min_y, seg.p1.y, seg.p2.y});
-    max_x = std::max({max_x, seg.p1.x, seg.p2.x});
-    max_y = std::max({max_y, seg.p1.y, seg.p2.y});
+    min_x = std::min({min_x, seg.start.x, seg.end.x});
+    min_y = std::min({min_y, seg.start.y, seg.end.y});
+    max_x = std::max({max_x, seg.start.x, seg.end.x});
+    max_y = std::max({max_y, seg.start.y, seg.end.y});
   }
   return BoundingBox2D{
     .min = glm::vec2{ f32(min_x), f32(min_y) },
@@ -53,25 +53,20 @@ BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PN>& vertices)
   return BoundingBox3D{ min, max };
 }
 
-f32 detect_unit_scale(const std::vector<Segment>& wall_segments)
+f32 detect_unit_scale(f32 area_bbox)
 {
-  auto bbox = calculate_bbox_2D(wall_segments);
-  auto area = (bbox.max.x - bbox.min.x) * (bbox.max.y - bbox.min.y);
-
-  std::println("Bounding box area: {}", area);
-
-  if (area > 25'000'000.f)  return 0.001f;   // mm^2
-  if (area >   250'000.f)   return 0.01f;    // cm^2
-  if (area >     2'500.f)   return 0.1f;     // dm^2
-  return 1.0f;                               // m^2
+  if (area_bbox > 25'000'000.f)  return 0.001f;   // mm^2
+  if (area_bbox >   250'000.f)   return 0.01f;    // cm^2
+  if (area_bbox >     2'500.f)   return 0.1f;     // dm^2
+  return 1.0f;                                    // m^2
 }
 
 void normalize_segments(f32 unit, std::vector<Segment>& segments)
 {
   for (auto& seg : segments)
   {
-    seg.p1 *= unit;
-    seg.p2 *= unit;
+    seg.start *= unit;
+    seg.end *= unit;
   }
 }
 
@@ -82,8 +77,8 @@ std::vector<Edge> vertex_snapping(const std::vector<Segment> walls_segments, Spa
   auto wall_segments_view = std::array{ walls_segments };
   for (const auto& seg : wall_segments_view | std::views::join)
   {
-    auto v1 = hash.snap(seg.p1);
-    auto v2 = hash.snap(seg.p2);
+    auto v1 = hash.snap(seg.start);
+    auto v2 = hash.snap(seg.end);
     if (v1 != v2)
       edges.push_back(Edge{ v1, v2, seg.layer });
   }

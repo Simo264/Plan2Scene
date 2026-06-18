@@ -70,7 +70,7 @@ struct Face
 {
   std::vector<glm::dvec2> vertices;
   std::vector<LayerType> edge_layers;
-  FaceType type{ FaceType::NONE };
+  FaceType type;
 };
 
 struct Edge
@@ -87,8 +87,7 @@ struct Vertex_PN
 
 struct BoundingBox2D
 {
-  glm::vec2 min;
-  glm::vec2 max;
+  glm::vec2 min, max;
 
   auto calculate_area() { return (max.x - min.x) * (max.y - min.y); }
   
@@ -98,6 +97,5 @@ struct BoundingBox2D
 
 struct BoundingBox3D
 {
-  glm::vec3 min;
-  glm::vec3 max;
+  glm::vec3 min, max;
 };

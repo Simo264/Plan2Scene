@@ -28,6 +28,7 @@ FetchContent_MakeAvailable(libdxfrw)
 add_subdirectory("${CMAKE_SOURCE_DIR}/externals/glad")
 add_subdirectory("${CMAKE_SOURCE_DIR}/externals/imgui")
 add_subdirectory("${CMAKE_SOURCE_DIR}/externals/tinygltf/")
+add_subdirectory("${CMAKE_SOURCE_DIR}/externals/SimpleDBSCAN/")
 
 add_executable(${PROJECT_NAME} 
   src/io/drw_parser.cpp
@@ -42,6 +43,7 @@ add_executable(${PROJECT_NAME}
   src/graphics/transformation.cpp
 
   src/main.cpp
+  src/reconstruction.cpp
   src/utils.cpp
   src/geometry.cpp
   src/spatial_hashing.cpp
@@ -61,13 +63,13 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
   imgui::imgui
   tiny_gltf::tiny_gltf
+  simple_dbscan::simple_dbscan
 )
 
-target_include_directories(${PROJECT_NAME} PRIVATE 
-  ${libdxfrw_SOURCE_DIR}/src
-)
+target_include_directories(${PROJECT_NAME} PRIVATE ${libdxfrw_SOURCE_DIR}/src)
 
 target_compile_options(${PROJECT_NAME} PRIVATE 
   -Wall 
   -Wextra 
-  -Wpedantic)
+  -Wpedantic
+)

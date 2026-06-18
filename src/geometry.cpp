@@ -6,8 +6,6 @@
 #include <glm/common.hpp>
 
 #include <clipper2/clipper.h>
-#include <print>
-#include <utility>
 
 auto calculate_signed_area(const std::vector<glm::dvec2>& contour) -> f32
 {
@@ -123,7 +121,9 @@ VertexId get_adjacent_vertex(const glm::dvec2& wall_dir,
   return vertex_prime_id;
 }
 
-ProjResult project_onto_segment(const glm::dvec2& p, const glm::dvec2& v1, const glm::dvec2& v2) 
+ProjResult project_onto_segment(const glm::dvec2& p, 
+                                const glm::dvec2& v1, 
+                                const glm::dvec2& v2) 
 {
   auto v = v2 - v1;
   auto w = p - v1;
@@ -137,8 +137,76 @@ ProjResult project_onto_segment(const glm::dvec2& p, const glm::dvec2& v1, const
   return { v1, false };
 }
 
+void doors_reconstruction(std::vector<Segment>& doors,
+                          SpatialHash& hash,
+                          std::vector<Edge>& edges)
+{
+  auto& vertices = hash.vertices();
+  for(auto& door : doors) 
+  { 
+    auto B_id = hash.find_nearest(door.start); 
+    auto D_id = hash.find_nearest(door.end); 
+    auto wall_dir = glm::normalize(vertices[B_id] - vertices[D_id]); 
+    
+    door.start = vertices[B_id]; 
+    door.end = vertices[D_id]; 
+    
+    auto nbrs_B = find_neighboors(B_id, edges); 
+    auto C_id = get_adjacent_vertex(wall_dir, B_id, nbrs_B, vertices); 
+    
+    auto nbrs_D = find_neighboors(D_id, edges); 
+    auto E_id = get_adjacent_vertex(wall_dir, D_id, nbrs_D, vertices); 
 
+    auto P_B = vertices[B_id];
+    auto P_D = vertices[D_id];
+    auto P_C = vertices[C_id];
+    auto P_E = vertices[E_id];
 
+    // By default we assume that the door closes perfectly between C and E
+    auto door_close_left = C_id;
+    auto door_close_right = E_id;
+
+    // Let's try projecting E onto the left wall B->C
+    auto proj_E = project_onto_segment(P_E, P_B, P_C);      
+    if (proj_E.is_inside) 
+    {
+      // Found point E'! We add it to the vertices
+      vertices.push_back(proj_E.point);
+      VertexId E_prime_id = vertices.size() - 1;
+
+      // Let's remove the old left wall: B->C
+      std::erase_if(edges, [&](const Edge& e) { return (e.v1 == B_id && e.v2 == C_id) || (e.v1 == C_id && e.v2 == B_id); });
+
+      // We insert the two new segments of the broken wall: B->E' and E'->C
+      edges.push_back(Edge{ B_id, E_prime_id, LayerType::WALL });
+      edges.push_back(Edge{ E_prime_id, C_id, LayerType::WALL });
+
+      door_close_left = E_prime_id;
+    } 
+    else 
+    {
+      // Let's try projecting C onto the right wall D->E
+      auto proj_C = project_onto_segment(P_C, P_D, P_E);
+      if (proj_C.is_inside) 
+      {
+        // Found point C'! We add it to the vertices
+        vertices.push_back(proj_C.point);
+        VertexId C_prime_id = vertices.size() - 1;
+
+        // Let's remove the old left wall: D->E
+        std::erase_if(edges, [&](const Edge& e) { return (e.v1 == D_id && e.v2 == E_id) || (e.v1 == E_id && e.v2 == D_id); });
+        
+        // We insert the two new segments of the broken wall: D->C' and C'->E
+        edges.push_back(Edge{ D_id, C_prime_id, LayerType::WALL });
+        edges.push_back(Edge{ C_prime_id, E_id, LayerType::WALL });
+        door_close_right = C_prime_id;
+      }
+    }
+
+    edges.push_back(Edge{ B_id, D_id, LayerType::DOOR });
+    edges.push_back(Edge{ door_close_left, door_close_right, LayerType::DOOR });
+  }
+}
 
 void build_triangulated_face(std::vector<Vertex_PN>& out_vertices,
                              std::vector<u32>& out_indices,

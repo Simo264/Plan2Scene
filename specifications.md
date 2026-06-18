@@ -13,6 +13,12 @@ Initially we will need to parse the file to collect all the primitives we are in
 
 After that we have a **vertex snapping** phase, only on wall primitives, where we collapse the vertices into a single vertex if they are within the radius $\epsilon$, using the Spatial Hashing structure.
 
+After snapping the vertices on the walls, we need to proceed with reconstructing the faces of the doors and windows that will be extracted in the next phase, and are used to close the outline of the room or house.
+Generally speaking, it only takes one segment per door for us to rebuild doors. From that segment we find the two junctions of the walls $A \to B$. To create a closed face we need to find the other two junctions and create the other parallel segment. We will have to look for the other two junctions $C \to D$.
+This is quite simple as we can search between the neighbors of node $A$ and the neighbors of node $B$. For windows, the reasoning is very similar in that we would only need to have a single segment per window to reconstruct each face of the windows.
+Unlike doors where for the most part they are represented by equal BLOCKS, ARC and at most LWPolyline if it is a rectangle like an entrance door, windows can have different representations, they can be represented by 2 lines, 3 lines, 4 lines, rectangles, complex blocks, etc. Trying to write a parser based on segment counting is too complicated. The ideal approach would be based on spatial clustering and bounding box extraction.
+Since we only have one set of window segments, our goal is to group them into clusters. After that, each cluster will be a window, and from each we can extract individual segments and reconstruct the faces.
+
 Next, we create the PSLG (Half Edge) graph: first we insert the vertices of the wall segments and then using the placeholder information of the doors/windows we add new edges to the graph. This way we will expect to have a closed room with several faces and ready to triangulate.
 It would also be important to indicate what each face represents, whether it represents the face of a wall, whether it represents a door, a window, or the interior area of the room.
 

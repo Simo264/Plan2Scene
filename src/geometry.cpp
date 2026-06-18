@@ -39,6 +39,27 @@ BoundingBox2D calculate_bbox_2D(const std::vector<Segment>& segments)
   };
 }
 
+BoundingBox2D calculate_bbox_2D(const std::vector<glm::dvec2>& points, const std::vector<u32>& cluster_indices) 
+{
+  auto min_x = std::numeric_limits<f64>::max();
+  auto min_y = std::numeric_limits<f64>::max();
+  auto max_x = -std::numeric_limits<f64>::max();
+  auto max_y = -std::numeric_limits<f64>::max();
+  for (int idx : cluster_indices) 
+  {
+    const auto& p = points[idx];
+    min_x = std::min(min_x, p.x);
+    min_y = std::min(min_y, p.y);
+    max_x = std::max(max_x, p.x);
+    max_y = std::max(max_y, p.y);
+  }
+
+  return BoundingBox2D{
+    .min = glm::vec2{ f32(min_x), f32(min_y) },
+    .max = glm::vec2{ f32(max_x), f32(max_y) }
+  };
+}
+
 BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PN>& vertices) 
 {
   auto min = vertices.front().position;

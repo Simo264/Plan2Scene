@@ -17,6 +17,7 @@ f32 calculate_signed_area(const std::vector<glm::dvec2>& contour);
 
 // Calculate the bounding box for 2D points
 BoundingBox2D calculate_bbox_2D(const std::vector<Segment>& segments);
+BoundingBox2D calculate_bbox_2D(const std::vector<glm::dvec2>& points, const std::vector<u32>& cluster_indices);
 
 // Calculates the bounding box for 3D points
 BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PN>& vertices);

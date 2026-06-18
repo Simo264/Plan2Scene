@@ -1,28 +1,24 @@
 import os
+import pandas as pd
 import matplotlib.pyplot as plt
 
 def load_segments(filename):
-	if not os.path.exists(filename):
-		print(f"Error: file not found: '{filename}'")
-		return []
+    if not os.path.exists(filename):
+        print(f"Error: file not found: '{filename}'")
+        return []
+    
+    try:
+        df = pd.read_csv(filename, header=None, dtype=float)
+        segments = [((row[0], row[1]), (row[2], row[3])) for row in df.itertuples(index=False)]
+        return segments
+        
+    except Exception as e:
+        print(f"Error reading {filename}: {e}")
+        return []
 
-	segments = []
-	with open(filename, "r", encoding="utf-8") as f:
-		for row in f:
-			row = row.strip()
-			if not row: continue
-
-			try:
-				x1, y1, x2, y2 = map(float, row.split(","))
-				segments.append(((x1, y1), (x2, y2)))
-			except ValueError:
-				print(f"ignored the invalid row: {row}")
-
-	return segments
-
-wall_segments = load_segments("walls_segments.txt")
-door_segments = load_segments("doors_segments.txt")
-window_segments = load_segments("windows_segments.txt")
+wall_segments = load_segments("walls_segments.csv")
+door_segments = load_segments("doors_segments.csv")
+window_segments = load_segments("windows_segments.csv")
 
 fig, ax = plt.subplots(figsize=(10, 8))
 

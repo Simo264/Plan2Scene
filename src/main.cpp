@@ -47,9 +47,9 @@ int main(int argc, char* argv[])
     center_mesh(vertices);
    
     // exporting mesh in GLTF
-    // auto gltf_path = file_path.filename().replace_extension("gltf");
-    // std::println("Model will be exported to: {}", gltf_path.string());
-    // export_to_gltf(vertices, indices, gltf_path);
+    auto gltf_path = file_path.filename().replace_extension("gltf");
+    std::println("Model will be exported to: {}", gltf_path.string());
+    export_to_gltf(vertices, indices, gltf_path);
   }
 
   // --- visualize mesh ---

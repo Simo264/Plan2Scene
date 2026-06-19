@@ -1,6 +1,7 @@
 #include "arrangement.hpp"
 #include "types.hpp"
 #include <vector>
+#include <print>
 
 static inline Point2 glm_to_cgal(const glm::dvec2& p)
 {
@@ -140,7 +141,7 @@ FaceType classify_face(const Face& face)
   if (wall_count == total_edges) 
     return FaceType::WALL;
 
-  // Room face
+  // Floor face
 
-  return FaceType::ROOM;
+  return FaceType::FLOOR;
 }

@@ -1,6 +1,6 @@
 #include "utils.hpp"
 
-#include "types.hpp"
+
 
 #include <print>
 #include <fstream>
@@ -26,12 +26,15 @@ void dump_faces_csv(const std::vector<Face>& faces, std::string_view filename)
 {
   auto file = std::ofstream(filename.data());
   file << std::fixed << std::setprecision(6);
+
+  auto face_id = 0;
   for (const auto& face : faces) 
   {
-    file << static_cast<int>(face.type);
-    for (const auto& v : face.vertices)
+    file << static_cast<int>(face.type) << "," << face_id;
+    for (const auto& v : face.vertices) 
       file << "," << v.x << "," << v.y;
     file << "\n";
+    face_id++;
   }
 }
 

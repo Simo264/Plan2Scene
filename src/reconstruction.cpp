@@ -30,10 +30,10 @@ void reconstruction(const std::filesystem::path& filename,
   auto& windows = parser.windows;
   std::println("Successfully parsed DXF file:\n walls: {}\n door: {}\n windows: {}", walls.size(), doors.size(), windows.size());
 
-  auto house_bbox = calculate_bbox_2D(walls);
 
   // detect the unit scale and normalize points
   
+  auto house_bbox = calculate_bbox_2D(walls);
   if(parser.unit_scale == 0.0f)
     parser.unit_scale = detect_unit_scale(house_bbox.calculate_area());
 
@@ -70,22 +70,23 @@ void reconstruction(const std::filesystem::path& filename,
   
   auto faces = extract_faces(arrangement);
   std::println("Extracted faces: {}", faces.size());
+  
   dump_faces_csv(faces, "faces.csv");
   // exit(0);
   
-  std::erase_if(faces, [](auto face) { return face.type == FaceType::ROOM; });
+  std::erase_if(faces, [](auto face) { return face.type == FaceType::FLOOR; });
 
-  // house_bbox = calculate_bbox_2D(walls);
-  // auto floor_face = Face{};
-  // floor_face.vertices = {
-  //   glm::dvec2(house_bbox.min.x, house_bbox.min.y),
-  //   glm::dvec2(house_bbox.max.x, house_bbox.min.y),
-  //   glm::dvec2(house_bbox.max.x, house_bbox.max.y),
-  //   glm::dvec2(house_bbox.min.x, house_bbox.max.y) 
-  // };
-  // floor_face.edge_layers.assign(4, LayerType::NONE);
-  // floor_face.type = FaceType::ROOM;
-  // faces.push_back(std::move(floor_face));
+  house_bbox = calculate_bbox_2D(walls);
+  auto floor_face = Face{};
+  floor_face.vertices = {
+    glm::dvec2(house_bbox.min.x, house_bbox.min.y),
+    glm::dvec2(house_bbox.max.x, house_bbox.min.y),
+    glm::dvec2(house_bbox.max.x, house_bbox.max.y),
+    glm::dvec2(house_bbox.min.x, house_bbox.max.y) 
+  };
+  floor_face.edge_layers.assign(4, LayerType::NONE);
+  floor_face.type = FaceType::FLOOR;
+  faces.push_back(std::move(floor_face));
 
   for(const auto& face : faces)
   {
@@ -112,34 +113,34 @@ void reconstruction(const std::filesystem::path& filename,
     constexpr auto DOOR_OFFSET = 9.0f;
     switch(face.type)
     {
-      case FaceType::ROOM:
-        std::println("Room face found!");
-        // build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 1.f, 0.f, 0.f });
-        // build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT + 0.001f, { 1.f, 0.f, 0.f });
+      case FaceType::FLOOR:
+        std::println("FLOOR face found!");
+        build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 1.f, 0.f, 0.f });
+        build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT + 0.001f, { 1.f, 0.f, 0.f });
         break;
 
       case FaceType::WALL:
-        std::println("Wall face found!");
+        std::println("WALL face found!");
         build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 0.5f, 0.5f, 0.5f });
-        // build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, { 0.f, 1.f, 0.f });
-        // extrude_face(out_vertices, out_indices, 0, CEIL_HEIGHT, face);
+        //build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, { 0.f, 1.f, 0.f });
+        extrude_face(out_vertices, out_indices, 0, CEIL_HEIGHT, face);
         break;
 
       case FaceType::DOOR:
-        std::println("Door face found!");
-        build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 0.75f, 0, 0 });
+        std::println("DOOR face found!");
+        //build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 0.75f, 0, 0 });
         // build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, { 0.f, 0.f, 1.f });
-        // extrude_face(out_vertices, out_indices, DOOR_OFFSET, CEIL_HEIGHT, face);
+        extrude_face(out_vertices, out_indices, DOOR_OFFSET, CEIL_HEIGHT, face);
         break; 
         
       case FaceType::WINDOW:
-        std::println("Window face found!");
-        build_triangulated_face(out_vertices, out_indices, triangles, 0.f, {0, 0, 0.75f});
-        // build_triangulated_face(out_vertices, out_indices, triangles, 2.f, {1.f, 0.f, 1.f});
-        // build_triangulated_face(out_vertices, out_indices, triangles, 7.f, {1.f, 0.f, 1.f});
-        // build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, {1.f, 0.f, 1.f});
-        // extrude_face(out_vertices, out_indices, 0.0f, 2.0f, face);
-        // extrude_face(out_vertices, out_indices, 7.0f, CEIL_HEIGHT, face);
+        std::println("WINDOW face found!");
+        //build_triangulated_face(out_vertices, out_indices, triangles, 0.f, {0, 0, 0.75f});
+        build_triangulated_face(out_vertices, out_indices, triangles, 2.f, {1.f, 0.f, 1.f});
+        build_triangulated_face(out_vertices, out_indices, triangles, 7.f, {1.f, 0.f, 1.f});
+        //build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, {1.f, 0.f, 1.f});
+        extrude_face(out_vertices, out_indices, 0.0f, 2.0f, face);
+        extrude_face(out_vertices, out_indices, 7.0f, CEIL_HEIGHT, face);
         break; 
 
       default:

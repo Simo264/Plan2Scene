@@ -59,11 +59,11 @@ struct Segment
 
 enum class FaceType : i32
 {
-  NONE,
-  ROOM,
-  WINDOW,
-  DOOR,
-  WALL
+  NONE    = 0, 
+  FLOOR   = 1, 
+  WINDOW  = 2, 
+  DOOR    = 3, 
+  WALL    = 4
 };
 
 struct Face

@@ -9,8 +9,16 @@
 
 struct ProjResult 
 {
-  glm::dvec2 point;
-  bool is_inside;
+  glm::dvec2 point; // Projected point (even if outside the segment)
+  bool is_inside;   // True if projection lies strictly inside the segment
+};
+
+struct WallVertices 
+{
+  VertexId B; // Start of the gap (snapped to gap_start)
+  VertexId D; // End of the gap (snapped to gap_end)
+  VertexId C; // Adjacent vertex to B along the wall
+  VertexId E; // Adjacent vertex to D along the wall
 };
 
 // Calculate the signed area of the contour using the shoelace formula.
@@ -62,11 +70,6 @@ VertexId get_adjacent_vertex(const glm::dvec2& wall_dir,
                              const std::array<VertexId, 2>& vertex_neighbors, 
                              const std::vector<glm::dvec2>& vertices);
 
-// Calculates the orthogonal projection of a point onto a line segment.
-// Computes where a given 2D point projects onto the line defined by two segment endpoints.
-// It evaluates whether the projected point falls strictly inside the segment boundaries
-ProjResult project_onto_segment(const glm::dvec2& p, const glm::dvec2& v1, const glm::dvec2& v2);
-
 // Samples a set of 2D segments into discrete points.
 // Iterates through each segment and generates a specified number of evenly spaced 
 // points along its length using linear interpolation (LERP).
@@ -80,14 +83,57 @@ std::vector<glm::dvec2> sample_segments(const std::vector<Segment>& segments,
 std::vector<std::vector<u32>> calculate_clusters(std::vector<glm::dvec2>& sample_points,
                                                  f32 eps);
 
-// Connects and seals a gap in a wall (door or window opening).
-// This function snaps the given gap coordinates to the nearest wall vertices using a Spatial Hash,
-// finds the opposite wall vertices to account for wall thickness, handles non-colinear wall 
-// segments via perpendicular projection, and inserts the closing edges with the specified layer type.
-void close_wall_gap(glm::dvec2 gap_start, 
-                    glm::dvec2 gap_end, 
-                    LayerType type, 
-                    SpatialHash& hash, 
+// Finds the four vertices that define the wall strip around a gap.
+// Given the two endpoints of a door/window gap, this function snaps them to
+// the nearest wall vertices (B and D). It then determines the adjacent
+// vertices C and E along the wall direction, completing the wall strip.
+WallVertices get_wall_vertices(const glm::dvec2& gap_start,
+                               const glm::dvec2& gap_end,
+                               const SpatialHash& hash,
+                               const std::vector<Edge>& edges,
+                               const std::vector<glm::dvec2>& vertices);
+
+// Checks whether two vectors are parallel (or anti-parallel) within a tolerance.
+// Two vectors are considered parallel if the absolute value of the cosine of
+// the angle between them is close to 1. The tolerance is applied to the
+// cosine value (e.g., 1e-4 means angle < ~ 0.1°).
+bool are_parallel(const glm::dvec2& v1, 
+                  const glm::dvec2& v2, 
+                  f64 tol = 1e-4);
+
+// Projects a point onto a line segment defined by two endpoints.
+// The projection is computed using the parameter t along the segment.
+// The result indicates whether the projection falls strictly inside the
+// segment (with a small tolerance to avoid boundary issues).
+ProjResult project_point_on_segment(const glm::dvec2& p,
+                                    const glm::dvec2& a,
+                                    const glm::dvec2& b,
+                                    f64 tol = 1e-4);
+
+// Splits an existing edge into two by inserting a new vertex.
+// The original edge between v1 and v2 is removed and replaced by two edges:
+// (v1, new_id) and (new_id, v2), both with the specified layer type.
+// The new vertex coordinates are added to the vertices list.
+VertexId split_edge(std::vector<glm::dvec2>& vertices,
+                    std::vector<Edge>& edges,
+                    VertexId v1,
+                    VertexId v2,
+                    const glm::dvec2& new_point,
+                    LayerType layer = LayerType::WALL);
+
+// Closes the wall around a door or window gap.
+// 
+// Given the two endpoints of a gap (door/window segment), this function:
+// 1. Finds the four vertices (B,C,D,E) of the wall strip.
+// 2. Checks if the opposite side (C-E) is parallel to the gap (B-D).
+// 3. If not parallel, it projects E onto B-C or C onto D-E to create a new
+//    vertex that makes the opposite side parallel, splitting the corresponding wall edge.
+// 4. Finally, it adds two edges: one for the gap (B-D) and one for the
+//    opposite side (the new parallel segment), both with the given layer type.
+void close_wall_gap(glm::dvec2 gap_start,
+                    glm::dvec2 gap_end,
+                    LayerType type,
+                    SpatialHash& hash,
                     std::vector<Edge>& edges);
 
 // Reconstructs topological elements for doors and bridges the gaps between walls.
@@ -106,7 +152,6 @@ void windows_reconstruction(std::vector<glm::dvec2>& sample_points,
                             std::vector<std::vector<u32>> clusters,
                             SpatialHash& hash,
                             std::vector<Edge>& edges);
-
 
 // Builds a triangulated face by iterating over a set of CDT triangles.
 // Converts 2D polygonal triangle points into 3D vertices at a specified height,

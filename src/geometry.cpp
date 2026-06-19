@@ -1,6 +1,8 @@
 #include "geometry.hpp"
 #include "types.hpp"
 
+#include "dbscan.h"
+
 #include <glm/ext/vector_double2.hpp>
 #include <glm/geometric.hpp>
 #include <glm/common.hpp>
@@ -60,6 +62,43 @@ BoundingBox2D calculate_bbox_2D(const std::vector<glm::dvec2>& points, const std
   };
 }
 
+std::array<Segment, 2> get_long_sides_bbox2d(const BoundingBox2D& bbox)
+{
+  auto dx = bbox.max.x - bbox.min.x;
+  auto dy = bbox.max.y - bbox.min.y;
+  if (dx > dy) 
+  {
+    // The X-axis is dominant: the long sides are horizontal
+    Segment bottom = {
+      .start = glm::dvec2(bbox.min.x, bbox.min.y),
+      .end   = glm::dvec2(bbox.max.x, bbox.min.y),
+      .layer = LayerType::NONE
+    };
+    Segment top = {
+      .start = glm::dvec2(bbox.min.x, bbox.max.y),
+      .end   = glm::dvec2(bbox.max.x, bbox.max.y),
+      .layer = LayerType::NONE
+    };
+    return {bottom, top};
+  } 
+  else 
+  {
+    // The Y-axis is dominant: the long sides are vertical
+    Segment left = {
+      .start = glm::dvec2(bbox.min.x, bbox.min.y),
+      .end   = glm::dvec2(bbox.min.x, bbox.max.y),
+      .layer = LayerType::NONE
+    };
+    Segment right = {
+      .start = glm::dvec2(bbox.max.x, bbox.min.y),
+      .end   = glm::dvec2(bbox.max.x, bbox.max.y),
+      .layer = LayerType::NONE
+    };
+    return {left, right};
+  }
+}
+
+
 BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PN>& vertices) 
 {
   auto min = vertices.front().position;
@@ -92,7 +131,6 @@ void normalize_segments(f32 unit, std::vector<Segment>& segments)
 std::vector<Edge> vertex_snapping(const std::vector<Segment> walls_segments, SpatialHash& hash)
 {
   auto edges = std::vector<Edge>{};
-
   auto wall_segments_view = std::array{ walls_segments };
   for (const auto& seg : wall_segments_view | std::views::join)
   {
@@ -158,6 +196,33 @@ ProjResult project_onto_segment(const glm::dvec2& p,
   return { v1, false };
 }
 
+std::vector<glm::dvec2> sample_segments(const std::vector<Segment>& segments, i32 num_samples)
+{
+  auto points = std::vector<glm::dvec2>{};
+  points.reserve(segments.size());
+  for (const auto& s : segments)
+  {
+    for (auto i = 0; i <= num_samples; ++i) 
+    {
+      auto t = static_cast<f64>(i) / num_samples;
+      auto x = s.start.x + t * (s.end.x - s.start.x);
+      auto y = s.start.y + t * (s.end.y - s.start.y);
+      points.push_back(glm::dvec2{x, y});
+    }
+  }
+  return points;
+}
+
+std::vector<std::vector<u32>> calculate_clusters(std::vector<glm::dvec2>& sample_points,
+                                                 f32 eps)
+{
+  auto dbscan = DBSCAN<glm::dvec2, f64>(); 
+  constexpr auto min_points = 2;
+  dbscan.Run(&sample_points, 2, eps, min_points);
+  auto clusters = dbscan.Clusters;
+  return clusters;
+}
+
 void doors_reconstruction(std::vector<Segment>& doors,
                           SpatialHash& hash,
                           std::vector<Edge>& edges)
@@ -165,67 +230,112 @@ void doors_reconstruction(std::vector<Segment>& doors,
   auto& vertices = hash.vertices();
   for(auto& door : doors) 
   { 
-    auto B_id = hash.find_nearest(door.start); 
-    auto D_id = hash.find_nearest(door.end); 
-    auto wall_dir = glm::normalize(vertices[B_id] - vertices[D_id]); 
-    
-    door.start = vertices[B_id]; 
-    door.end = vertices[D_id]; 
-    
-    auto nbrs_B = find_neighboors(B_id, edges); 
-    auto C_id = get_adjacent_vertex(wall_dir, B_id, nbrs_B, vertices); 
-    
-    auto nbrs_D = find_neighboors(D_id, edges); 
-    auto E_id = get_adjacent_vertex(wall_dir, D_id, nbrs_D, vertices); 
+    close_wall_gap(door.start, door.end, LayerType::DOOR, hash, edges);
+    door.start = vertices[hash.find_nearest(door.start)];
+    door.end   = vertices[hash.find_nearest(door.end)];
+  }
+}
 
-    auto P_B = vertices[B_id];
-    auto P_D = vertices[D_id];
-    auto P_C = vertices[C_id];
-    auto P_E = vertices[E_id];
-
-    // By default we assume that the door closes perfectly between C and E
-    auto door_close_left = C_id;
-    auto door_close_right = E_id;
-
-    // Let's try projecting E onto the left wall B->C
-    auto proj_E = project_onto_segment(P_E, P_B, P_C);      
-    if (proj_E.is_inside) 
-    {
-      // Found point E'! We add it to the vertices
-      vertices.push_back(proj_E.point);
-      VertexId E_prime_id = vertices.size() - 1;
-
-      // Let's remove the old left wall: B->C
-      std::erase_if(edges, [&](const Edge& e) { return (e.v1 == B_id && e.v2 == C_id) || (e.v1 == C_id && e.v2 == B_id); });
-
-      // We insert the two new segments of the broken wall: B->E' and E'->C
-      edges.push_back(Edge{ B_id, E_prime_id, LayerType::WALL });
-      edges.push_back(Edge{ E_prime_id, C_id, LayerType::WALL });
-
-      door_close_left = E_prime_id;
-    } 
-    else 
-    {
-      // Let's try projecting C onto the right wall D->E
-      auto proj_C = project_onto_segment(P_C, P_D, P_E);
-      if (proj_C.is_inside) 
-      {
-        // Found point C'! We add it to the vertices
-        vertices.push_back(proj_C.point);
-        VertexId C_prime_id = vertices.size() - 1;
-
-        // Let's remove the old left wall: D->E
-        std::erase_if(edges, [&](const Edge& e) { return (e.v1 == D_id && e.v2 == E_id) || (e.v1 == E_id && e.v2 == D_id); });
+void windows_reconstruction(std::vector<glm::dvec2>& sample_points,
+                            std::vector<std::vector<u32>> clusters,
+                            SpatialHash& hash,
+                            std::vector<Edge>& edges)
+{
+  for (auto i = 0ul; i < clusters.size(); ++i) 
+  {
+    const auto& cluster_indices = clusters[i];
+    if (cluster_indices.empty()) 
+      continue;
         
-        // We insert the two new segments of the broken wall: D->C' and C'->E
-        edges.push_back(Edge{ D_id, C_prime_id, LayerType::WALL });
-        edges.push_back(Edge{ C_prime_id, E_id, LayerType::WALL });
-        door_close_right = C_prime_id;
-      }
-    }
+    auto box = calculate_bbox_2D(sample_points, cluster_indices);
+    auto sides = get_long_sides_bbox2d(box);
+    auto longest_side = sides.at(0);
+    
+    close_wall_gap(longest_side.start, longest_side.end, LayerType::WINDOW, hash, edges);
+  }
+}
 
-    edges.push_back(Edge{ B_id, D_id, LayerType::DOOR });
-    edges.push_back(Edge{ door_close_left, door_close_right, LayerType::DOOR });
+void close_wall_gap(glm::dvec2 gap_start, 
+                    glm::dvec2 gap_end, 
+                    LayerType type, 
+                    SpatialHash& hash, 
+                    std::vector<Edge>& edges)
+{
+  // (A)--(B)    (D)---------(F)
+  //  |    |      |
+  //  |    |      |
+  //  |    |     (E)---------(G)
+  //       |
+  // (H)--(C)
+
+
+  // (F)     (A)
+  //  |       |
+  // (B)-----(C)
+  // 
+  // 
+  // (D)-----(E)
+  //  |       |
+  // (G)     (H)
+
+  auto& vertices = hash.vertices();
+
+  auto B_id = hash.find_nearest(gap_start); 
+  auto D_id = hash.find_nearest(gap_end); 
+  auto wall_dir = glm::normalize(vertices[B_id] - vertices[D_id]); 
+
+  auto nbrs_B = find_neighboors(B_id, edges); 
+  auto C_id = get_adjacent_vertex(wall_dir, B_id, nbrs_B, vertices); 
+  auto nbrs_D = find_neighboors(D_id, edges); 
+  auto E_id = get_adjacent_vertex(wall_dir, D_id, nbrs_D, vertices); 
+
+  auto P_B = vertices[B_id];
+  auto P_D = vertices[D_id];
+  auto P_C = vertices[C_id];
+  auto P_E = vertices[E_id];
+
+  // By default we assume that the gap closes perfectly between C and E
+  auto gap_close_left = C_id;
+  auto gap_close_right = E_id;
+
+  // Let's try projecting E onto the left wall B->C
+  auto proj_E = project_onto_segment(P_E, P_B, P_C);      
+  if (proj_E.is_inside) 
+  {
+    // Found point E'! We add it to the vertices
+    vertices.push_back(proj_E.point);
+    VertexId E_prime_id = vertices.size() - 1;
+
+    // Let's remove the old left wall: B->C
+    std::erase_if(edges, [&](const Edge& e) { return (e.v1 == B_id && e.v2 == C_id) || (e.v1 == C_id && e.v2 == B_id); });
+
+    // We insert the two new segments of the broken wall: B->E' and E'->C
+    edges.push_back(Edge{ B_id, E_prime_id, LayerType::WALL });
+    edges.push_back(Edge{ E_prime_id, C_id, LayerType::WALL });
+
+    gap_close_left = E_prime_id;
+  }
+  else 
+  {
+    // Let's try projecting C onto the right wall D->E
+    auto proj_C = project_onto_segment(P_C, P_D, P_E);
+    if (proj_C.is_inside) 
+    {
+      // Found point C'! We add it to the vertices
+      vertices.push_back(proj_C.point);
+      VertexId C_prime_id = vertices.size() - 1;
+
+      // Let's remove the old left wall: D->E
+      std::erase_if(edges, [&](const Edge& e) { return (e.v1 == D_id && e.v2 == E_id) || (e.v1 == E_id && e.v2 == D_id); });
+      
+      // We insert the two new segments of the broken wall: D->C' and C'->E
+      edges.push_back(Edge{ D_id, C_prime_id, LayerType::WALL });
+      edges.push_back(Edge{ C_prime_id, E_id, LayerType::WALL });
+      gap_close_right = C_prime_id;
+    }
+    
+    edges.push_back(Edge{ B_id, D_id, type });
+    edges.push_back(Edge{ gap_close_left, gap_close_right, type });
   }
 }
 

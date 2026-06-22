@@ -173,22 +173,53 @@ void DRWParser::addArc(const DRW_Arc& data)
     return;
   }
 
-
   std::println("[Arc] name:`{}`", data.layer);
   auto layer_type = classify_layer(data.layer);
-  if(layer_type == LayerType::DOOR)
+  if (layer_type == LayerType::DOOR)
   {
-    // auto start = glm::dvec2{ data.basePoint.x, data.basePoint.y };
-    // auto radius = data.radious;
+    auto center = glm::dvec2{ data.basePoint.x, data.basePoint.y };
+    auto radius = data.radious;
     // auto p1 = glm::dvec2{
     //   center.x + radius * std::cos(data.staangle),
     //   center.y + radius * std::sin(data.staangle)
     // };
-    // auto end = glm::dvec2{
-    //   start.x + radius * std::cos(data.endangle),
-    //   start.y + radius * std::sin(data.endangle)
-    // };
-    // doors.push_back(Segment{ start, end, layer_type });
+    auto p2 = glm::dvec2{
+      center.x + radius * std::cos(data.endangle),
+      center.y + radius * std::sin(data.endangle)
+    };
+
+    doors.push_back(Segment{ center, p2, layer_type });
+  }
+  else if (layer_type == LayerType::WALL) 
+  {
+    auto center = glm::dvec2{ data.basePoint.x, data.basePoint.y };
+    auto radius = data.radious;
+
+    auto start_angle = data.staangle;   // verifica il nome esatto del campo
+    auto end_angle   = data.endangle;
+
+    if (end_angle < start_angle) 
+      end_angle += 2.0 * std::numbers::pi;
+
+    auto arc_span = end_angle - start_angle;
+    auto arc_length = radius * arc_span;
+
+    constexpr auto max_segment_length = 5.0; // da calibrare sulle unità del tuo DXF (es. cm/m)
+    auto n_segments = std::max(4, static_cast<i32>(std::ceil(arc_length / max_segment_length)));
+
+    std::vector<glm::dvec2> points;
+    points.reserve(n_segments + 1);
+    for (int i = 0; i <= n_segments; ++i) 
+    {
+      auto t = start_angle + arc_span * (static_cast<f64>(i) / n_segments);
+      points.push_back(glm::dvec2{
+        center.x + radius * std::cos(t),
+        center.y + radius * std::sin(t)
+      });
+    }
+
+    for (size_t i = 0; i + 1 < points.size(); ++i)
+      walls.push_back(Segment{ points[i], points[i + 1], layer_type });
   }
 }
 
@@ -221,9 +252,9 @@ void DRWParser::addInsert(const DRW_Insert& data)
   }
 }
 
-void DRWParser::addBlock([[maybe_unused]]const DRW_Block& data)
+void DRWParser::addBlock(const DRW_Block& data)
 {
-  if(data.name == "DOOR40")
+  if(data.name == "DOOR" || data.name == "DOOR40" || data.name == "DOOR30")
   {
     std::println("[addBlock] name={}", data.name);
     s_current_block_name = data.name;

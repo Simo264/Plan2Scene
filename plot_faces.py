@@ -67,5 +67,5 @@ ax.set_title("Debug Facce con ID Univoci")
 ax.grid(True, linestyle=":", alpha=0.5)
 ax.legend(loc="upper right")
 
-plt.savefig("faces.png", dpi=500, bbox_inches='tight')
-print("Immagine salvata come 'faces.png'")
+plt.savefig("faces.png", dpi=300, bbox_inches='tight')
+print("Image saved: faces.png")

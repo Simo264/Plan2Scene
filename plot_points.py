@@ -30,4 +30,6 @@ ax.set_xlabel("X")
 ax.set_ylabel("Y")
 ax.grid(True, linestyle=":", alpha=0.5)
 ax.legend(loc="upper left")
-plt.show()
+
+plt.savefig("points.png", dpi=300, bbox_inches='tight')
+print("Image saved: points.png")

@@ -1,7 +1,9 @@
 build/
+venv/
+compile_commands.json
 .cache/
 .continue/
 .zed/
 .vscode/
-compile_commands.json
-venv/
+*.csv
+*.png

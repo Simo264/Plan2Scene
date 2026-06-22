@@ -30,6 +30,8 @@ void reconstruction(const std::filesystem::path& filename,
   auto& windows = parser.windows;
   std::println("Successfully parsed DXF file:\n walls: {}\n door: {}\n windows: {}", walls.size(), doors.size(), windows.size());
 
+  windows = {};
+  doors = {};
 
   // detect the unit scale and normalize points
   
@@ -37,15 +39,19 @@ void reconstruction(const std::filesystem::path& filename,
   if(parser.unit_scale == 0.0f)
     parser.unit_scale = detect_unit_scale(house_bbox.calculate_area());
 
+  // auto is_outside_bb = [&house_bbox](const Segment& seg) { return !house_bbox.contains(seg.start); };
+  // std::erase_if(walls, is_outside_bb);
+  // std::erase_if(doors, is_outside_bb);
+  // std::erase_if(windows, is_outside_bb);
+
   std::println("Unit scale: {}", parser.unit_scale);
   normalize_segments(parser.unit_scale, walls);
   normalize_segments(parser.unit_scale, doors);
   normalize_segments(parser.unit_scale, windows);
 
-  // dump_segments_csv(walls, "walls_segments.csv");
-  // dump_segments_csv(doors, "doors_segments.csv");
-  // dump_segments_csv(windows, "windows_segments.csv");
-  // exit(0);
+  dump_segments_csv(walls, "walls_segments.csv");
+  dump_segments_csv(doors, "doors_segments.csv");
+  dump_segments_csv(windows, "windows_segments.csv");
   
   // Vertex snapping with spatial hashing data structure: wall segments only
 
@@ -55,13 +61,16 @@ void reconstruction(const std::filesystem::path& filename,
   std::println("Vertex snapping completed. Vertices: {}, edges: {}", vertices.size(), edges.size());
   
   // Topological reconstruction of openings
+  if(!doors.empty())
+    doors_reconstruction(doors, hash, edges);
 
-  doors_reconstruction(doors, hash, edges);
-
-  auto sample_points = sample_segments(windows, 10);
-  auto clusters = calculate_clusters(sample_points, 1.0f);
-  windows_reconstruction(sample_points, clusters, hash, edges);
-
+  if(!windows.empty())
+  {
+    auto sample_points = sample_segments(windows, 10);
+    auto clusters = calculate_clusters(sample_points, 1.0f);
+    windows_reconstruction(sample_points, clusters, hash, edges);
+  }
+  
   auto arrangement = build_arrangement(vertices, edges);
   std::println("Arrangement successfully completed: vertices={}, edges={}, faces={}", 
     arrangement.number_of_vertices(), arrangement.number_of_edges(), arrangement.number_of_faces());
@@ -109,38 +118,38 @@ void reconstruction(const std::filesystem::path& filename,
     cdt.Triangulate();
     auto triangles = cdt.GetTriangles();
 
-    constexpr auto CEIL_HEIGHT = 10.f;
-    constexpr auto DOOR_OFFSET = 9.0f;
+    // constexpr auto CEIL_HEIGHT = 10.f;
+    // constexpr auto DOOR_OFFSET = 9.0f;
     switch(face.type)
     {
       case FaceType::FLOOR:
         std::println("FLOOR face found!");
         build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 1.f, 0.f, 0.f });
-        build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT + 0.001f, { 1.f, 0.f, 0.f });
+        // build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT + 0.001f, { 1.f, 0.f, 0.f });
         break;
 
       case FaceType::WALL:
         std::println("WALL face found!");
-        build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 0.5f, 0.5f, 0.5f });
+        //build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 0.5f, 0.5f, 0.5f });
         //build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, { 0.f, 1.f, 0.f });
-        extrude_face(out_vertices, out_indices, 0, CEIL_HEIGHT, face);
+        //extrude_face(out_vertices, out_indices, 0, CEIL_HEIGHT, face);
         break;
 
       case FaceType::DOOR:
         std::println("DOOR face found!");
-        //build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 0.75f, 0, 0 });
+        // build_triangulated_face(out_vertices, out_indices, triangles, 0.f, { 0.75f, 0, 0 });
         // build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, { 0.f, 0.f, 1.f });
-        extrude_face(out_vertices, out_indices, DOOR_OFFSET, CEIL_HEIGHT, face);
+        // extrude_face(out_vertices, out_indices, DOOR_OFFSET, CEIL_HEIGHT, face);
         break; 
         
       case FaceType::WINDOW:
         std::println("WINDOW face found!");
-        //build_triangulated_face(out_vertices, out_indices, triangles, 0.f, {0, 0, 0.75f});
-        build_triangulated_face(out_vertices, out_indices, triangles, 2.f, {1.f, 0.f, 1.f});
-        build_triangulated_face(out_vertices, out_indices, triangles, 7.f, {1.f, 0.f, 1.f});
-        //build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, {1.f, 0.f, 1.f});
-        extrude_face(out_vertices, out_indices, 0.0f, 2.0f, face);
-        extrude_face(out_vertices, out_indices, 7.0f, CEIL_HEIGHT, face);
+        // build_triangulated_face(out_vertices, out_indices, triangles, 0.f, {0, 0, 0.75f});
+        // build_triangulated_face(out_vertices, out_indices, triangles, 2.f, {1.f, 0.f, 1.f});
+        // build_triangulated_face(out_vertices, out_indices, triangles, 7.f, {1.f, 0.f, 1.f});
+        // build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, {1.f, 0.f, 1.f});
+        // extrude_face(out_vertices, out_indices, 0.0f, 2.0f, face);
+        // extrude_face(out_vertices, out_indices, 7.0f, CEIL_HEIGHT, face);
         break; 
 
       default:

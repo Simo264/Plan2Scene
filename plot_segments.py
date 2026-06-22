@@ -43,6 +43,5 @@ ax.set_ylabel("Y")
 ax.grid(True, linestyle=":", alpha=0.5)
 ax.legend(loc="upper left")
 
-# plt.show()
-plt.savefig("floor_plan_output.png", dpi=300, bbox_inches='tight')
-print("Immagine salvata come 'floor_plan_output.png'")
+plt.savefig("segments.png", dpi=300, bbox_inches='tight')
+print("Image saved: segments.png")

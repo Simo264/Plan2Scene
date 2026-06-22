@@ -87,7 +87,7 @@ struct Vertex_PN
 
 struct BoundingBox2D
 {
-  glm::vec2 min, max;
+  glm::dvec2 min, max;
 
   auto calculate_area() { return (max.x - min.x) * (max.y - min.y); }
   

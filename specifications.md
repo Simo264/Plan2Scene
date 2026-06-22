@@ -14,10 +14,10 @@ Initially we will need to parse the file to collect all the primitives we are in
 After that we have a **vertex snapping** phase, only on wall primitives, where we collapse the vertices into a single vertex if they are within the radius $\epsilon$, using the Spatial Hashing structure.
 
 After snapping the vertices on the walls, we need to proceed with reconstructing the faces of the doors and windows that will be extracted in the next phase, and are used to close the outline of the room or house.
-Generally speaking, it only takes one segment per door for us to rebuild doors. From that segment we find the two junctions of the walls $A \to B$. To create a closed face we need to find the other two junctions and create the other parallel segment. We will have to look for the other two junctions $C \to D$.
-This is quite simple as we can search between the neighbors of node $A$ and the neighbors of node $B$. For windows, the reasoning is very similar in that we would only need to have a single segment per window to reconstruct each face of the windows.
-Unlike doors where for the most part they are represented by equal BLOCKS, ARC and at most LWPolyline if it is a rectangle like an entrance door, windows can have different representations, they can be represented by 2 lines, 3 lines, 4 lines, rectangles, complex blocks, etc. Trying to write a parser based on segment counting is too complicated. The ideal approach would be based on spatial clustering and bounding box extraction.
-Since we only have one set of window segments, our goal is to group them into clusters. After that, each cluster will be a window, and from each we can extract individual segments and reconstruct the faces.
+Generally speaking, to reconstruct a face of a door or window we only need a segment that connects the two edges of the walls. From that single segment we are able to derive the other two edges and insert the other segment so as to form a closed face. This is quite simple. Suppose we have a door in the middle of the wall and the edges are represented by the vertices $A,B$ (right wall), $C,D$ (left wall). We only know the segment connecting the vertices $A,C$,and we denote this vector by $\vec{d}$ which would be the direction of the gate. We take the vertex $A$ and consider its neighbors and for each neighbor we calculate the direction vector $\vec{d'}$. If the dot procuct between $\vec{d}$ and $\vec{d'}$ is 0 (or very close to 0) it means that the two vectors are perpendicular and that vertex is a candidate to be the third junction of the wall. Same thing we do with the $C$ summit and its neighbors. In this way we will have obtained the two segments $\overline{AC}$ and $\overline{BD}$ and closed the face. This applies to both doors and windows.
+
+Ports have a fairly standard representation and are usually pointers to BLOCKS, and the primitives used are usually ARC. Sometimes however they can be LINE or LWPolyline. Windows, on the other hand, are more variable and can be represented in many ways. For this reason, the ideal approach would be based on spatial clustering and bounding box extraction. Each cluster of points will represent a window; from each cluster, I will calculate the bounding box and extract a single segment from it.
+To do this, I simply consider one of the two long sides of the box, using the Spatial Hashing structure I find the two vertices of the walls, and to derive the second segment I follow the procedure above.
 
 Next, we create the PSLG (Half Edge) graph: first we insert the vertices of the wall segments and then using the placeholder information of the doors/windows we add new edges to the graph. This way we will expect to have a closed room with several faces and ready to triangulate.
 It would also be important to indicate what each face represents, whether it represents the face of a wall, whether it represents a door, a window, or the interior area of the room.
@@ -27,9 +27,10 @@ It would also be important to indicate what each face represents, whether it rep
 The project will be divided as follows:
 1. Computational geometry (C++):
   - Parsing with `libdxfrw`
-  - Segment subdivision + Half-Edge with `CGAL`
+  - DBSCAN algorithm with `SimpleDBSCAN`
+  - Planar Straight-Line Graph with `CGAL`
   - Polygon triangulation with `poly2tri`
-  - Polygon offsetting with `Clipper2`
+  - Polygon offsetting + boolean op with `Clipper2`
 2. Rendering with Blender
   - Import of the GLTF model
   - Calculate texture coordinate, UV mapping and materials 

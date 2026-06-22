@@ -25,4 +25,6 @@ ax.legend()
 ax.grid(True, linestyle='--', alpha=0.6)
 
 plt.tight_layout()
-plt.show()
+
+plt.savefig("clusters.png", dpi=300, bbox_inches='tight')
+print("Image saved: clusters.png")

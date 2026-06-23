@@ -1,7 +1,9 @@
 import os
+import sys
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
+from pathlib import Path
 
 FACE_CONFIG = {
     0: {"name": "NONE (Error/Bug)", "color": "#ff00ff", "alpha": 0.4},
@@ -12,10 +14,6 @@ FACE_CONFIG = {
 }
 
 def load_faces(filename):
-    if not os.path.exists(filename):
-        print(f"Error: file not found: '{filename}'")
-        return []
-
     df = pd.read_csv(filename, header=None, names=range(300))
     faces = []
     for _, row in df.iterrows():
@@ -32,7 +30,13 @@ def load_faces(filename):
         
     return faces
 
-faces_list = load_faces("faces.csv")
+
+filename = Path("faces.csv")
+if not filename.is_file():
+    print(f"Error: file does not exixt: {filename}")
+    sys.exit(0)
+
+faces_list = load_faces(filename)
 fig, ax = plt.subplots(figsize=(12, 10))
 seen_labels = set()
 

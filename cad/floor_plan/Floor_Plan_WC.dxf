@@ -91,7 +91,7 @@ STANDARD
   9
 $CLAYER
   8
-0
+WALL
   9
 $CELTYPE
   6
@@ -1115,9 +1115,9 @@ AcDbViewportTableRecord
  21
 1
  12
-61220.11666986717
+61216.61507138963
  22
--178672.6709965685
+-178670.3473058357
  13
 0
  23
@@ -1143,9 +1143,9 @@ AcDbViewportTableRecord
  37
 0
  40
-7333.439453658357
+7452.943548487553
  41
-1.673076923076923
+1.64625
  42
 50
  43
@@ -2523,7 +2523,7 @@ Standard
 277
     2
 278
-    0
+   44
 279
     0
 280
@@ -2590,78 +2590,6 @@ AcDbSymbolTableRecord
 AcDbBlockTableRecord
   2
 *Paper_Space
- 70
-    0
-280
-    1
-281
-    0
-  0
-BLOCK_RECORD
-  5
-4F
-330
-1
-100
-AcDbSymbolTableRecord
-100
-AcDbBlockTableRecord
-  2
-BFA BASIN-CAROMA CUBE CARE WB-PLAN
- 70
-    0
-280
-    1
-281
-    0
-  0
-BLOCK_RECORD
-  5
-52
-330
-1
-100
-AcDbSymbolTableRecord
-100
-AcDbBlockTableRecord
-  2
-A$C3CF9729E
- 70
-    0
-280
-    1
-281
-    0
-  0
-BLOCK_RECORD
-  5
-55
-330
-1
-100
-AcDbSymbolTableRecord
-100
-AcDbBlockTableRecord
-  2
-BFA WC-CAROMA CARE 200-PLAN
- 70
-    0
-280
-    1
-281
-    0
-  0
-BLOCK_RECORD
-  5
-58
-330
-1
-100
-AcDbSymbolTableRecord
-100
-AcDbBlockTableRecord
-  2
-_ARCHTICK
  70
     0
 280
@@ -2753,220 +2681,6 @@ AcDbEntity
 100
 AcDbBlockEnd
   0
-BLOCK
-  5
-50
-330
-4F
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockBegin
-  2
-BFA BASIN-CAROMA CUBE CARE WB-PLAN
- 70
-    0
- 10
-0
- 20
-0
-  3
-BFA BASIN-CAROMA CUBE CARE WB-PLAN
-  1
-
-  0
-ENDBLK
-  5
-51
-330
-4F
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockEnd
-  0
-BLOCK
-  5
-53
-330
-52
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockBegin
-  2
-A$C3CF9729E
- 70
-    0
- 10
-0
- 20
-0
-  3
-A$C3CF9729E
-  1
-
-  0
-CIRCLE
-  5
-5B
-100
-AcDbEntity
-  8
-0
-  6
-ByLayer
- 62
-    0
-370
-   -1
-100
-AcDbCircle
- 10
-0
- 20
-0
- 40
-17
-  0
-LINE
-  5
-5C
-100
-AcDbEntity
-  8
-0
-  6
-ByLayer
- 62
-    0
-370
-   -1
-100
-AcDbLine
- 10
-19.09188309203682
- 20
--19.09188309203682
- 11
--19.09188309203682
- 21
-19.09188309203682
-  0
-LINE
-  5
-5D
-100
-AcDbEntity
-  8
-0
-  6
-ByLayer
- 62
-    0
-370
-   -1
-100
-AcDbLine
- 10
--19.09188309203682
- 20
--19.09188309203682
- 11
-19.09188309203682
- 21
-19.09188309203682
-  0
-ENDBLK
-  5
-54
-330
-52
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockEnd
-  0
-BLOCK
-  5
-56
-330
-55
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockBegin
-  2
-BFA WC-CAROMA CARE 200-PLAN
- 70
-    0
- 10
-0
- 20
-0
-  3
-BFA WC-CAROMA CARE 200-PLAN
-  1
-
-  0
-ENDBLK
-  5
-57
-330
-55
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockEnd
-  0
-BLOCK
-  5
-59
-330
-58
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockBegin
-  2
-_ARCHTICK
- 70
-    0
- 10
-0
- 20
-0
-  3
-_ARCHTICK
-  1
-
-  0
-ENDBLK
-  5
-5A
-330
-58
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockEnd
-  0
 ENDSEC
   0
 SECTION
@@ -2975,7 +2689,7 @@ ENTITIES
   0
 LINE
   5
-5E
+4F
 100
 AcDbEntity
   8
@@ -2999,7 +2713,7 @@ AcDbLine
   0
 LINE
   5
-5F
+50
 100
 AcDbEntity
   8
@@ -3023,7 +2737,7 @@ AcDbLine
   0
 LINE
   5
-60
+51
 100
 AcDbEntity
   8
@@ -3047,7 +2761,7 @@ AcDbLine
   0
 ARC
   5
-61
+52
 100
 AcDbEntity
   8
@@ -3075,7 +2789,7 @@ AcDbArc
   0
 LINE
   5
-62
+53
 100
 AcDbEntity
   8
@@ -3099,7 +2813,7 @@ AcDbLine
   0
 LINE
   5
-63
+54
 100
 AcDbEntity
   8
@@ -3123,7 +2837,7 @@ AcDbLine
   0
 LINE
   5
-64
+55
 100
 AcDbEntity
   8
@@ -3147,7 +2861,7 @@ AcDbLine
   0
 LINE
   5
-65
+56
 100
 AcDbEntity
   8
@@ -3171,7 +2885,7 @@ AcDbLine
   0
 LINE
   5
-66
+57
 100
 AcDbEntity
   8
@@ -3195,7 +2909,7 @@ AcDbLine
   0
 LINE
   5
-67
+58
 100
 AcDbEntity
   8
@@ -3219,7 +2933,7 @@ AcDbLine
   0
 LINE
   5
-68
+59
 100
 AcDbEntity
   8
@@ -3243,7 +2957,7 @@ AcDbLine
   0
 LINE
   5
-69
+5A
 100
 AcDbEntity
   8
@@ -3267,7 +2981,7 @@ AcDbLine
   0
 LINE
   5
-6A
+5B
 100
 AcDbEntity
   8
@@ -3291,7 +3005,7 @@ AcDbLine
   0
 LINE
   5
-6B
+5C
 100
 AcDbEntity
   8
@@ -3315,7 +3029,7 @@ AcDbLine
   0
 LINE
   5
-6C
+5D
 100
 AcDbEntity
   8
@@ -3369,7 +3083,7 @@ AcDbDictionary
   0
 PLOTSETTINGS
   5
-6D
+5E
 100
 AcDbPlotSettings
   6

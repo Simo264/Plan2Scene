@@ -1,8 +1,15 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+from pathlib import Path
+import sys
 
-df = pd.read_csv('clusters.csv', header=None, names=['x', 'y', 'cluster'])
+filename = Path("clusters.csv")
+if not filename.is_file():
+    print(f"Error: file does not exixt: {filename}")
+    sys.exit(0)
+
+df = pd.read_csv(filename, header=None, names=['x', 'y', 'cluster'])
 
 clusters = df.groupby('cluster')
 

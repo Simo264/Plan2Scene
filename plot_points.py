@@ -1,22 +1,20 @@
 import os
+import sys
 import pandas as pd
 import matplotlib.pyplot as plt
+from pathlib import Path
 
 def load_points(filename):
-    if not os.path.exists(filename):
-        print(f"Error: file not found: '{filename}'")
-        return []
-    
-    try:
-        df = pd.read_csv(filename, header=None, dtype=float)
-        points = [tuple(row) for row in df.values]
-        return points
-        
-    except Exception as e:
-        print(f"Error reading {filename}: {e}")
-        return []
+    df = pd.read_csv(filename, header=None, dtype=float)
+    points = [tuple(row) for row in df.values]
+    return points
 
-vertices = load_points("vertices.csv")
+filename = Path("vertices.csv")
+if not filename.is_file():
+    print(f"Error: file does not exixt: {filename}")
+    sys.exit(0)
+
+vertices = load_points(filename)
 
 fig, ax = plt.subplots(figsize=(10, 8))
 if vertices:

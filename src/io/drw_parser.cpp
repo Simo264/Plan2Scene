@@ -13,14 +13,15 @@
 
 static auto s_current_block_name = std::string{};
 static auto s_is_parsing_block = false;
-static auto s_block_vertices = std::map<std::string, std::vector<glm::dvec2>>{};
+// those points are in local coordinates of the block
+static auto s_block_vertices = std::map<std::string, std::vector<Segment>>{};
 static auto s_block_door_widths = std::map<std::string, f64>{};
 
 static auto classify_layer(std::string_view name) 
 {
-  if (name == "DOOR")      return LayerType::DOOR;
-  if (name == "WALL")      return LayerType::WALL;
-  if (name == "WINDOW")    return LayerType::WINDOW;
+  if (name.contains("DOOR"))      return LayerType::DOOR;
+  if (name.contains("WALL"))      return LayerType::WALL;
+  if (name.contains("WINDOW"))    return LayerType::WINDOW;
   return LayerType::NONE;
 } 
 
@@ -81,17 +82,22 @@ void DRWParser::addLayer([[maybe_unused]] const DRW_Layer& data)
 
 void DRWParser::addLine(const DRW_Line& data)
 {
-  if (s_is_parsing_block)
-    return;
-
   auto layer_type = classify_layer(data.layer);
   std::println("[Line] name:`{}`", data.layer);
-  
   auto segment = Segment{
     .start = glm::dvec2{ data.basePoint.x, data.basePoint.y },
     .end = glm::dvec2{ data.secPoint.x, data.secPoint.y },
     .layer = layer_type
   };
+
+  if (s_is_parsing_block) 
+  {
+    // in local coordinates
+    s_block_vertices[s_current_block_name].push_back(segment);
+    return;
+  }
+
+
   
   switch (layer_type)
   {
@@ -112,28 +118,39 @@ void DRWParser::addPolyline(const DRW_Polyline& data)
   auto is_closed = data.flags & 1;
   auto& vertices = data.vertlist;
   std::println("[Polyline] name:`{}`, vertices:{}, is_closed:{}", data.layer, vertices.size(), is_closed);
-
-  if (!is_closed)
-    return;
 }
 
 void DRWParser::addLWPolyline(const DRW_LWPolyline& data)
 {
-  if (s_is_parsing_block) 
-  {
-    for (const auto& v : data.vertlist) 
-      s_block_vertices[s_current_block_name].emplace_back(v->x, v->y);
-    return;
-  }
-
+  auto layer_type = classify_layer(data.layer);
   auto is_closed = data.flags & 1;
   auto& vertices = data.vertlist;
   std::println("[LWPolyline] name:`{}`, vertices:{}, is_closed:{}", data.layer, vertices.size(), is_closed);
 
-  if (!is_closed)
+  if(vertices.empty())
     return;
 
-  auto layer_type = classify_layer(data.layer);
+  if (s_is_parsing_block) 
+  {
+    auto count = (i32) vertices.size();
+    auto num_segments = is_closed ? count : count - 1;
+    for (auto i = 0; i < num_segments; ++i) 
+    {
+      auto& v1 = vertices[i];
+      auto& v2 = vertices[(i + 1) % count];
+      s_block_vertices[s_current_block_name].push_back(Segment{
+        .start = glm::dvec2{ v1->x, v1->y },
+        .end   = glm::dvec2{ v2->x, v2->y },
+        .layer = LayerType::NONE
+      });
+    }
+    return;
+  }
+
+
+  if (!is_closed)
+    return;
+  
   switch (layer_type)
   {
     case LayerType::DOOR:
@@ -169,7 +186,7 @@ void DRWParser::addArc(const DRW_Arc& data)
 {
   if (s_is_parsing_block) 
   {
-    s_block_door_widths[s_current_block_name] = data.radious; 
+    s_block_door_widths[s_current_block_name] = data.radious;
     return;
   }
 
@@ -187,52 +204,22 @@ void DRWParser::addArc(const DRW_Arc& data)
       center.x + radius * std::cos(data.endangle),
       center.y + radius * std::sin(data.endangle)
     };
-
     doors.push_back(Segment{ center, p2, layer_type });
-  }
-  else if (layer_type == LayerType::WALL) 
-  {
-    auto center = glm::dvec2{ data.basePoint.x, data.basePoint.y };
-    auto radius = data.radious;
-
-    auto start_angle = data.staangle;   // verifica il nome esatto del campo
-    auto end_angle   = data.endangle;
-
-    if (end_angle < start_angle) 
-      end_angle += 2.0 * std::numbers::pi;
-
-    auto arc_span = end_angle - start_angle;
-    auto arc_length = radius * arc_span;
-
-    constexpr auto max_segment_length = 5.0; // da calibrare sulle unità del tuo DXF (es. cm/m)
-    auto n_segments = std::max(4, static_cast<i32>(std::ceil(arc_length / max_segment_length)));
-
-    std::vector<glm::dvec2> points;
-    points.reserve(n_segments + 1);
-    for (int i = 0; i <= n_segments; ++i) 
-    {
-      auto t = start_angle + arc_span * (static_cast<f64>(i) / n_segments);
-      points.push_back(glm::dvec2{
-        center.x + radius * std::cos(t),
-        center.y + radius * std::sin(t)
-      });
-    }
-
-    for (size_t i = 0; i + 1 < points.size(); ++i)
-      walls.push_back(Segment{ points[i], points[i + 1], layer_type });
   }
 }
 
 void DRWParser::addInsert(const DRW_Insert& data)
 {  
-  std::println("[Insert] layer:`{}`, block:`{}`", data.layer, data.name);
+  const auto& layer_name = data.layer;
+  const auto& block_name = data.name;
+  std::println("[Insert] layer:`{}`, block:`{}`", layer_name, block_name);
   auto layer_type = classify_layer(data.layer);
   switch (layer_type)
   {
     case LayerType::DOOR:
     {
-      double base_width = 10.0;
-      auto it = s_block_door_widths.find(data.name);
+      auto base_width = 10.0;
+      auto it = s_block_door_widths.find(block_name);
       if (it != s_block_door_widths.end()) 
         base_width = it->second;
 
@@ -246,6 +233,34 @@ void DRWParser::addInsert(const DRW_Insert& data)
       doors.push_back(Segment{ hinge, tip, LayerType::DOOR });
       break;
     }
+    case LayerType::WINDOW: 
+    {
+      auto it = s_block_vertices.find(block_name);
+      if (it == s_block_vertices.end()) 
+        break;
+
+      auto insert_pos = glm::dvec2{ data.basePoint.x, data.basePoint.y };
+      auto angle_rad  = data.angle;
+      auto cos_A = std::cos(angle_rad);
+      auto sin_A = std::sin(angle_rad);
+
+      auto transform = [&](const glm::dvec2& local) {
+          auto scaled = glm::dvec2{ local.x * data.xscale, local.y * data.yscale };
+          auto rotated = glm::dvec2{
+              scaled.x * cos_A - scaled.y * sin_A,
+              scaled.x * sin_A + scaled.y * cos_A
+          };
+          return glm::dvec2{ rotated.x + insert_pos.x, rotated.y + insert_pos.y };
+      };
+
+      for (const auto& local_segment : it->second) 
+      {
+        auto world_start = transform(local_segment.start);
+        auto world_end   = transform(local_segment.end);
+        windows.push_back(Segment{ world_start, world_end, LayerType::WINDOW });
+      }
+      break;
+    }
 
     default:
       break;
@@ -254,9 +269,9 @@ void DRWParser::addInsert(const DRW_Insert& data)
 
 void DRWParser::addBlock(const DRW_Block& data)
 {
-  if(data.name == "DOOR" || data.name == "DOOR40" || data.name == "DOOR30")
+  std::println("[addBlock] name={}", data.name);
+  if(data.name.contains("BLOCK_DOOR") || data.name.contains("BLOCK_WINDOW"))
   {
-    std::println("[addBlock] name={}", data.name);
     s_current_block_name = data.name;
     s_is_parsing_block = true;
     s_block_vertices[s_current_block_name].clear();

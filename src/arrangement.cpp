@@ -22,7 +22,7 @@ static bool point_on_segment(const Point2& A, const Point2& B, const Point2& M)
 }
 
 Arrangement build_arrangement(const std::vector<glm::dvec2>& vertices, 
-                       const std::vector<Edge>& edges)
+                              const std::vector<Edge>& edges)
 {
   // Convert GraphEdges to CGAL Segment2
   

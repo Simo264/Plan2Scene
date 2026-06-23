@@ -22,6 +22,29 @@ auto calculate_signed_area(const std::vector<glm::dvec2>& contour) -> f32
   return area * 0.5;
 }
 
+BoundingBox2D calculate_bbox_2D(const std::vector<glm::dvec2>& polyline) 
+{
+  if (polyline.empty()) 
+    return BoundingBox2D{ glm::dvec2{0.0, 0.0}, glm::dvec2{0.0, 0.0} };
+
+  auto min_x = std::numeric_limits<f64>::max();
+  auto min_y = std::numeric_limits<f64>::max();
+  auto max_x = -std::numeric_limits<f64>::max();
+  auto max_y = -std::numeric_limits<f64>::max();
+  for (const auto& p : polyline) 
+  {
+    min_x = std::min(min_x, p.x);
+    min_y = std::min(min_y, p.y);
+    max_x = std::max(max_x, p.x);
+    max_y = std::max(max_y, p.y);
+  }
+
+  return BoundingBox2D{
+    .min = glm::dvec2{ min_x, min_y },
+    .max = glm::dvec2{ max_x, max_y }
+  };
+}
+
 BoundingBox2D calculate_bbox_2D(const std::vector<Segment>& segments)
 {
   auto min_x =  std::numeric_limits<f64>::max();
@@ -36,8 +59,8 @@ BoundingBox2D calculate_bbox_2D(const std::vector<Segment>& segments)
     max_y = std::max({max_y, seg.start.y, seg.end.y});
   }
   return BoundingBox2D{
-    .min = glm::vec2{ f32(min_x), f32(min_y) },
-    .max = glm::vec2{ f32(max_x), f32(max_y) }
+    .min = glm::dvec2{ min_x, min_y },
+    .max = glm::dvec2{ max_x, max_y }
   };
 }
 
@@ -57,8 +80,8 @@ BoundingBox2D calculate_bbox_2D(const std::vector<glm::dvec2>& points, const std
   }
 
   return BoundingBox2D{
-    .min = glm::vec2{ f32(min_x), f32(min_y) },
-    .max = glm::vec2{ f32(max_x), f32(max_y) }
+    .min = glm::dvec2{ min_x, min_y },
+    .max = glm::dvec2{ max_x, max_y }
   };
 }
 
@@ -79,7 +102,7 @@ std::array<Segment, 2> get_long_sides_bbox2d(const BoundingBox2D& bbox)
       .end   = glm::dvec2(bbox.max.x, bbox.max.y),
       .layer = LayerType::NONE
     };
-    return {bottom, top};
+    return { bottom, top };
   } 
   else 
   {
@@ -94,7 +117,7 @@ std::array<Segment, 2> get_long_sides_bbox2d(const BoundingBox2D& bbox)
       .end   = glm::dvec2(bbox.max.x, bbox.max.y),
       .layer = LayerType::NONE
     };
-    return {left, right};
+    return { left, right };
   }
 }
 

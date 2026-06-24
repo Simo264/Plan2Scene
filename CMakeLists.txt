@@ -39,12 +39,14 @@ add_executable(${PROJECT_NAME}
   src/graphics/vertex_array.cpp
   src/graphics/camera.cpp
   src/graphics/static_mesh.cpp
-  src/graphics/mesh_visualizer.cpp
   src/graphics/transformation.cpp
+  src/graphics/texture.cpp
 
+  src/gui/gui.cpp
+  
   src/main.cpp
   src/reconstruction.cpp
-  src/utils.cpp
+  src/dump.cpp
   src/geometry.cpp
   src/spatial_hashing.cpp
   src/arrangement.cpp

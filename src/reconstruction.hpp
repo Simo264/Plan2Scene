@@ -13,7 +13,7 @@ struct ReconstructionResult
   std::vector<u32> mesh_indices;
 };
 
-struct ReconstructionPipeline
+struct ReconstructionContext
 {
   std::vector<Segment> walls, doors, windows;
   f64 unit_scale;
@@ -29,4 +29,4 @@ struct ReconstructionPipeline
 };
 
 
-ReconstructionResult reconstruction(const std::filesystem::path& filename);
+ReconstructionResult reconstruction(struct GLFWwindow* window, const std::filesystem::path& filename);

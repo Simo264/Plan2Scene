@@ -1,45 +1,107 @@
 #include "reconstruction.hpp"
 
+#include <GLFW/glfw3.h>
+
 #include <print>
+#include <format>
 #include <algorithm>
+#include <cstdlib>
 
 #include <glm/ext/vector_float4.hpp>
 #include <glm/glm.hpp> 
+#include <stdexcept>
 
 #include "geometry.hpp"
+#include "dump.hpp"
 #include "io/drw_parser.hpp"
-#include "utils.hpp"
 
-static void primitives_extraction(ReconstructionPipeline& pipeline, const auto& filename)
+
+// ============================
+// Checkpoints 
+// ============================
+
+static bool checkpoint_raw_segments(const auto& walls, const auto& doors, const auto& windows)
+{
+  dump_segments_csv(walls, "walls_segments.csv");
+  dump_segments_csv(doors, "doors_segments.csv");
+  dump_segments_csv(windows, "windows_segments.csv");
+  auto ret = std::system("python plot_segments.py");
+  if (ret != 0) 
+    throw std::runtime_error(std::format("[Checkpoint] attenzione: lo script `python plot_segments.py` è uscito con codice {}", ret));
+  
+  ret = std::system("xdg-open segments.png >/dev/null 2>&1 &");
+
+  std::println("Continuare? [y/n] (default y):");
+  auto answer = std::string{};
+  std::getline(std::cin, answer);
+  return answer.empty() || answer == "y" || answer == "Y";
+}
+
+static bool checkpoint_clusters(const auto& sample_points, const auto& clusters)
+{
+  dump_clusters_csv(sample_points, clusters, "clusters.csv");
+  auto ret = std::system("python plot_clusters.py");
+  if (ret != 0) 
+    throw std::runtime_error(std::format("[Checkpoint] attenzione: lo script `python plot_clusters.py` è uscito con codice {}", ret));
+    
+  ret = std::system("xdg-open clusters.png >/dev/null 2>&1 &");
+  std::println("Continuare? [y/n] (default y):");
+
+  auto answer = std::string{};
+  std::getline(std::cin, answer);
+  return answer.empty() || answer == "y" || answer == "Y";
+}
+
+static bool checkpoint_faces(const auto& faces)
+{
+  dump_faces_csv(faces, "faces.csv");
+  auto ret = std::system("python plot_faces.py");
+  if (ret != 0) 
+    throw std::runtime_error(std::format("[Checkpoint] attenzione: lo script `python plot_faces.py` è uscito con codice {}", ret));
+    
+  ret = std::system("xdg-open faces.png >/dev/null 2>&1 &");
+  std::println("Continuare? [y/n] (default y):");
+
+  auto answer = std::string{};
+  std::getline(std::cin, answer);
+  return answer.empty() || answer == "y" || answer == "Y";
+}
+
+
+// ============================
+// Steps 
+// ============================
+
+static void primitives_extraction(ReconstructionContext& ctx, const auto& filename)
 {
   auto parser = DRWParser{};
   auto dxf = dxfRW(filename.string().c_str());
   if (!dxf.read(&parser, false))
     throw std::runtime_error(std::format("Error reading DXF file (code: {}): {}", static_cast<i32>(dxf.getError()), filename.string()));
 
-  pipeline.walls = std::move(parser.walls);
-  pipeline.doors = std::move(parser.doors);
-  pipeline.windows = std::move(parser.windows);
-  pipeline.unit_scale = parser.unit_scale;
-  auto house_bbox = calculate_bbox_2D(pipeline.walls);
-  if(pipeline.unit_scale == 0.0)
+  ctx.walls = std::move(parser.walls);
+  ctx.doors = std::move(parser.doors);
+  ctx.windows = std::move(parser.windows);
+  ctx.unit_scale = parser.unit_scale;
+  auto house_bbox = calculate_bbox_2D(ctx.walls);
+  if(ctx.unit_scale == 0.0)
   {
     std::println("Invalid unit scale. Trying to detect it based on the box area");
-    pipeline.unit_scale = detect_unit_scale(house_bbox.calculate_area());
+    ctx.unit_scale = detect_unit_scale(house_bbox.calculate_area());
   }
   
   std::println("Successfully parsed DXF file:\n unit scale: {} \n walls: {}\n door: {}\n windows: {}", 
-    pipeline.unit_scale,
-    pipeline.walls.size(), 
-    pipeline.doors.size(), 
-    pipeline.windows.size());
+    ctx.unit_scale,
+    ctx.walls.size(), 
+    ctx.doors.size(), 
+    ctx.windows.size());
 }
 
-static void vertex_snapping(ReconstructionPipeline& pipeline, f64 snap_eps)
+static void vertex_snapping(ReconstructionContext& ctx, f64 snap_eps)
 {
   auto hash = SpatialHash{ snap_eps };
   auto edges = std::vector<Edge>{};
-  auto wall_segments_view = std::array{ pipeline.walls };
+  auto wall_segments_view = std::array{ ctx.walls };
   for (const auto& seg : wall_segments_view | std::views::join)
   {
     auto v1 = hash.snap(seg.start);
@@ -51,30 +113,29 @@ static void vertex_snapping(ReconstructionPipeline& pipeline, f64 snap_eps)
   auto& vertices = hash.vertices();
   std::println("Vertex snapping completed. Vertices: {}, edges: {}", vertices.size(), edges.size());
 
-  pipeline.hash = std::move(hash);
-  pipeline.edges = std::move(edges);
+  ctx.hash = std::move(hash);
+  ctx.edges = std::move(edges);
 }
 
-static void opening_reconstruction(ReconstructionPipeline& pipeline,
+static void opening_reconstruction(ReconstructionContext& ctx,
                                    i32 num_samples,
                                    f64 eps)
 {
-  if(!pipeline.doors.empty())
-    doors_reconstruction(pipeline.doors, pipeline.hash, pipeline.edges);
+  if(!ctx.doors.empty())
+    doors_reconstruction(ctx.doors, ctx.hash, ctx.edges);
 
-  if(!pipeline.windows.empty())
+  if(!ctx.windows.empty())
   {
-    auto sample_points = sample_segments(pipeline.windows, num_samples);
+    auto sample_points = sample_segments(ctx.windows, num_samples);
     auto clusters = calculate_clusters(sample_points, eps);
-    dump_clusters_csv(sample_points, clusters, "clusters.csv");
-    windows_reconstruction(sample_points, clusters, pipeline.hash, pipeline.edges);
+    windows_reconstruction(sample_points, clusters, ctx.hash, ctx.edges);
 
-    pipeline.sample_points = std::move(sample_points);
-    pipeline.clusters = std::move(clusters);
+    ctx.sample_points = std::move(sample_points);
+    ctx.clusters = std::move(clusters);
   }
 }
 
-static void face_extraction(ReconstructionPipeline& pipeline, auto& vertices, auto& edges)
+static void face_extraction(ReconstructionContext& ctx, auto& vertices, auto& edges)
 {
   auto arrangement = build_arrangement(vertices, edges);
   std::println("Arrangement successfully completed: vertices={}, edges={}, faces={}", 
@@ -84,25 +145,9 @@ static void face_extraction(ReconstructionPipeline& pipeline, auto& vertices, au
   
   auto faces = extract_faces(arrangement);
   std::println("Extracted faces: {}", faces.size());
-  
-  dump_faces_csv(faces, "faces.csv");
 
-  // remove all FLOOR faces and push only one quad for floor
-
-  std::erase_if(faces, [](auto face) { return face.type == FaceType::FLOOR; });
-  auto house_bbox = calculate_bbox_2D(pipeline.walls);
-  auto floor_face = Face{};
-  floor_face.vertices = {
-    glm::dvec2(house_bbox.min.x, house_bbox.min.y),
-    glm::dvec2(house_bbox.max.x, house_bbox.min.y),
-    glm::dvec2(house_bbox.max.x, house_bbox.max.y),
-    glm::dvec2(house_bbox.min.x, house_bbox.max.y) 
-  };
-  floor_face.type = FaceType::FLOOR;
-  faces.push_back(std::move(floor_face));
-
-  pipeline.arrangement = std::move(arrangement);
-  pipeline.faces = std::move(faces);
+  ctx.arrangement = std::move(arrangement);
+  ctx.faces = std::move(faces);
 }
 
 static ReconstructionResult build_mesh(auto& faces)
@@ -176,44 +221,61 @@ static ReconstructionResult build_mesh(auto& faces)
   return mesh_data;
 }
 
-ReconstructionResult reconstruction(const std::filesystem::path& filename)
+ReconstructionResult reconstruction(struct GLFWwindow* window, const std::filesystem::path& filename)
 {
-  auto pipeline = ReconstructionPipeline{};
+  auto ctx = ReconstructionContext{};
   
   // parsing DXF model to extract primitives
 
-  primitives_extraction(pipeline, filename);
-  auto& walls = pipeline.walls;
-  auto& doors = pipeline.doors;
-  auto& windows = pipeline.windows;
-  auto unit_scale = pipeline.unit_scale;
+  primitives_extraction(ctx, filename);
+  auto& walls = ctx.walls;
+  auto& doors = ctx.doors;
+  auto& windows = ctx.windows;
+  auto unit_scale = ctx.unit_scale;
 
-  // normalize points
-  
   normalize_segments(unit_scale, walls);
   normalize_segments(unit_scale, doors);
   normalize_segments(unit_scale, windows);
-  dump_segments_csv(walls, "walls_segments.csv");
-  dump_segments_csv(doors, "doors_segments.csv");
-  dump_segments_csv(windows, "windows_segments.csv");
+
+  if(!checkpoint_raw_segments(walls, doors, windows))
+    exit(0);
   
   // Vertex snapping with spatial hashing data structure: wall segments only
 
-  vertex_snapping(pipeline, 1e-4);
-  auto& hash = pipeline.hash;
-  auto& edges = pipeline.edges;
+  vertex_snapping(ctx, 1e-4);
+  auto& hash = ctx.hash;
+  auto& edges = ctx.edges;
   auto& vertices = hash.vertices();
 
   // Topological reconstruction of openings
 
-  opening_reconstruction(pipeline, 10, 0.1);
+  opening_reconstruction(ctx, 10, 0.1);
+  auto& sample_points = ctx.sample_points;
+  auto& clusters = ctx.clusters;
+  if(!sample_points.empty() && !checkpoint_clusters(sample_points, clusters))
+    exit(0);
 
   // half hedge construction + face extraction
   
-  face_extraction(pipeline, vertices, edges);
-  auto& faces = pipeline.faces;
+  face_extraction(ctx, vertices, edges);
+  auto& faces = ctx.faces;
 
-  // exit(0);
+  if(!checkpoint_faces(faces))
+    exit(0);
+
+  // remove all FLOOR faces and push only one quad for floor
+
+  std::erase_if(faces, [](auto face) { return face.type == FaceType::FLOOR; });
+  auto house_bbox = calculate_bbox_2D(ctx.walls);
+  auto floor_face = Face{};
+  floor_face.vertices = {
+    glm::dvec2(house_bbox.min.x, house_bbox.min.y),
+    glm::dvec2(house_bbox.max.x, house_bbox.min.y),
+    glm::dvec2(house_bbox.max.x, house_bbox.max.y),
+    glm::dvec2(house_bbox.min.x, house_bbox.max.y) 
+  };
+  floor_face.type = FaceType::FLOOR;
+  faces.push_back(std::move(floor_face));
 
   return build_mesh(faces);
 }

@@ -56,12 +56,5 @@ cmake --build ./build/ --parallel 8
 Run:
 
 ```bash
-./build/Plan2Scene --load <model/input.gltf>
-./build/Plan2Scene --parse <cad/input.dxf>
-```
-
-It is also possible to convert a DWG file to DXF format using the `dwg2dxf` binary provided with the `libdxfrw` library:
-
-```bash
-./build/_deps/libdxfrw-build/dwg2dxf/dwg2dxf <input.dwg> <output.dxf>
+./build/Plan2Scene <input.dxf>
 ```

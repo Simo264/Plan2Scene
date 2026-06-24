@@ -7,20 +7,6 @@
 #include <poly2tri/sweep/cdt.h>
 #include <vector>
 
-struct ProjResult 
-{
-  glm::dvec2 point; // Projected point (even if outside the segment)
-  bool is_inside;   // True if projection lies strictly inside the segment
-};
-
-struct WallVertices 
-{
-  VertexId B; // Start of the gap (snapped to gap_start)
-  VertexId D; // End of the gap (snapped to gap_end)
-  VertexId C; // Adjacent vertex to B along the wall
-  VertexId E; // Adjacent vertex to D along the wall
-};
-
 // Calculate the signed area of the contour using the shoelace formula.
 f64 calculate_signed_area(const std::vector<glm::dvec2>& contour);
 
@@ -43,15 +29,6 @@ f64 detect_unit_scale(f64 area_bbox);
 // Normalizes all segment coordinates according to the drawing's measurement unit.
 // Scales the start and end spatial coordinates of every segment in the collection by a conversion factor. 
 void normalize_segments(f64 unit, std::vector<Segment>& segments);
-
-// Snaps loose wall segment endpoints onto a unified topological vertex grid.
-// Processes a collection of raw wall segments using a spatial hashing data structure to merge 
-// coincident or near-coincident endpoints within a defined epsilon tolerance. This operation 
-// repairs microscopic gaps common in CAD exports and transforms disconnected drawing lines into 
-// a cohesive network of shared topological vertices and edges. Degenerate edges (where both 
-// endpoints snap to the exact same vertex) are automatically filtered out.
-std::vector<Edge> vertex_snapping(const std::vector<Segment> walls_segments,
-                                  SpatialHash& hash);
 
 // Retrieves the topological neighbors connected to a specific vertex.
 // Searches through the edge list to find the two adjacent vertices connected to the 

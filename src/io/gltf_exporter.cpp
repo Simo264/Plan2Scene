@@ -1,6 +1,5 @@
 #include "gltf_exporter.hpp"
 
-#include <print>
 #include <stdexcept>
 #include <tiny_gltf.h>
 #include <glm/common.hpp>
@@ -135,88 +134,4 @@ void export_to_gltf(const std::vector<Vertex_PN>& vertices,
                                       false);
   if (!ok)
     throw std::runtime_error(std::format("TinyGLTF: failed to write {}", output_path.string()));
-}
-
-void import_gltf(const std::filesystem::path& filename, 
-                 std::vector<Vertex_PN>& out_vertices, 
-                 std::vector<u32>& out_indices)
-{
-  auto model = tinygltf::Model{};
-  auto loader = tinygltf::TinyGLTF{};
-  auto err = std::string{}; 
-  auto warn = std::string{};
-
-  auto ret = loader.LoadASCIIFromFile(&model, &err, &warn, filename);
-    
-  if (!warn.empty()) 
-    std::println("Warn: {}", warn.c_str());
-  if (!err.empty())  
-    std::println("Err: {}", err.c_str());
-  if (!ret)
-    throw std::runtime_error("Error on loading GLTF");
-
-  // For simplicity, we'll grab the first primitive of the first mesh
-  auto& mesh = model.meshes[0];
-  auto& primitive = mesh.primitives[0];
-
-  // Extract positions
-  auto& posAccessor = model.accessors[primitive.attributes.at("POSITION")];
-  auto& posView = model.bufferViews[posAccessor.bufferView];
-  auto& posBuffer = model.buffers[posView.buffer];
-  auto positions = reinterpret_cast<const f32*>(&posBuffer.data[posView.byteOffset + posAccessor.byteOffset]);
-
-  // Extract normals
-  if(!primitive.attributes.contains("NORMAL"))
-    throw std::runtime_error("GLTF model does not contain normals");
-  
-  auto& normAccessor = model.accessors[primitive.attributes.at("NORMAL")];
-  auto& normView = model.bufferViews[normAccessor.bufferView];
-  auto& normBuffer = model.buffers[normView.buffer];
-  auto normals = reinterpret_cast<const f32*>(&normBuffer.data[normView.byteOffset + normAccessor.byteOffset]);
-
-  out_vertices.resize(posAccessor.count);
-  for (auto i = 0u; i < posAccessor.count; ++i) 
-  {
-    out_vertices[i].position.x = positions[i * 3 + 0];
-    out_vertices[i].position.y = positions[i * 3 + 1];
-    out_vertices[i].position.z = positions[i * 3 + 2];
-    out_vertices[i].normal.x = normals[i * 3 + 0];
-    out_vertices[i].normal.y = normals[i * 3 + 1];
-    out_vertices[i].normal.z = normals[i * 3 + 2];
-  }
-
-  // Extract indices
-  auto& indexAccessor = model.accessors[primitive.indices];
-  auto& indexView = model.bufferViews[indexAccessor.bufferView];
-  auto& indexBuffer = model.buffers[indexView.buffer];
-  auto dataPtr = static_cast<void*>(&indexBuffer.data[indexView.byteOffset + indexAccessor.byteOffset]);
-
-  out_indices.resize(indexAccessor.count);
-  switch (indexAccessor.componentType) 
-  {
-    case TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT: 
-    {
-      auto buf = static_cast<const u32*>(dataPtr);
-      for (auto i = 0u; i < indexAccessor.count; i++) 
-        out_indices[i] = buf[i];
-      break;
-    }
-    case TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT: 
-    {
-      auto buf = static_cast<const u16*>(dataPtr);
-      for (auto i = 0u; i < indexAccessor.count; i++) 
-        out_indices[i] = buf[i];
-      break;
-    }
-    case TINYGLTF_PARAMETER_TYPE_UNSIGNED_BYTE:
-    {
-      auto buf = static_cast<const u8*>(dataPtr);
-      for (auto i = 0u; i < indexAccessor.count; i++) 
-        out_indices[i] = buf[i];
-      break;
-    }
-
-    default:
-      break;
-  }
 }

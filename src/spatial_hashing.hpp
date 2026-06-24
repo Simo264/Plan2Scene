@@ -25,7 +25,7 @@ struct CellCoordHash
 class SpatialHash
 {
 public:
-  SpatialHash(f64 epsilon) : m_epsilon{ epsilon} {}
+  SpatialHash(f64 epsilon = 1e-4) : m_epsilon{ epsilon} {}
 
   VertexId snap(glm::dvec2 p);
   VertexId find_nearest(glm::dvec2 p) const;

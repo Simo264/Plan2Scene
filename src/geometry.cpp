@@ -152,20 +152,6 @@ void normalize_segments(f64 unit, std::vector<Segment>& segments)
   }
 }
 
-std::vector<Edge> vertex_snapping(const std::vector<Segment> walls_segments, SpatialHash& hash)
-{
-  auto edges = std::vector<Edge>{};
-  auto wall_segments_view = std::array{ walls_segments };
-  for (const auto& seg : wall_segments_view | std::views::join)
-  {
-    auto v1 = hash.snap(seg.start);
-    auto v2 = hash.snap(seg.end);
-    if (v1 != v2)
-      edges.push_back(Edge{ v1, v2, seg.layer });
-  }
-  return edges;
-}
-
 std::array<VertexId, 2> find_neighboors(VertexId vertex, const std::vector<Edge>& edges)
 {
   std::array<VertexId, 2> nbrs = { INVALID_VERTEX_ID, INVALID_VERTEX_ID };

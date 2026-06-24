@@ -99,3 +99,17 @@ struct BoundingBox3D
 {
   glm::vec3 min, max;
 };
+
+struct ProjResult 
+{
+  glm::dvec2 point; // Projected point (even if outside the segment)
+  bool is_inside;   // True if projection lies strictly inside the segment
+};
+
+struct WallVertices 
+{
+  VertexId B; // Start of the gap (snapped to gap_start)
+  VertexId D; // End of the gap (snapped to gap_end)
+  VertexId C; // Adjacent vertex to B along the wall
+  VertexId E; // Adjacent vertex to D along the wall
+};

@@ -68,5 +68,5 @@ public:
   std::vector<Segment> walls;
   std::vector<Segment> doors;
   std::vector<Segment> windows;
-  f32 unit_scale = 0.0f;
+  f64 unit_scale = 0.0;
 };

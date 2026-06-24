@@ -33,7 +33,7 @@ void reconstruction(const std::filesystem::path& filename,
   // detect the unit scale and normalize points
   
   auto house_bbox = calculate_bbox_2D(walls);
-  if(parser.unit_scale == 0.0f)
+  if(parser.unit_scale == 0.0)
     parser.unit_scale = detect_unit_scale(house_bbox.calculate_area());
 
   std::println("Unit scale: {}", parser.unit_scale);
@@ -59,7 +59,7 @@ void reconstruction(const std::filesystem::path& filename,
   if(!windows.empty())
   {
     auto sample_points = sample_segments(windows, 20);
-    auto clusters = calculate_clusters(sample_points, 1.f);
+    auto clusters = calculate_clusters(sample_points, 1.0);
     dump_clusters_csv(sample_points, clusters, "clusters.csv");
     windows_reconstruction(sample_points, clusters, hash, edges);
   }
@@ -94,7 +94,7 @@ void reconstruction(const std::filesystem::path& filename,
   {
     // Ensure CCW winding
     auto polyline = face.vertices;
-    if (calculate_signed_area(polyline) < 0.0f)
+    if (calculate_signed_area(polyline) < 0.0)
       std::ranges::reverse(polyline);
       
     auto p2t_points = std::vector<p2t::Point>{};

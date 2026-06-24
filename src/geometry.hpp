@@ -22,7 +22,7 @@ struct WallVertices
 };
 
 // Calculate the signed area of the contour using the shoelace formula.
-f32 calculate_signed_area(const std::vector<glm::dvec2>& contour);
+f64 calculate_signed_area(const std::vector<glm::dvec2>& contour);
 
 // Calculate the bounding box for 2D points
 BoundingBox2D calculate_bbox_2D(const std::vector<glm::dvec2>& polyline);
@@ -38,11 +38,11 @@ std::array<Segment, 2> get_long_sides_bbox2d(const BoundingBox2D& bbox);
 BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PN>& vertices);
 
 // Calculate the unit scale based on the geometry
-f32 detect_unit_scale(f32 area_bbox);
+f64 detect_unit_scale(f64 area_bbox);
 
 // Normalizes all segment coordinates according to the drawing's measurement unit.
 // Scales the start and end spatial coordinates of every segment in the collection by a conversion factor. 
-void normalize_segments(f32 unit, std::vector<Segment>& segments);
+void normalize_segments(f64 unit, std::vector<Segment>& segments);
 
 // Snaps loose wall segment endpoints onto a unified topological vertex grid.
 // Processes a collection of raw wall segments using a spatial hashing data structure to merge 
@@ -82,7 +82,7 @@ std::vector<glm::dvec2> sample_segments(const std::vector<Segment>& segments,
 // It groups the sampled window points based on the specified epsilon distance threshold,
 // allowing individual window objects to be extracted from a disjointed set of input geometries.
 std::vector<std::vector<u32>> calculate_clusters(std::vector<glm::dvec2>& sample_points,
-                                                 f32 eps);
+                                                 f64 eps);
 
 // Finds the four vertices that define the wall strip around a gap.
 // Given the two endpoints of a door/window gap, this function snaps them to

@@ -9,11 +9,11 @@
 
 #include <clipper2/clipper.h>
 
-auto calculate_signed_area(const std::vector<glm::dvec2>& contour) -> f32
+f64 calculate_signed_area(const std::vector<glm::dvec2>& contour)
 {
   auto area = 0.0;
   auto n = contour.size();
-  for (size_t i = 0; i < n; ++i)
+  for (auto i = 0ul; i < n; ++i)
   {
     auto p1 = contour.at(i);
     auto p2 = contour.at((i + 1) % n);
@@ -133,15 +133,17 @@ BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PN>& vertices)
   return BoundingBox3D{ min, max };
 }
 
-f32 detect_unit_scale(f32 area_bbox)
+f64 detect_unit_scale(f64 area_bbox) 
 {
-  if (area_bbox > 25'000'000.f)  return 0.001f;   // mm^2
-  if (area_bbox >   250'000.f)   return 0.01f;    // cm^2
-  if (area_bbox >     2'500.f)   return 0.1f;     // dm^2
-  return 1.0f;                                    // m^2
+  if (area_bbox > 10'000'000.0) return 0.001;   // mm
+  if (area_bbox > 100'000.0)    return 0.01;    // cm
+  if (area_bbox > 10'000.0)     return 0.0254;  // inches
+  if (area_bbox > 1'000.0)      return 0.1;     // dm
+  if (area_bbox > 100.0)        return 0.3048;  // feet
+  return 1.0;                                   // m
 }
 
-void normalize_segments(f32 unit, std::vector<Segment>& segments)
+void normalize_segments(f64 unit, std::vector<Segment>& segments)
 {
   for (auto& seg : segments)
   {
@@ -220,7 +222,7 @@ std::vector<glm::dvec2> sample_segments(const std::vector<Segment>& segments, i3
 }
 
 std::vector<std::vector<u32>> calculate_clusters(std::vector<glm::dvec2>& sample_points,
-                                                 f32 eps)
+                                                 f64 eps)
 {
   auto dbscan = DBSCAN<glm::dvec2, f64>(); 
   constexpr auto min_points = 2;

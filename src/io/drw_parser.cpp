@@ -37,7 +37,7 @@ static auto classify_layer(std::string_view name)
 
 void DRWParser::addHeader(const DRW_Header* data)
 {
-  unit_scale = 0.0f;
+  unit_scale = 0.0;
   
   if(!data) 
   { 
@@ -63,23 +63,19 @@ void DRWParser::addHeader(const DRW_Header* data)
     std::println("Warning: $INSUNITS is not INTEGER.");
     return;
   }
-  
+
   switch (units) 
   {
-    case 1:
-      unit_scale = 0.0254f; // inches
-      break;
-    case 4: 
-      unit_scale = 0.001f; // millimeters
-      break;
-    case 5:
-      unit_scale = 0.01f; // centimeters
-      break;
-    case 6:
-      unit_scale = 1.0f; // meters
-      break;
-    default:
-      std::println("Warning: unknown units.");
+    case 1:  unit_scale = 0.0254;        break;  // Inches
+    case 2:  unit_scale = 0.3048;        break;  // Feet
+    case 3:  unit_scale = 0.9144;        break;  // Yards
+    case 4:  unit_scale = 0.001;         break;  // Millimeters
+    case 5:  unit_scale = 0.01;          break;  // Centimeters
+    case 6:  unit_scale = 1.0;           break;  // Meters
+    case 7:  unit_scale = 1.0e-6;        break;  // Kilometers
+    case 21: unit_scale = 0.3048006096;  break;  // US Survey Feet
+    default: 
+      std::println("[WARN] Unknown $INSUNITS value: {}", units);
       break;
   }
   std::println("Header: INSUNITS = {}, scale = {}", units, unit_scale);

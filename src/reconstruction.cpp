@@ -74,7 +74,7 @@ void reconstruction(const std::filesystem::path& filename,
   std::println("Extracted faces: {}", faces.size());
   
   dump_faces_csv(faces, "faces.csv");
-  // exit(0);
+  exit(0);
   
   std::erase_if(faces, [](auto face) { return face.type == FaceType::FLOOR; });
 

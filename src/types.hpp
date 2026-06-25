@@ -113,3 +113,8 @@ struct WallVertices
   VertexId C; // Adjacent vertex to B along the wall
   VertexId E; // Adjacent vertex to D along the wall
 };
+
+enum class ThreadState 
+{ 
+  Idle, Running, WaitingConfirmation 
+};

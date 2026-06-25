@@ -10,11 +10,24 @@
 
 #include <glm/ext/vector_float4.hpp>
 #include <glm/glm.hpp> 
+#include <vector>
 
 #include "geometry.hpp"
 #include "dump.hpp"
 #include "io/drw_parser.hpp"
 
+ReconstructionStage next_stage(ReconstructionStage p) 
+{
+  switch (p) 
+  {
+    case ReconstructionStage::PrimitiveExtraction:   return ReconstructionStage::OpeningReconstruction;
+    case ReconstructionStage::OpeningReconstruction: return ReconstructionStage::FaceExtraction;
+    case ReconstructionStage::FaceExtraction:        return ReconstructionStage::BuildMesh;
+    case ReconstructionStage::BuildMesh:             return ReconstructionStage::None;
+    default: 
+    return ReconstructionStage::None;
+  }
+}
 
 namespace Reconstruction
 {
@@ -32,46 +45,24 @@ namespace Reconstruction
     auto ret = std::system("python plot_segments.py");
     if (ret != 0) 
       throw std::runtime_error(std::format("Error: the execution of `python plot_segments.py` is terminated with code {}", ret));
-    
-
-
-    // ret = std::system("xdg-open segments.png >/dev/null 2>&1 &");
-    // std::println("Continuare? [y/n] (default y):");
-    // auto answer = std::string{};
-    // std::getline(std::cin, answer);
-    // return answer.empty() || answer == "y" || answer == "Y";
   }
 
   void checkpoint_clusters(const std::vector<glm::dvec2>& sample_points,
                            const std::vector<std::vector<u32>>& clusters)
   {
-    //constexpr auto plot_filename = "clusters.png";
     dump_clusters_csv(sample_points, clusters, "clusters.csv");
     auto ret = std::system("python plot_clusters.py");
     if (ret != 0) 
       throw std::runtime_error(std::format("Error: the execution of `python plot_clusters.py` is terminated with code {}", ret));
-
-    // ret = std::system("xdg-open clusters.png >/dev/null 2>&1 &");
-    // std::println("Continuare? [y/n] (default y):");
-    // auto answer = std::string{};
-    // std::getline(std::cin, answer);
-    // return answer.empty() || answer == "y" || answer == "Y";
   }
 
-  void checkpoint_faces(const auto& faces)
+  void checkpoint_faces(const std::vector<Face>& faces)
   {
     dump_faces_csv(faces, "faces.csv");
     auto ret = std::system("python plot_faces.py");
     if (ret != 0) 
       throw std::runtime_error(std::format("Error: the execution of `python plot_faces.py` is terminated with code {}", ret));
-      
-    // ret = std::system("xdg-open faces.png >/dev/null 2>&1 &");
-    // std::println("Continuare? [y/n] (default y):");
-    // auto answer = std::string{};
-    // std::getline(std::cin, answer);
-    // return answer.empty() || answer == "y" || answer == "Y";
   }
-
 
   // ============================
   // Steps 
@@ -126,9 +117,7 @@ namespace Reconstruction
     ctx.edges = std::move(edges);
   }
 
-  void opening_reconstruction(ReconstructionContext& ctx,
-                                    i32 num_samples,
-                                    f64 eps)
+  void opening_reconstruction(ReconstructionContext& ctx, i32 num_samples, f64 eps)
   {
     if(!ctx.doors.empty())
       doors_reconstruction(ctx.doors, ctx.hash, ctx.edges);
@@ -161,7 +150,7 @@ namespace Reconstruction
     ctx.faces = std::move(faces);
   }
 
-  ReconstructionResult build_mesh(auto& faces)
+  ReconstructionResult build_mesh(const std::vector<Face>& faces)
   {
     auto vertices = std::vector<Vertex_PN>{};
     auto indices  = std::vector<u32>{};

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../geometry.hpp"
 #include "vertex_array.hpp"
 
 /**

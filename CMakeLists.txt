@@ -37,10 +37,11 @@ add_executable(${PROJECT_NAME}
   src/graphics/buffer.cpp
   src/graphics/pipeline.cpp
   src/graphics/vertex_array.cpp
+  src/graphics/framebuffer.cpp 
+  src/graphics/texture.cpp
   src/graphics/camera.cpp
   src/graphics/static_mesh.cpp
   src/graphics/transformation.cpp
-  src/graphics/texture.cpp
 
   src/gui/gui.cpp
   

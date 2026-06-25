@@ -1,13 +1,10 @@
 #include "gui.hpp"
+#include "../graphics/texture.hpp"
 
 #include <print>
 
-f32 aspect_ratio = 1.0f;
-
 GLFWwindow* init_window_context(i32 width, i32 height)
 {
-  aspect_ratio = static_cast<f32>(width) / static_cast<f32>(height);
-
   glfwInit();
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
@@ -26,11 +23,6 @@ GLFWwindow* init_window_context(i32 width, i32 height)
 
   std::println("OpenGL context initialized successfully. Version: {}.{}",  GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
   
-  glfwSetFramebufferSizeCallback(context, []([[maybe_unused]] GLFWwindow* window, i32 width, i32 height) 
-  {
-    glViewport(0, 0, width, height);
-    aspect_ratio = static_cast<f32>(width) / static_cast<f32>(height);
-  });
   glViewport(0, 0, width, height);
 
   // Setup Dear ImGui context
@@ -71,20 +63,21 @@ void setup_docking()
   ImGui::PopStyleVar(3);
 }
 
-void viewport_panel()
+ViewportInfo viewport_panel(Texture viewport_image)
 {
-  if (ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_NoCollapse)) 
-  {
-    ImVec2 avail_size = ImGui::GetContentRegionAvail();
-    ImGui::Text("Rendering Area (3D Scene)");
-    ImGui::Separator();
-    ImGui::BeginChild("SceneView", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollWithMouse);
-    {
-      ImGui::Text("Mouse: (%.1f, %.1f)", ImGui::GetMousePos().x - ImGui::GetWindowPos().x, ImGui::GetMousePos().y - ImGui::GetWindowPos().y);
-    }
-    ImGui::EndChild();
-  }
+  ViewportInfo info{};
+  ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_NoCollapse);
+
+    auto window_size = ImGui::GetContentRegionAvail(); 
+    info.width = window_size.x;
+    info.height = window_size.y; 
+    info.aspect = info.width / info.height;
+    if (viewport_image.is_valid()) 
+      ImGui::Image(viewport_image.id(), window_size);
+
   ImGui::End();
+
+  return info;
 }
 
 void properties_panel()
@@ -111,37 +104,67 @@ void properties_panel()
   ImGui::End();
 }
 
-void log_panel()
+void log_panel(GLFWwindow* window, ReconstructionStage& current_stage, std::atomic<ThreadState>& worker_state)
 {
-  ImGui::SetNextWindowSize(ImVec2(0, 200), ImGuiCond_FirstUseEver); // Altezza fissa, larghezza automatica
+  ImGui::SetNextWindowSize(ImVec2(0, 200), ImGuiCond_FirstUseEver);
   if (ImGui::Begin("Log", nullptr, ImGuiWindowFlags_NoCollapse)) 
   {
     ImGui::Text("Console Log");
-    ImGui::Separator();        
-    static std::vector<std::string> log_messages = {
-        "System initialized successfully.",
-        "Shader compilation complete.",
-        "Mesh loaded: cube.obj",
-        "Waiting for user input..."
-    };
+    ImGui::Separator();
 
-    if (ImGui::BeginChild("LogContent", ImVec2(0, 0), ImGuiChildFlags_Borders, ImGuiWindowFlags_AlwaysVerticalScrollbar)) 
+    static std::vector<std::string> log_messages = {};
+    if (ImGui::BeginChild("LogContent", ImVec2(0, -ImGui::GetFrameHeightWithSpacing()), ImGuiChildFlags_Borders, ImGuiWindowFlags_AlwaysVerticalScrollbar)) 
     {
       for (const auto& msg : log_messages) 
-      {
         ImGui::TextColored(ImVec4(1, 1, 1, 0.8f), "> %s", msg.c_str());
-      }
-      // Scroll automatico se si aggiungono nuovi log
-      if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) 
-      {
+      if (worker_state == ThreadState::WaitingConfirmation) 
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Continuare? [y/n]");
+      if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
         ImGui::SetScrollHereY(1.0f);
-      }
     }
     ImGui::EndChild();
-  }
-  ImGui::End();
-}
 
+    static auto input_buf = std::array<char, 32>{};
+    ImGui::PushItemWidth(-1);
+    auto reclaim_focus = false;
+    if (ImGui::InputText("##ConsoleInput", input_buf.data(), sizeof(input_buf), ImGuiInputTextFlags_EnterReturnsTrue)) 
+    {
+      auto cmd = std::string_view{ input_buf };
+      log_messages.push_back(cmd.data());
+      if (worker_state == ThreadState::WaitingConfirmation) 
+      {
+        if (cmd == "y" || cmd == "Y") 
+        {
+          log_messages.push_back("Confermato, avanzo alla fase successiva.");
+          current_stage = next_stage(current_stage);
+          worker_state = ThreadState::Idle;
+        } 
+        else if (cmd == "n" || cmd == "N") 
+        {
+          log_messages.push_back("Annullato dall'utente.");
+          glfwSetWindowShouldClose(window, true);
+        } 
+        else 
+        {
+          log_messages.push_back("Risposta non valida, digita 'y' o 'n'.");
+        }
+      } 
+      else 
+      {
+        log_messages.push_back("Nessuna conferma in attesa.");
+      }
+
+      input_buf.fill(0);
+      reclaim_focus = true;
+    }
+    ImGui::PopItemWidth();
+
+    ImGui::SetItemDefaultFocus();
+    if (reclaim_focus)
+      ImGui::SetKeyboardFocusHere(-1);
+  }
+  ImGui::End();    
+}
 
 void render_gui()
 {

@@ -28,6 +28,18 @@ struct ReconstructionContext
   std::vector<Face> faces;
 };
 
+enum class ReconstructionStage
+{
+  PrimitiveExtraction,
+  OpeningReconstruction,
+  FaceExtraction,
+  BuildMesh,
+  RenderMesh,
+  None,
+};
+
+ReconstructionStage next_stage(ReconstructionStage p);
+
 namespace Reconstruction
 {
   void primitives_extraction_normalization(ReconstructionContext& ctx, 

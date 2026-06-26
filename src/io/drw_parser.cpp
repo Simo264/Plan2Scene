@@ -1,4 +1,5 @@
 #include "drw_parser.hpp"
+#include "../log.hpp"
 
 #include <glm/ext/vector_double2.hpp>
 #include <glm/trigonometric.hpp>
@@ -14,13 +15,15 @@
 #include "../geometry.hpp"
 
 // Important: When you read data inside a block, those vertices are in local space. 
-// // Inside the addInsert call you need to transform those vertices into world spaces. 
-// // Otherwise, if the primitives are not inside any blocks it means that their vertices are already in world space.
+// Inside the addInsert call you need to transform those vertices into world spaces. 
+// Otherwise, if the primitives are not inside any blocks it means that their vertices are already in world space.
 
 struct DoorBlockInfo 
 {
   f64 radius;
 };
+
+extern Logger g_logger;
 
 static auto s_current_block_name = std::string{};
 static auto s_is_parsing_block = false;
@@ -41,14 +44,14 @@ void DRWParser::addHeader(const DRW_Header* data)
   
   if(!data) 
   { 
-    std::println("Warning: no header data.");
+    g_logger.push_message({"No header data.", LogLevel::Warning});
     return;
   }
   
   auto it = data->vars.find("$INSUNITS"); 
   if(it == data->vars.end())
   {
-    std::println("Warning: $INSUNITS not found.");
+    g_logger.push_message({"$INSUNITS not found.", LogLevel::Warning});
     return;
   }
 
@@ -60,7 +63,7 @@ void DRWParser::addHeader(const DRW_Header* data)
   }
   else
   {
-    std::println("Warning: $INSUNITS is not INTEGER.");
+    g_logger.push_message({"$INSUNITS is not INTEGER.", LogLevel::Warning});
     return;
   }
 
@@ -75,10 +78,10 @@ void DRWParser::addHeader(const DRW_Header* data)
     case 7:  unit_scale = 1.0e-6;        break;  // Kilometers
     case 21: unit_scale = 0.3048006096;  break;  // US Survey Feet
     default: 
-      std::println("[WARN] Unknown $INSUNITS value: {}", units);
+      g_logger.push_message({std::format("Unknown $INSUNITS value: {}", units), LogLevel::Warning});
       break;
   }
-  std::println("Header: INSUNITS = {}, scale = {}", units, unit_scale);
+  g_logger.push_message({std::format("INSUNITS = {}, scale = {}", units, unit_scale), LogLevel::Text});
 }
 
 void DRWParser::addLine(const DRW_Line& data)

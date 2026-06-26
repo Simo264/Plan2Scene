@@ -1,22 +1,21 @@
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 #include <filesystem>
+#include <format>
 #include <memory>
 #include <stdexcept>
 #include <atomic>
-#include <print>
 
-#include "imgui.h"
 #include "types.hpp"
 #include "geometry.hpp"
 #include "reconstruction.hpp"
+#include "log.hpp"
 #include "graphics/texture.hpp"
 #include "graphics/pipeline.hpp"
 #include "graphics/camera.hpp"
 #include "graphics/static_mesh.hpp"
 #include "graphics/transformation.hpp"
 #include "graphics/framebuffer.hpp"
-
 #include "io/gltf_exporter.hpp"
 #include "gui/gui.hpp"
 
@@ -27,7 +26,7 @@
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
 
-
+auto g_logger = Logger{};
 
 static void create_gl_pipeline_object(ShaderProgram& vertex_program, ShaderProgram& fragment_program, ProgramPipelineObject& pipeline)
 {
@@ -39,7 +38,7 @@ static void create_gl_pipeline_object(ShaderProgram& vertex_program, ShaderProgr
   vertex_shader_obj.compile();
   auto status = vertex_shader_obj.check_compile_status();
   if (!status)
-    std::println("Shader compilation error: {}", vertex_shader_obj.get_compile_log());
+    throw std::runtime_error(std::format("Shader compilation error: {}", vertex_shader_obj.get_compile_log()));
 
   auto fragment_shader_obj = ShaderObject{};
   fragment_shader_obj.create(ShaderStage::Fragment);
@@ -47,7 +46,7 @@ static void create_gl_pipeline_object(ShaderProgram& vertex_program, ShaderProgr
   fragment_shader_obj.compile();
   status = fragment_shader_obj.check_compile_status();
   if (!status)
-    std::println("Shader compilation error: {}", fragment_shader_obj.get_compile_log());
+    throw std::runtime_error(std::format("Shader compilation error: {}", fragment_shader_obj.get_compile_log()));
 
   vertex_program.create();
   vertex_program.attach_shader(vertex_shader_obj);
@@ -55,7 +54,7 @@ static void create_gl_pipeline_object(ShaderProgram& vertex_program, ShaderProgr
   vertex_program.link();
   status = vertex_program.check_link_status();
   if (!status)
-    std::println("Link status: {}", vertex_program.get_link_log());
+    throw std::runtime_error(std::format("Link status: {}", vertex_program.get_link_log()));
 
   vertex_program.detach_shader(vertex_shader_obj);
 
@@ -65,7 +64,7 @@ static void create_gl_pipeline_object(ShaderProgram& vertex_program, ShaderProgr
   fragment_program.link();
   status = fragment_program.check_link_status();
   if (!status)
-    std::println("Link status: {}", fragment_program.get_link_log());
+    throw std::runtime_error(std::format("Link status: {}", fragment_program.get_link_log()));
 
   fragment_program.detach_shader(fragment_shader_obj);
 
@@ -74,7 +73,7 @@ static void create_gl_pipeline_object(ShaderProgram& vertex_program, ShaderProgr
   pipeline.bind_program_stage(PipelineStage::FragmentShader, fragment_program);
   status = pipeline.validate_pipeline();
   if (!status)
-    std::println("pipeline object status: {}", pipeline.get_validation_status());
+    throw std::runtime_error(std::format("pipeline object status: {}", pipeline.get_validation_status()));
 }
 
 static void handle_camera_input(GLFWwindow* window, Camera& camera)
@@ -93,7 +92,7 @@ static void handle_camera_input(GLFWwindow* window, Camera& camera)
   if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) camera.eye -= camera.up() * velocity;
 }
 
-static void create_framebuffer(FrameBuffer& fb, Texture& color, Texture& depth, i32 width, i32 height) 
+static void create_framebuffer(FrameBuffer& fb, Texture& color, Texture& depth, i32 width, i32 height)
 {
   // --- Color texture ---
   color.create(TextureType::Texture2D);
@@ -126,6 +125,7 @@ int main(int argc, char* argv[])
     throw std::runtime_error("Usage: ./build/Plan2Scene <input.dxf>");
   
   auto file_path = std::filesystem::path(argv[1]);
+  auto filename = file_path.string();
   if(!std::filesystem::exists(file_path))
     throw std::runtime_error(std::format("Input file not found: {}", file_path.string()));
 
@@ -151,7 +151,7 @@ int main(int argc, char* argv[])
   auto static_mesh = std::unique_ptr<StaticMesh>{};
   auto mesh_transform = Transformation{};
   auto viewport_image = Texture{};
-  auto flip_viewport_image = true;
+  auto plot_image = Texture{};
 
   auto current_stage = ReconstructionStage::PrimitiveExtraction;
   auto worker_state = std::atomic<ThreadState>{ ThreadState::Idle };
@@ -165,8 +165,9 @@ int main(int argc, char* argv[])
   glDepthFunc(GL_LESS);    	// specify the value used for depth buffer comparisons
   glDepthMask(GL_TRUE);    	// enable/disable writing into the depth buffer
   glClearDepth(1.0f);      // specify the clear value for the depth buffer
-  glClearColor(.15f, 0.30f, 0.45f, 1.0f);
-  
+  glClearColor(0.15f, 0.30f, 0.45f, 1.0f);
+ 
+  g_logger.push_message({ std::format("Processing CAD file: {}", file_path.string()), LogLevel::Text }); 
   while (!glfwWindowShouldClose(window_context))
   {
     glfwPollEvents();
@@ -178,7 +179,6 @@ int main(int argc, char* argv[])
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     setup_docking();
-
 
     // =======================================================
     // Start worker if idle
@@ -192,7 +192,7 @@ int main(int argc, char* argv[])
         // Phase 1: primitive extraction and normalize segments
         // =======================================================
         case ReconstructionStage::PrimitiveExtraction:
-          std::println("[worker] Starting PrimitiveExtraction...");
+          g_logger.push_message({"[worker] Starting PrimitiveExtraction...", LogLevel::Info});
           worker_state = ThreadState::Running;
           worker.emplace([&] {
             Reconstruction::primitives_extraction_normalization(ctx, file_path);
@@ -205,11 +205,11 @@ int main(int argc, char* argv[])
         // Phase 2: vertex snapping and opening reconstruction
         // =======================================================  
         case ReconstructionStage::OpeningReconstruction:
-          std::println("[worker] Starting OpeningReconstruction...");
+        g_logger.push_message({"[worker] Starting OpeningReconstruction...", LogLevel::Info});
           worker_state = ThreadState::Running;
           worker.emplace([&] {
-            Reconstruction::vertex_snapping(ctx, 1e-4);
-            Reconstruction::opening_reconstruction(ctx, 10, 0.1);
+            Reconstruction::vertex_snapping(ctx, snap_eps);
+            Reconstruction::opening_reconstruction(ctx, cluster_num_samples, cluster_eps);
             Reconstruction::checkpoint_clusters(ctx.sample_points, ctx.clusters);
             worker_is_done = true;
           });
@@ -219,7 +219,7 @@ int main(int argc, char* argv[])
         // Phase 3: faces extraction
         // =======================================================
         case ReconstructionStage::FaceExtraction:
-          std::println("[worker] Starting FaceExtraction...");
+          g_logger.push_message({"[worker] Starting FaceExtraction...", LogLevel::Info});
           worker_state = ThreadState::Running;
           worker.emplace([&] {
             Reconstruction::face_extraction(ctx, ctx.hash.vertices(), ctx.edges);
@@ -232,23 +232,23 @@ int main(int argc, char* argv[])
         // Phase 4: mesh building
         // =======================================================
         case ReconstructionStage::BuildMesh:
-          std::println("[worker] Starting BuildMesh...");
+          g_logger.push_message({"[worker] Starting BuildMesh...", LogLevel::Info});
           worker_state = ThreadState::Running;
           worker.emplace([&] {
 
             // remove all FLOOR faces and push only one quad for floor
             std::erase_if(ctx.faces, [](auto face) { return face.type == FaceType::FLOOR; });
             
-            // auto house_bbox = calculate_bbox_2D(ctx.walls);
-            // auto floor_face = Face{};
-            // floor_face.vertices = {
-            //   glm::dvec2(house_bbox.min.x, house_bbox.min.y),
-            //   glm::dvec2(house_bbox.max.x, house_bbox.min.y),
-            //   glm::dvec2(house_bbox.max.x, house_bbox.max.y),
-            //   glm::dvec2(house_bbox.min.x, house_bbox.max.y) 
-            // };
-            // floor_face.type = FaceType::FLOOR;
-            // ctx.faces.push_back(std::move(floor_face));
+            auto house_bbox = calculate_bbox_2D(ctx.walls);
+            auto floor_face = Face{};
+            floor_face.vertices = {
+              glm::dvec2(house_bbox.min.x, house_bbox.min.y),
+              glm::dvec2(house_bbox.max.x, house_bbox.min.y),
+              glm::dvec2(house_bbox.max.x, house_bbox.max.y),
+              glm::dvec2(house_bbox.min.x, house_bbox.max.y) 
+            };
+            floor_face.type = FaceType::FLOOR;
+            ctx.faces.push_back(std::move(floor_face));
             
             build_result = Reconstruction::build_mesh(ctx.faces);
             worker_is_done = true;
@@ -272,12 +272,12 @@ int main(int argc, char* argv[])
         // After the primitive extraction phase we load `segments.png` image
         // ===========================================
         case ReconstructionStage::PrimitiveExtraction:
-          std::println("PrimitiveExtraction completed! Loading segments.png...");
+          g_logger.push_message({"PrimitiveExtraction completed! Loading segments.png...", LogLevel::Success});
           if(std::filesystem::exists("segments.png"))
           {
-            auto plot_image = Texture::create_from_file("segments.png");
-            if(viewport_image.is_valid())
-              viewport_image.destroy();
+            if(plot_image.is_valid()) plot_image.destroy();
+            
+            plot_image = Texture::create_from_file("segments.png");
             viewport_image = plot_image;
           }
           break;
@@ -286,12 +286,12 @@ int main(int argc, char* argv[])
         // After the clustering phase we load `clusters.png` image
         // ===========================================
         case ReconstructionStage::OpeningReconstruction:
-          std::println("OpeningReconstruction completed! Loading clusters.png...");
+          g_logger.push_message({"OpeningReconstruction completed! Loading clusters.png...", LogLevel::Success});
           if(std::filesystem::exists("clusters.png"))
           {
-            auto plot_image = Texture::create_from_file("clusters.png");
-            if(viewport_image.is_valid())
-              viewport_image.destroy();
+            if(plot_image.is_valid()) plot_image.destroy();
+            
+            plot_image = Texture::create_from_file("clusters.png");
             viewport_image = plot_image;
           }
           break;
@@ -300,12 +300,12 @@ int main(int argc, char* argv[])
         // After the face extraction phase we load `faces.png` image
         // ===========================================
         case ReconstructionStage::FaceExtraction:
-          std::println("FaceExtraction completed! Loading faces.png...");
+          g_logger.push_message({"FaceExtraction completed! Loading faces.png...", LogLevel::Success});
           if(std::filesystem::exists("faces.png"))
           {
-            auto plot_image = Texture::create_from_file("faces.png");
-            if(viewport_image.is_valid())
-              viewport_image.destroy();
+            if(plot_image.is_valid()) plot_image.destroy();
+            
+            plot_image = Texture::create_from_file("faces.png");
             viewport_image = plot_image;
           }
           break;
@@ -315,7 +315,7 @@ int main(int argc, char* argv[])
         // ===========================================
         case ReconstructionStage::BuildMesh:
         {
-          std::println("BuildMesh completed! Creating static_mesh...");
+          g_logger.push_message({"BuildMesh completed! Creating static_mesh...", LogLevel::Success});
           // Center the vertices at the origin. No transform needed.
           center_mesh(build_result.mesh_vertices);
           static_mesh = std::make_unique<StaticMesh>(build_result.mesh_vertices.data(),
@@ -325,7 +325,7 @@ int main(int argc, char* argv[])
 
           auto gltf_path = file_path.filename().replace_extension("gltf");
           export_to_gltf(build_result.mesh_vertices, build_result.mesh_indices, gltf_path);
-          std::println("Model exported successfully: {}", gltf_path.string());
+          g_logger.push_message({std::format("The exported model: {}", gltf_path.string()), LogLevel::Text});
           break;
         }
 
@@ -339,9 +339,10 @@ int main(int argc, char* argv[])
     // =======================================================
     // Viewport panel
     // =======================================================
-    auto new_info = viewport_panel(fbo_color_texture, flip_viewport_image);
+    auto flip_viewport_image = (current_stage == ReconstructionStage::RenderMesh && static_mesh);
+    auto new_info = viewport_panel(viewport_image, flip_viewport_image);
     if(viewport_info.width != new_info.width || viewport_info.height != new_info.height)
-    {      
+    {
       viewport_info = new_info;
       camera.aspect = viewport_info.aspect;
       if(current_stage == ReconstructionStage::RenderMesh && fbo.is_valid())
@@ -352,14 +353,12 @@ int main(int argc, char* argv[])
         create_framebuffer(fbo, fbo_color_texture, fbo_depth_texture, viewport_info.width, viewport_info.height);
       }
     }
-
+    
     // =======================================================
     // Model rendering (RenderMesh only)
     // =======================================================
     if(current_stage == ReconstructionStage::RenderMesh && static_mesh)
     {
-      std::println("rendering mesh...");
-
       fbo.bind(FramebufferTarget::READ_DRAW);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       glViewport(0, 0, viewport_info.width, viewport_info.height);
@@ -380,25 +379,34 @@ int main(int argc, char* argv[])
         glDrawArrays(GL_TRIANGLES, 0, static_mesh->nr_vertices());
 
       fbo.unbind(FramebufferTarget::READ_DRAW);
+
+      viewport_image = fbo_color_texture;
+
+      mesh_details_overlay(*static_mesh, new_info.screen_pos);
     }
 
     // =======================================================
     // Log panel
     // =======================================================
-    log_panel(window_context, current_stage, worker_state);
+    console_panel(window_context, current_stage, worker_state);
     
     // =======================================================
     // Properties panel
     // =======================================================
-    properties_panel();
+    properties_panel(filename, snap_eps, cluster_num_samples, cluster_eps);
     
     render_gui(); 
     glfwSwapBuffers(window_context);
   }
   glfwTerminate();
-  if (fbo.is_valid()) fbo.destroy();
-  if (fbo_color_texture.is_valid()) fbo_color_texture.destroy();
-  if (fbo_depth_texture.is_valid()) fbo_depth_texture.destroy();
-
+  
+  if(plot_image.is_valid()) plot_image.destroy();
+  if(fbo.is_valid())
+  {
+    fbo.destroy();
+    fbo_color_texture.destroy();
+    fbo_depth_texture.destroy();
+  }
+  
   return 0;
 }

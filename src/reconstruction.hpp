@@ -40,6 +40,10 @@ enum class ReconstructionStage
 
 ReconstructionStage next_stage(ReconstructionStage p);
 
+constexpr auto snap_eps = 1e-4;
+constexpr auto cluster_num_samples = 10;
+constexpr auto cluster_eps = 0.1;
+
 namespace Reconstruction
 {
   void primitives_extraction_normalization(ReconstructionContext& ctx, 

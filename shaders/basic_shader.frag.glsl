@@ -7,9 +7,7 @@ layout(location = 0) out vec4 fs_out_color;
 
 void main()
 {
-  // vec3 n = normalize(vs_out_normal_world_space);
-  // n = n * 0.5 + 0.5;
-  // fs_out_color = vec4(n, 1.0);
-
-  fs_out_color = vec4(1,1,1, 1);
+  vec3 n = normalize(vs_out_normal_world_space);
+  n = n * 0.5 + 0.5;
+  fs_out_color = vec4(n, 1.0);
 }

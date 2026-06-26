@@ -2,19 +2,22 @@
 
 #include <GLFW/glfw3.h>
 
-#include <print>
 #include <format>
 #include <algorithm>
 #include <cstdlib>
 #include <stdexcept>
+#include <vector>
+#include <print>
 
 #include <glm/ext/vector_float4.hpp>
 #include <glm/glm.hpp> 
-#include <vector>
 
 #include "geometry.hpp"
+#include "log.hpp"
 #include "dump.hpp"
 #include "io/drw_parser.hpp"
+
+extern Logger g_logger;
 
 ReconstructionStage next_stage(ReconstructionStage p) 
 {
@@ -83,16 +86,16 @@ namespace Reconstruction
     auto house_bbox = calculate_bbox_2D(ctx.walls);
     if(ctx.unit_scale == 0.0)
     {
-      std::println("Invalid unit scale. Trying to detect it based on the box area");
+      g_logger.push_message({"Invalid unit scale. Trying to detect it based on the box area", LogLevel::Warning});
       ctx.unit_scale = detect_unit_scale(house_bbox.calculate_area());
     }
     
-    std::println("Successfully parsed DXF file:\n unit scale: {} \n walls: {}\n door: {}\n windows: {}", 
-      ctx.unit_scale,
-      ctx.walls.size(), 
-      ctx.doors.size(), 
-      ctx.windows.size());
 
+    g_logger.push_message({std::format(
+        "DXF file data:\n unit scale: {} \n number of wall segments: {}\n number of door segments: {}\n number of window segments: {}",
+        ctx.unit_scale, ctx.walls.size(), ctx.doors.size(), ctx.windows.size()),
+        LogLevel::Text});
+    
     normalize_segments(ctx.unit_scale, ctx.walls);
     normalize_segments(ctx.unit_scale, ctx.doors);
     normalize_segments(ctx.unit_scale, ctx.windows);
@@ -112,7 +115,7 @@ namespace Reconstruction
     }
 
     auto& vertices = hash.vertices();
-    std::println("Vertex snapping completed. Vertices: {}, edges: {}", vertices.size(), edges.size());
+    g_logger.push_message({std::format("Vertex snapping completed:\n number of vertices: {}\n number of edges: {}", vertices.size(), edges.size()), LogLevel::Text});
 
     ctx.hash = std::move(hash);
     ctx.edges = std::move(edges);
@@ -139,14 +142,15 @@ namespace Reconstruction
                        const std::vector<Edge>& edges)
   {
     auto arrangement = build_arrangement(vertices, edges);
-    std::println("Arrangement successfully completed: vertices={}, edges={}, faces={}", 
+
+    g_logger.push_message({std::format("Arrangement completed:\n number of vertices={}\n number of edges={}\n number of faces={}",
       arrangement.number_of_vertices(), 
       arrangement.number_of_edges(), 
-      arrangement.number_of_faces());
+      arrangement.number_of_faces()), LogLevel::Text});
     
     auto faces = extract_faces(arrangement);
-    std::println("Extracted faces: {}", faces.size());
-
+    g_logger.push_message({std::format("Number of extracted faces: {}", faces.size()), LogLevel::Text});
+  
     ctx.arrangement = std::move(arrangement);
     ctx.faces = std::move(faces);
   }
@@ -177,10 +181,10 @@ namespace Reconstruction
       cdt.Triangulate();
       auto triangles = cdt.GetTriangles();
 
-      constexpr auto CEIL_HEIGHT        = 1.0f * 8;
-      constexpr auto DOOR_OFFSET        = 0.9f * 8;
-      constexpr auto WINDOW_OFFSET_DOWN = 0.2f * 8;
-      constexpr auto WINDOW_OFFSET_UP   = 0.7f * 8;
+      constexpr auto CEIL_HEIGHT        = 1.0f * 4;
+      constexpr auto DOOR_OFFSET        = 0.9f * 4;
+      constexpr auto WINDOW_OFFSET_DOWN = 0.2f * 4;
+      constexpr auto WINDOW_OFFSET_UP   = 0.7f * 4;
       switch(face.type)
       {
         case FaceType::FLOOR:

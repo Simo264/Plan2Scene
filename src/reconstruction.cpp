@@ -23,9 +23,10 @@ ReconstructionStage next_stage(ReconstructionStage p)
     case ReconstructionStage::PrimitiveExtraction:   return ReconstructionStage::OpeningReconstruction;
     case ReconstructionStage::OpeningReconstruction: return ReconstructionStage::FaceExtraction;
     case ReconstructionStage::FaceExtraction:        return ReconstructionStage::BuildMesh;
-    case ReconstructionStage::BuildMesh:             return ReconstructionStage::None;
+    case ReconstructionStage::BuildMesh:             return ReconstructionStage::RenderMesh;
+    case ReconstructionStage::RenderMesh:            return ReconstructionStage::None;
     default: 
-    return ReconstructionStage::None;
+      return ReconstructionStage::None;
   }
 }
 

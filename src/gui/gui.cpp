@@ -1,6 +1,13 @@
 #include "gui.hpp"
 #include "../graphics/texture.hpp"
 
+#include <glad/gl.h>
+#include <GLFW/glfw3.h>
+
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
 #include <print>
 
 GLFWwindow* init_window_context(i32 width, i32 height)
@@ -34,13 +41,6 @@ GLFWwindow* init_window_context(i32 width, i32 height)
   ImGui::StyleColorsDark();
   ImGui_ImplGlfw_InitForOpenGL(context, true);
   ImGui_ImplOpenGL3_Init("#version 460");
-
-  glEnable(GL_DEPTH_TEST);  // enable depth testing
-  glDepthFunc(GL_LESS);    	// specify the value used for depth buffer comparisons
-  glDepthMask(GL_TRUE);    	// enable/disable writing into the depth buffer
-  glClearDepthf(1.0f);      // specify the clear value for the depth buffer
-  glClearColor(0.2f, 0.3f, 0.3f, 1.0f); // specify the clear value for the color buffer
-  
   return context;
 }
 
@@ -63,17 +63,26 @@ void setup_docking()
   ImGui::PopStyleVar(3);
 }
 
-ViewportInfo viewport_panel(Texture viewport_image)
+ViewportInfo viewport_panel(Texture viewport_image, bool flip_viewport_image)
 {
   ViewportInfo info{};
   ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_NoCollapse);
 
-    auto window_size = ImGui::GetContentRegionAvail(); 
-    info.width = window_size.x;
-    info.height = window_size.y; 
-    info.aspect = info.width / info.height;
-    if (viewport_image.is_valid()) 
-      ImGui::Image(viewport_image.id(), window_size);
+  auto window_size = ImGui::GetContentRegionAvail(); 
+  info.width = static_cast<i32>(window_size.x);
+  info.height = static_cast<i32>(window_size.y); 
+  info.aspect = static_cast<f32>(info.width) / static_cast<f32>(info.height);
+  if (viewport_image.is_valid())
+  {
+    auto uv0 = ImVec2{0,0,};
+    auto uv1 = ImVec2{1,1};
+    if(flip_viewport_image)
+    {
+      uv0 = ImVec2{0,1,};
+      uv1 = ImVec2{1,0};
+    }
+    ImGui::Image(viewport_image.id(), window_size, uv0, uv1);
+  }
 
   ImGui::End();
 
@@ -109,9 +118,6 @@ void log_panel(GLFWwindow* window, ReconstructionStage& current_stage, std::atom
   ImGui::SetNextWindowSize(ImVec2(0, 200), ImGuiCond_FirstUseEver);
   if (ImGui::Begin("Log", nullptr, ImGuiWindowFlags_NoCollapse)) 
   {
-    ImGui::Text("Console Log");
-    ImGui::Separator();
-
     static std::vector<std::string> log_messages = {};
     if (ImGui::BeginChild("LogContent", ImVec2(0, -ImGui::GetFrameHeightWithSpacing()), ImGuiChildFlags_Borders, ImGuiWindowFlags_AlwaysVerticalScrollbar)) 
     {
@@ -124,22 +130,21 @@ void log_panel(GLFWwindow* window, ReconstructionStage& current_stage, std::atom
     }
     ImGui::EndChild();
 
-    static auto input_buf = std::array<char, 32>{};
+    static auto input_buf = std::array<char, 2>{};
     ImGui::PushItemWidth(-1);
     auto reclaim_focus = false;
-    if (ImGui::InputText("##ConsoleInput", input_buf.data(), sizeof(input_buf), ImGuiInputTextFlags_EnterReturnsTrue)) 
+    if (ImGui::InputText("##ConsoleInput", input_buf.data(), 2, ImGuiInputTextFlags_EnterReturnsTrue)) 
     {
-      auto cmd = std::string_view{ input_buf };
-      log_messages.push_back(cmd.data());
+      log_messages.push_back(input_buf.data());
       if (worker_state == ThreadState::WaitingConfirmation) 
       {
-        if (cmd == "y" || cmd == "Y") 
+        if (input_buf.at(0) == 'y' || input_buf.at(0) == 'Y')
         {
           log_messages.push_back("Confermato, avanzo alla fase successiva.");
           current_stage = next_stage(current_stage);
           worker_state = ThreadState::Idle;
         } 
-        else if (cmd == "n" || cmd == "N") 
+        else if (input_buf.at(0) == 'n' || input_buf.at(0) == 'N')
         {
           log_messages.push_back("Annullato dall'utente.");
           glfwSetWindowShouldClose(window, true);
@@ -149,11 +154,6 @@ void log_panel(GLFWwindow* window, ReconstructionStage& current_stage, std::atom
           log_messages.push_back("Risposta non valida, digita 'y' o 'n'.");
         }
       } 
-      else 
-      {
-        log_messages.push_back("Nessuna conferma in attesa.");
-      }
-
       input_buf.fill(0);
       reclaim_focus = true;
     }

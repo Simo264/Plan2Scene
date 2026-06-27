@@ -140,8 +140,15 @@ GLFWwindow* init_window_context(i32 width, i32 height)
   if(!version)
     throw std::runtime_error("Failed to initialize OpenGL context");
 
+  glDisable(GL_CULL_FACE);
+  glEnable(GL_DEPTH_TEST);  // enable depth testing
+  glDepthFunc(GL_LESS);    	// specify the value used for depth buffer comparisons
+  glDepthMask(GL_TRUE);    	// enable/disable writing into the depth buffer
+  glClearDepth(1.0f);      // specify the clear value for the depth buffer
+  glClearColor(0.15f, 0.30f, 0.45f, 1.0f);
+
   g_logger.push_message({
-    std::format("OpenGL context initialized successfully. Version: {}.{}", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version)),
+    std::format("OpenGL context initialized: {}.{}", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version)),
     LogLevel::Text
   });
   
@@ -152,9 +159,13 @@ GLFWwindow* init_window_context(i32 width, i32 height)
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;           // Enable Keyboard Controls
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable; // Enable Docking
 
-  auto* font = io.Fonts->AddFontFromFileTTF("fonts/Lato-Regular.ttf", 14.0f);
+  constexpr auto font_name = "fonts/SpaceMono-Regular.ttf";
+
+  auto* font = io.Fonts->AddFontFromFileTTF(font_name, 16.0f);
   if (!font) 
-    g_logger.push_message({"Failed to load font 'fonts/Lato-Regular.ttf', using default.", LogLevel::Warning});
+    g_logger.push_message({
+    std::format("Failed to load font '{}', using default.", font_name),
+    LogLevel::Warning});
   
   ImGui::StyleColorsDark();
   setup_catppuccin_mocha_theme();
@@ -266,8 +277,12 @@ void console_panel(GLFWwindow* window, ReconstructionStage& current_stage, std::
       auto messages = g_logger.get_messages();
       for (const auto& msg : messages) 
         ImGui::TextColored(log_level_to_color(msg.level), "> %s", msg.message.c_str());
+      
       if (worker_state == ThreadState::WaitingConfirmation) 
         ImGui::TextColored(log_level_to_color(LogLevel::Text), "Proceed? [y/n]");
+      else if (worker_state == ThreadState::Error) 
+        ImGui::TextColored(log_level_to_color(LogLevel::Error), "An error occurred. Close the program or restart it.");
+
       if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
         ImGui::SetScrollHereY(1.0f);
     }

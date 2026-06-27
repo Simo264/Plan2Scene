@@ -1,5 +1,6 @@
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
+#include <exception>
 #include <filesystem>
 #include <format>
 #include <memory>
@@ -25,6 +26,13 @@
 
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
+
+constexpr auto window_width = 1024;
+constexpr auto window_height = 768;
+
+constexpr auto snap_eps = 1e-4;
+constexpr auto cluster_num_samples = 20;
+constexpr auto cluster_eps = 0.1;
 
 auto g_logger = Logger{};
 
@@ -130,15 +138,14 @@ int main(int argc, char* argv[])
     throw std::runtime_error(std::format("Input file not found: {}", file_path.string()));
 
   auto viewport_info = ViewportInfo{};
-  viewport_info.width = 1024;
-  viewport_info.height = 768;
+  viewport_info.width = window_width;
+  viewport_info.height = window_height;
   viewport_info.aspect = static_cast<f32>(viewport_info.width) / static_cast<f32>(viewport_info.height);
   auto window_context = init_window_context(viewport_info.width, viewport_info.height);
  
   auto fbo = FrameBuffer{};
   auto fbo_color_texture = Texture{};
   auto fbo_depth_texture = Texture{};
-  create_framebuffer(fbo, fbo_color_texture, fbo_depth_texture, viewport_info.width, viewport_info.height);
   
   ShaderProgram vertex_program, fragment_program;
   ProgramPipelineObject pipeline;
@@ -153,21 +160,14 @@ int main(int argc, char* argv[])
   auto viewport_image = Texture{};
   auto plot_image = Texture{};
 
-  auto current_stage = ReconstructionStage::PrimitiveExtraction;
+  auto current_stage = ReconstructionStage::PrimitivesExtraction;
   auto worker_state = std::atomic<ThreadState>{ ThreadState::Idle };
   auto worker = std::optional<std::jthread>{};
   auto worker_is_done = std::atomic<bool>{ false };
   auto build_result = ReconstructionResult{};
   auto ctx = ReconstructionContext{};
-
-  glDisable(GL_CULL_FACE);
-  glEnable(GL_DEPTH_TEST);  // enable depth testing
-  glDepthFunc(GL_LESS);    	// specify the value used for depth buffer comparisons
-  glDepthMask(GL_TRUE);    	// enable/disable writing into the depth buffer
-  glClearDepth(1.0f);      // specify the clear value for the depth buffer
-  glClearColor(0.15f, 0.30f, 0.45f, 1.0f);
  
-  g_logger.push_message({ std::format("Processing CAD file: {}", file_path.string()), LogLevel::Text }); 
+  g_logger.push_message({ std::format("Processing CAD file: {}", file_path.string()), LogLevel::Text });
   while (!glfwWindowShouldClose(window_context))
   {
     glfwPollEvents();
@@ -189,73 +189,161 @@ int main(int argc, char* argv[])
       switch (current_stage) 
       {
         // =======================================================
-        // Phase 1: primitive extraction and normalize segments
+        // Primitives extraction
         // =======================================================
-        case ReconstructionStage::PrimitiveExtraction:
-          g_logger.push_message({"[worker] Starting PrimitiveExtraction...", LogLevel::Info});
+        case ReconstructionStage::PrimitivesExtraction:
+        {
+          g_logger.push_message({"[worker] Starting PrimitivesExtraction...", LogLevel::Info});
           worker_state = ThreadState::Running;
           worker.emplace([&] {
-            Reconstruction::primitives_extraction_normalization(ctx, file_path);
-            Reconstruction::checkpoint_raw_segments(ctx.walls, ctx.doors, ctx.windows);
-            worker_is_done = true;
+            try
+            {
+              Reconstruction::primitives_extraction(ctx, file_path);
+              Reconstruction::checkpoint_raw_segments(ctx.walls, ctx.doors, ctx.windows);
+              worker_is_done = true;
+            }
+            catch(const std::exception& e)
+            {
+              g_logger.push_message({std::format("[worker] Error during PrimitivesExtraction.\n{}", e.what()), LogLevel::Error});
+              worker_state = ThreadState::Error;
+              worker_is_done = true;
+            }
           });
           break;
-        
-        // =======================================================
-        // Phase 2: vertex snapping and opening reconstruction
-        // =======================================================  
-        case ReconstructionStage::OpeningReconstruction:
-        g_logger.push_message({"[worker] Starting OpeningReconstruction...", LogLevel::Info});
-          worker_state = ThreadState::Running;
-          worker.emplace([&] {
-            Reconstruction::vertex_snapping(ctx, snap_eps);
-            Reconstruction::opening_reconstruction(ctx, cluster_num_samples, cluster_eps);
-            Reconstruction::checkpoint_clusters(ctx.sample_points, ctx.clusters);
-            worker_is_done = true;
-          });
-          break;
+        }
 
         // =======================================================
-        // Phase 3: faces extraction
+        // Vertex snapping
+        // =======================================================  
+        case ReconstructionStage::VertexSnapping:
+        {
+          g_logger.push_message({"[worker] Starting VertexSnapping...", LogLevel::Info});
+          worker_state = ThreadState::Running;
+          worker.emplace([&] {
+            try 
+            {
+              Reconstruction::vertex_snapping(ctx, snap_eps);
+              worker_is_done = true;
+            } 
+            catch (const std::exception& e) 
+            {
+              g_logger.push_message({std::format("[worker] Error during VertexSnapping.\n{}", e.what()), LogLevel::Error});
+              worker_state = ThreadState::Error;
+              worker_is_done = true;
+            }
+          });
+          break;
+        }
+
+
         // =======================================================
-        case ReconstructionStage::FaceExtraction:
+        // Clusters extraction
+        // =======================================================  
+        case ReconstructionStage::ClustersExtraction:
+        {
+          g_logger.push_message({"[worker] Starting ClustersExtraction...", LogLevel::Info});
+          worker_state = ThreadState::Running;
+          worker.emplace([&] {
+            try 
+            {
+              Reconstruction::clusters_extraction(ctx, cluster_num_samples, cluster_eps);
+              Reconstruction::checkpoint_clusters(ctx.sample_points, ctx.clusters);
+              worker_is_done = true;
+            } 
+            catch (const std::exception& e) 
+            {
+              g_logger.push_message({std::format("[worker] Error during ClustersExtraction.\n{}", e.what()), LogLevel::Error});
+              worker_state = ThreadState::Error;
+              worker_is_done = true;
+            }
+          });
+          break;
+        }
+        
+        // =======================================================
+        // Clusters extraction
+        // =======================================================  
+        case ReconstructionStage::GapsReconstruction:
+        {
+          g_logger.push_message({"[worker] Starting GapsReconstruction...", LogLevel::Info});
+          worker_state = ThreadState::Running;
+          worker.emplace([&] {
+            try 
+            {
+              Reconstruction::gaps_reconstruction(ctx);
+              worker_is_done = true;
+            } 
+            catch (const std::exception& e) 
+            {
+              g_logger.push_message({std::format("[worker] Error during GapsReconstruction.\n{}", e.what()), LogLevel::Error});
+              worker_state = ThreadState::Error;
+              worker_is_done = true;
+            }
+          });
+          break;
+        }
+
+        // =======================================================
+        // Faces extraction
+        // =======================================================
+        case ReconstructionStage::FacesExtraction:
+        {
           g_logger.push_message({"[worker] Starting FaceExtraction...", LogLevel::Info});
           worker_state = ThreadState::Running;
           worker.emplace([&] {
-            Reconstruction::face_extraction(ctx, ctx.hash.vertices(), ctx.edges);
-            Reconstruction::checkpoint_faces(ctx.faces);
-            worker_is_done = true;
+            try 
+            {
+              Reconstruction::faces_extraction(ctx, ctx.hash.vertices(), ctx.edges);
+              Reconstruction::checkpoint_faces(ctx.faces);
+              worker_is_done = true;
+            } 
+            catch (const std::exception& e) 
+            {
+              g_logger.push_message({std::format("[worker] Error during FaceExtraction.\n{}", e.what()), LogLevel::Error});
+              worker_state = ThreadState::Error;
+              worker_is_done = true;
+            } 
           });
           break;
+        } 
 
         // =======================================================
-        // Phase 4: mesh building
+        // Mesh building
         // =======================================================
         case ReconstructionStage::BuildMesh:
+        {
           g_logger.push_message({"[worker] Starting BuildMesh...", LogLevel::Info});
           worker_state = ThreadState::Running;
           worker.emplace([&] {
+            try 
+            {
+              // remove all FLOOR faces and push only one quad for floor
+              std::erase_if(ctx.faces, [](auto face) { return face.type == FaceType::FLOOR; });
+              auto house_bbox = calculate_bbox_2D(ctx.walls);
+              auto floor_face = Face{};
+              floor_face.vertices = {
+                glm::dvec2(house_bbox.min.x, house_bbox.min.y),
+                glm::dvec2(house_bbox.max.x, house_bbox.min.y),
+                glm::dvec2(house_bbox.max.x, house_bbox.max.y),
+                glm::dvec2(house_bbox.min.x, house_bbox.max.y) 
+              };
+              floor_face.type = FaceType::FLOOR;
+              ctx.faces.push_back(std::move(floor_face));
 
-            // remove all FLOOR faces and push only one quad for floor
-            std::erase_if(ctx.faces, [](auto face) { return face.type == FaceType::FLOOR; });
-            
-            auto house_bbox = calculate_bbox_2D(ctx.walls);
-            auto floor_face = Face{};
-            floor_face.vertices = {
-              glm::dvec2(house_bbox.min.x, house_bbox.min.y),
-              glm::dvec2(house_bbox.max.x, house_bbox.min.y),
-              glm::dvec2(house_bbox.max.x, house_bbox.max.y),
-              glm::dvec2(house_bbox.min.x, house_bbox.max.y) 
-            };
-            floor_face.type = FaceType::FLOOR;
-            ctx.faces.push_back(std::move(floor_face));
-            
-            build_result = Reconstruction::build_mesh(ctx.faces);
-            worker_is_done = true;
+              build_result = Reconstruction::build_mesh(ctx.faces);
+              worker_is_done = true;
+            } 
+            catch (const std::exception& e) 
+            {
+              g_logger.push_message({std::format("[worker] Error during BuildMesh.\n{}", e.what()), LogLevel::Error});
+              worker_state = ThreadState::Error;
+              worker_is_done = true;
+            }
           });
           break;
+        }
 
-          default: break;
+        default: break;
       }
     }
 
@@ -269,10 +357,11 @@ int main(int argc, char* argv[])
       switch (current_stage) 
       {
         // ===========================================
-        // After the primitive extraction phase we load `segments.png` image
+        // On PrimitivesExtraction completed
         // ===========================================
-        case ReconstructionStage::PrimitiveExtraction:
-          g_logger.push_message({"PrimitiveExtraction completed! Loading segments.png...", LogLevel::Success});
+        case ReconstructionStage::PrimitivesExtraction:
+        {  
+          g_logger.push_message({"PrimitivesExtraction completed! Loading segments.png...", LogLevel::Success});
           if(std::filesystem::exists("segments.png"))
           {
             if(plot_image.is_valid()) plot_image.destroy();
@@ -281,12 +370,23 @@ int main(int argc, char* argv[])
             viewport_image = plot_image;
           }
           break;
+        }
+
+        // ===========================================
+        // On VertexSnapping completed
+        // ===========================================
+        case ReconstructionStage::VertexSnapping:
+        {
+          g_logger.push_message({"VertexSnapping completed!", LogLevel::Success});
+          break; // no plot, no confirmation prompt
+        }
         
         // ===========================================
-        // After the clustering phase we load `clusters.png` image
+        // On ClustersExtraction completed
         // ===========================================
-        case ReconstructionStage::OpeningReconstruction:
-          g_logger.push_message({"OpeningReconstruction completed! Loading clusters.png...", LogLevel::Success});
+        case ReconstructionStage::ClustersExtraction:
+        {  
+          g_logger.push_message({"ClustersExtraction completed! Loading clusters.png...", LogLevel::Success});
           if(std::filesystem::exists("clusters.png"))
           {
             if(plot_image.is_valid()) plot_image.destroy();
@@ -295,11 +395,22 @@ int main(int argc, char* argv[])
             viewport_image = plot_image;
           }
           break;
+        }  
         
         // ===========================================
-        // After the face extraction phase we load `faces.png` image
+        // On GapsReconstruction completed
         // ===========================================
-        case ReconstructionStage::FaceExtraction:
+        case ReconstructionStage::GapsReconstruction:
+        {  
+          g_logger.push_message({"GapsReconstruction completed!", LogLevel::Success});
+          break; // no plot, no confirmation prompt
+        }
+        
+        // ===========================================
+        // On FacesExtraction completed
+        // ===========================================
+        case ReconstructionStage::FacesExtraction:
+        {
           g_logger.push_message({"FaceExtraction completed! Loading faces.png...", LogLevel::Success});
           if(std::filesystem::exists("faces.png"))
           {
@@ -309,9 +420,10 @@ int main(int argc, char* argv[])
             viewport_image = plot_image;
           }
           break;
+        }
 
         // ===========================================
-        // After the build mesh phase we create and export the static_mesh object
+        // On BuildMesh completed
         // ===========================================
         case ReconstructionStage::BuildMesh:
         {
@@ -333,7 +445,16 @@ int main(int argc, char* argv[])
           break;
       }
 
-      worker_state = ThreadState::WaitingConfirmation;
+      if (stage_needs_confirmation(current_stage)) 
+      {
+        worker_state = ThreadState::WaitingConfirmation; // wait for "y/n" input from the console panel
+      } 
+      else 
+      {
+         // advance immediately without asking for confirmation
+        current_stage = next_stage(current_stage);
+        worker_state = ThreadState::Idle;
+      }
     }
 
     // =======================================================
@@ -359,6 +480,9 @@ int main(int argc, char* argv[])
     // =======================================================
     if(current_stage == ReconstructionStage::RenderMesh && static_mesh)
     {
+      if(!fbo.is_valid())
+        create_framebuffer(fbo, fbo_color_texture, fbo_depth_texture, viewport_info.width, viewport_info.height);
+
       fbo.bind(FramebufferTarget::READ_DRAW);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       glViewport(0, 0, viewport_info.width, viewport_info.height);

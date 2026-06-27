@@ -30,34 +30,35 @@ struct ReconstructionContext
 
 enum class ReconstructionStage
 {
-  PrimitiveExtraction,
-  OpeningReconstruction,
-  FaceExtraction,
+  PrimitivesExtraction,
+  VertexSnapping,
+  ClustersExtraction,
+  GapsReconstruction,
+  FacesExtraction,
   BuildMesh,
   RenderMesh,
   None,
 };
 
 ReconstructionStage next_stage(ReconstructionStage p);
-
-constexpr auto snap_eps = 1e-4;
-constexpr auto cluster_num_samples = 10;
-constexpr auto cluster_eps = 0.1;
+bool stage_needs_confirmation(ReconstructionStage stage);
 
 namespace Reconstruction
 {
-  void primitives_extraction_normalization(ReconstructionContext& ctx, 
-                                           const std::filesystem::path& filename);
+  void primitives_extraction(ReconstructionContext& ctx, 
+                             const std::filesystem::path& filename);
   void checkpoint_raw_segments(const std::vector<Segment>& walls, 
                                const std::vector<Segment>& doors, 
                                const std::vector<Segment>& windows);
 
   void vertex_snapping(ReconstructionContext& ctx, f64 snap_eps);
-  void opening_reconstruction(ReconstructionContext& ctx, i32 num_samples, f64 eps);
+  void clusters_extraction(ReconstructionContext& ctx, i32 num_samples, f64 eps);
+
   void checkpoint_clusters(const std::vector<glm::dvec2>& sample_points, 
                            const std::vector<std::vector<u32>>& clusters);
-
-  void face_extraction(ReconstructionContext& ctx,
+  
+  void gaps_reconstruction(ReconstructionContext& ctx);
+  void faces_extraction(ReconstructionContext& ctx,
                        const std::vector<glm::dvec2>& vertices, 
                        const std::vector<Edge>& edges);
   void checkpoint_faces(const std::vector<Face>& faces);

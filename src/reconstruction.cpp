@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <vector>
 #include <print>
+#include <cstdio>
 
 #include <glm/ext/vector_float4.hpp>
 #include <glm/glm.hpp> 
@@ -19,17 +20,51 @@
 
 extern Logger g_logger;
 
-ReconstructionStage next_stage(ReconstructionStage p) 
+ReconstructionStage next_stage(ReconstructionStage stage) 
 {
-  switch (p) 
+  switch (stage) 
   {
-    case ReconstructionStage::PrimitiveExtraction:   return ReconstructionStage::OpeningReconstruction;
-    case ReconstructionStage::OpeningReconstruction: return ReconstructionStage::FaceExtraction;
-    case ReconstructionStage::FaceExtraction:        return ReconstructionStage::BuildMesh;
+    case ReconstructionStage::PrimitivesExtraction:  return ReconstructionStage::VertexSnapping;
+    case ReconstructionStage::VertexSnapping:        return ReconstructionStage::ClustersExtraction;
+    case ReconstructionStage::ClustersExtraction:    return ReconstructionStage::GapsReconstruction;
+    case ReconstructionStage::GapsReconstruction:    return ReconstructionStage::FacesExtraction;
+    case ReconstructionStage::FacesExtraction:       return ReconstructionStage::BuildMesh;
     case ReconstructionStage::BuildMesh:             return ReconstructionStage::RenderMesh;
-    case ReconstructionStage::RenderMesh:            return ReconstructionStage::None;
-    default: 
-      return ReconstructionStage::None;
+    default:                                          return ReconstructionStage::None;
+  }
+}
+
+bool stage_needs_confirmation(ReconstructionStage stage) 
+{
+  switch (stage) 
+  {
+      case ReconstructionStage::PrimitivesExtraction:
+      case ReconstructionStage::ClustersExtraction:
+      case ReconstructionStage::FacesExtraction:
+        return true;
+      default:
+        return false;
+  }
+}
+
+static void run_checkpoint_script(std::string_view script_name)
+{
+  auto log_file = std::format("{}.log", script_name); // es. "plot_segments.py.log"
+  auto command = std::format("python {} > \"{}\" 2>&1", script_name, log_file);
+  auto ret = std::system(command.c_str());
+  if (ret != 0) 
+  {
+    auto output = std::string{};
+    if (auto in = std::ifstream(log_file); in)
+    {
+      output = std::string(
+        (std::istreambuf_iterator<char>(in)),
+        std::istreambuf_iterator<char>()
+      );
+    }
+    std::remove(log_file.c_str()); // delete log file
+
+    throw std::runtime_error(std::format("Execution of `python {}` terminated with code {}.\n{}",script_name, ret, output));
   }
 }
 
@@ -46,38 +81,32 @@ namespace Reconstruction
     dump_segments_csv(walls, "walls_segments.csv");
     dump_segments_csv(doors, "doors_segments.csv");
     dump_segments_csv(windows, "windows_segments.csv");
-    auto ret = std::system("python plot_segments.py");
-    if (ret != 0) 
-      throw std::runtime_error(std::format("Error: the execution of `python plot_segments.py` is terminated with code {}", ret));
+    run_checkpoint_script("plot_segments.py");
   }
 
   void checkpoint_clusters(const std::vector<glm::dvec2>& sample_points,
                            const std::vector<std::vector<u32>>& clusters)
   {
     dump_clusters_csv(sample_points, clusters, "clusters.csv");
-    auto ret = std::system("python plot_clusters.py");
-    if (ret != 0) 
-      throw std::runtime_error(std::format("Error: the execution of `python plot_clusters.py` is terminated with code {}", ret));
+    run_checkpoint_script("plot_clusters.py");
   }
 
   void checkpoint_faces(const std::vector<Face>& faces)
   {
     dump_faces_csv(faces, "faces.csv");
-    auto ret = std::system("python plot_faces.py");
-    if (ret != 0) 
-      throw std::runtime_error(std::format("Error: the execution of `python plot_faces.py` is terminated with code {}", ret));
+    run_checkpoint_script("plot_faces.py");
   }
 
   // ============================
   // Steps 
   // ============================
 
-  void primitives_extraction_normalization(ReconstructionContext& ctx, const std::filesystem::path& filename)
+  void primitives_extraction(ReconstructionContext& ctx, const std::filesystem::path& filename)
   {
     auto parser = DRWParser{};
     auto dxf = dxfRW(filename.string().c_str());
     if (!dxf.read(&parser, false))
-      throw std::runtime_error(std::format("Error reading DXF file (code: {}): {}", static_cast<i32>(dxf.getError()), filename.string()));
+      throw std::runtime_error(std::format("Error reading DXF file `{}` (code: {})", filename.string(), static_cast<i32>(dxf.getError())));
 
     ctx.walls = std::move(parser.walls);
     ctx.doors = std::move(parser.doors);
@@ -89,7 +118,6 @@ namespace Reconstruction
       g_logger.push_message({"Invalid unit scale. Trying to detect it based on the box area", LogLevel::Warning});
       ctx.unit_scale = detect_unit_scale(house_bbox.calculate_area());
     }
-    
 
     g_logger.push_message({std::format(
         "DXF file data:\n unit scale: {} \n number of wall segments: {}\n number of door segments: {}\n number of window segments: {}",
@@ -121,23 +149,45 @@ namespace Reconstruction
     ctx.edges = std::move(edges);
   }
 
-  void opening_reconstruction(ReconstructionContext& ctx, i32 num_samples, f64 eps)
+  void clusters_extraction(ReconstructionContext& ctx, i32 num_samples, f64 eps)
   {
-    if(!ctx.doors.empty())
-      doors_reconstruction(ctx.doors, ctx.hash, ctx.edges);
-
     if(!ctx.windows.empty())
     {
       auto sample_points = sample_segments(ctx.windows, num_samples);
       auto clusters = calculate_clusters(sample_points, eps);
-      windows_reconstruction(sample_points, clusters, ctx.hash, ctx.edges);
-
       ctx.sample_points = std::move(sample_points);
       ctx.clusters = std::move(clusters);
     }
   }
 
-  void face_extraction(ReconstructionContext& ctx, 
+  void gaps_reconstruction(ReconstructionContext& ctx)
+  {
+    if(!ctx.doors.empty())
+    {
+      try 
+      {
+        doors_reconstruction(ctx.doors, ctx.hash, ctx.edges);
+      } 
+      catch (const std::exception& e) 
+      {
+        throw std::runtime_error(std::format("Door processing failed.\n{}", e.what()));
+      }
+    }
+
+    if(!ctx.sample_points.empty() && !ctx.clusters.empty())
+    {
+      try
+      {
+        windows_reconstruction(ctx.sample_points, ctx.clusters, ctx.hash, ctx.edges);
+      } 
+      catch (const std::exception& e) 
+      {
+        throw std::runtime_error(std::format("Window processing failed.\n{}", e.what()));
+      }
+    }
+  }
+
+  void faces_extraction(ReconstructionContext& ctx, 
                        const std::vector<glm::dvec2>& vertices, 
                        const std::vector<Edge>& edges)
   {
@@ -181,37 +231,43 @@ namespace Reconstruction
       cdt.Triangulate();
       auto triangles = cdt.GetTriangles();
 
-      constexpr auto CEIL_HEIGHT        = 1.0f * 4;
-      constexpr auto DOOR_OFFSET        = 0.9f * 4;
-      constexpr auto WINDOW_OFFSET_DOWN = 0.2f * 4;
-      constexpr auto WINDOW_OFFSET_UP   = 0.7f * 4;
+      constexpr auto CEIL_HEIGHT_METERS = 2.7f;
+      // Pure percentages, referring to CEIL_HEIGHT_METERS. DO NOT multiply by any arbitrary factor
+      constexpr auto DOOR_FRAC_TOP      = 0.8f; // from 80% to 100%
+      constexpr auto WINDOW_FRAC_BOTTOM = 0.2f; // from 0% to 20%
+      constexpr auto WINDOW_FRAC_TOP    = 0.8f; // from 80% to 100%
+
+      constexpr auto CEIL_HEIGHT     = CEIL_HEIGHT_METERS;
+      constexpr auto DOOR_TOP        = CEIL_HEIGHT_METERS * DOOR_FRAC_TOP;
+      constexpr auto WINDOW_BOTTOM   = CEIL_HEIGHT_METERS * WINDOW_FRAC_BOTTOM;
+      constexpr auto WINDOW_TOP      = CEIL_HEIGHT_METERS * WINDOW_FRAC_TOP;
       switch(face.type)
       {
         case FaceType::FLOOR:
           std::println("FLOOR face found!");
           build_triangulated_face(vertices, indices, triangles, 0.f, { 1.f, 0.f, 0.f });
-          // build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, { 1.f, 0.f, 0.f });
+          build_triangulated_face(vertices, indices, triangles, CEIL_HEIGHT, { 1.f, 0.f, 0.f });
           break;
 
         case FaceType::WALL:
           std::println("WALL face found!");
-          // build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, { 0.f, 1.f, 0.f });
+          build_triangulated_face(vertices, indices, triangles, CEIL_HEIGHT, { 0.f, 1.f, 0.f });
           extrude_face(vertices, indices, 0, CEIL_HEIGHT, face);
           break;
 
         case FaceType::DOOR:
           std::println("DOOR face found!");
-          // build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, { 0.f, 0.f, 1.f });
-          extrude_face(vertices, indices, DOOR_OFFSET, CEIL_HEIGHT, face);
+          build_triangulated_face(vertices, indices, triangles, CEIL_HEIGHT, { 0.f, 0.f, 1.f });
+          extrude_face(vertices, indices, DOOR_TOP, CEIL_HEIGHT, face);
           break;
           
         case FaceType::WINDOW:
           std::println("WINDOW face found!");
-          build_triangulated_face(vertices, indices, triangles, WINDOW_OFFSET_DOWN, {1.f, 0.f, 1.f});
-          build_triangulated_face(vertices, indices, triangles, WINDOW_OFFSET_UP, {1.f, 0.f, 1.f});
-          // build_triangulated_face(out_vertices, out_indices, triangles, CEIL_HEIGHT, {1.f, 0.f, 1.f});
-          extrude_face(vertices, indices, 0.0f, WINDOW_OFFSET_DOWN, face);
-          extrude_face(vertices, indices, WINDOW_OFFSET_UP, CEIL_HEIGHT, face);
+          build_triangulated_face(vertices, indices, triangles, WINDOW_BOTTOM, {1.f, 0.f, 1.f});
+          build_triangulated_face(vertices, indices, triangles, WINDOW_TOP, {1.f, 0.f, 1.f});
+          build_triangulated_face(vertices, indices, triangles, CEIL_HEIGHT, {1.f, 0.f, 1.f});
+          extrude_face(vertices, indices, 0.0f, WINDOW_BOTTOM, face);
+          extrude_face(vertices, indices, WINDOW_TOP, CEIL_HEIGHT, face);
           break; 
 
         default:

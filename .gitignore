@@ -1,9 +1,12 @@
-build/
-venv/
-compile_commands.json
 .cache/
 .continue/
 .zed/
 .vscode/
+
+build/
+venv/
+compile_commands.json
+
 *.csv
 *.png
+*.log

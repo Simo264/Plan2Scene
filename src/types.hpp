@@ -116,5 +116,5 @@ struct WallVertices
 
 enum class ThreadState 
 { 
-  Idle, Running, WaitingConfirmation 
+  Idle, Running, WaitingConfirmation, Error
 };

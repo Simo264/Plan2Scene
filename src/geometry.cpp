@@ -339,7 +339,12 @@ void close_wall_gap(glm::dvec2 gap_start,
     return;
   }
 
-  throw std::runtime_error("Failed to close wall gap: could not find a parallel projection for either vertex.");
+  throw std::runtime_error(std::format(
+    "Failed to close wall gap:\n gap_start=({:.4f}, {:.4f}), gap_end=({:.4f}, {:.4f}).\n"
+    "No parallel projection found for B={}, C={}, D={}, E={}.",
+    gap_start.x, gap_start.y, gap_end.x, gap_end.y,
+    wall_vertices.B, wall_vertices.C, wall_vertices.D, wall_vertices.E
+  ));
 }
 
 void doors_reconstruction(std::vector<Segment>& doors,
@@ -347,11 +352,19 @@ void doors_reconstruction(std::vector<Segment>& doors,
                           std::vector<Edge>& edges)
 {
   auto& vertices = hash.vertices();
-  for(auto& door : doors) 
+  for (auto i = 0ul; i < doors.size(); ++i)
   { 
-    close_wall_gap(door.start, door.end, LayerType::DOOR, hash, edges);
-    door.start = vertices[hash.find_nearest(door.start)];
-    door.end   = vertices[hash.find_nearest(door.end)];
+    auto& door = doors[i];
+    try 
+    {
+      close_wall_gap(door.start, door.end, LayerType::DOOR, hash, edges);
+      door.start = vertices[hash.find_nearest(door.start)];
+      door.end   = vertices[hash.find_nearest(door.end)];
+    } 
+    catch (const std::exception& e) 
+    {
+      throw std::runtime_error(std::format("Door reconstruction failed at door index {} (of {}):\n{}",i, doors.size(), e.what()));
+    }
   }
 }
 
@@ -369,8 +382,14 @@ void windows_reconstruction(std::vector<glm::dvec2>& sample_points,
     auto box = calculate_bbox_2D(sample_points, cluster_indices);
     auto sides = get_long_sides_bbox2d(box);
     auto longest_side = sides.at(0);
-    
-    close_wall_gap(longest_side.start, longest_side.end, LayerType::WINDOW, hash, edges);
+    try 
+    {
+      close_wall_gap(longest_side.start, longest_side.end, LayerType::WINDOW, hash, edges);
+    } 
+    catch (const std::exception& e)
+    {
+      throw std::runtime_error(std::format("Window reconstruction failed at cluster index {} (of {}):\n{}",i, clusters.size(), e.what()));
+    }
   }
 }
 

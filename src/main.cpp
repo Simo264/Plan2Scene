@@ -34,6 +34,8 @@ constexpr auto snap_eps = 1e-4;
 constexpr auto cluster_num_samples = 20;
 constexpr auto cluster_eps = 0.1;
 
+static auto light_pos = glm::vec3(2, 4.0, 0);
+
 auto g_logger = Logger{};
 
 static void create_gl_pipeline_object(ShaderProgram& vertex_program, ShaderProgram& fragment_program, ProgramPipelineObject& pipeline)
@@ -152,8 +154,8 @@ int main(int argc, char* argv[])
   create_gl_pipeline_object(vertex_program, fragment_program, pipeline);
 
   auto camera = Camera(0.1f, 100.0f, 45.f, viewport_info.aspect);
-  camera.eye = { 0.f, 2.f, 10.f };
-  camera.set_orientation(glm::radians(glm::vec3{ -5.f, 0.f, 0.f }));
+  camera.eye = { 0.f, 5.f, 10.f };
+  camera.set_orientation(glm::radians(glm::vec3{ -20.f, 0.f, 0.f }));
 
   auto static_mesh = std::unique_ptr<StaticMesh>{};
   auto mesh_transform = Transformation{};
@@ -222,7 +224,17 @@ int main(int argc, char* argv[])
           worker.emplace([&] {
             try 
             {
+              auto vertices_before = ctx.walls.size() * 2;
+
               Reconstruction::vertex_snapping(ctx, snap_eps);
+
+              auto vertices_after = ctx.hash.vertices().size();
+              auto merged = vertices_before - vertices_after;
+              g_logger.push_message({
+                std::format("{} vertices in -> {} vertices out ({} merged, eps={:.4f})",
+                vertices_before, vertices_after, merged, snap_eps),
+                LogLevel::Text});
+
               worker_is_done = true;
             } 
             catch (const std::exception& e) 
@@ -234,7 +246,6 @@ int main(int argc, char* argv[])
           });
           break;
         }
-
 
         // =======================================================
         // Clusters extraction
@@ -262,7 +273,7 @@ int main(int argc, char* argv[])
         
         // =======================================================
         // Clusters extraction
-        // =======================================================  
+        // =======================================================
         case ReconstructionStage::GapsReconstruction:
         {
           g_logger.push_message({"[worker] Starting GapsReconstruction...", LogLevel::Info});
@@ -270,7 +281,20 @@ int main(int argc, char* argv[])
           worker.emplace([&] {
             try 
             {
+              auto edges_before = ctx.edges.size();
+              auto doors_count = ctx.doors.size();
+              auto windows_count = ctx.clusters.size();
+
               Reconstruction::gaps_reconstruction(ctx);
+
+              auto edges_after = ctx.edges.size();
+              auto edges_added = edges_after - edges_before;
+
+              g_logger.push_message({
+                std::format("{} doors, {} window clusters -> {} edges added (total edges: {})",
+                doors_count, windows_count, edges_added, edges_after),
+                LogLevel::Text });
+
               worker_is_done = true;
             } 
             catch (const std::exception& e) 
@@ -294,6 +318,10 @@ int main(int argc, char* argv[])
             try 
             {
               Reconstruction::faces_extraction(ctx, ctx.hash.vertices(), ctx.edges);
+              g_logger.push_message({std::format("Arrangement completed:\n number of vertices={}\n number of edges={}\n number of faces={}",
+                  ctx.arrangement.number_of_vertices(), ctx.arrangement.number_of_edges(), ctx.arrangement.number_of_faces()), LogLevel::Text});
+              g_logger.push_message({ std::format("Number of extracted faces: {}", ctx.faces.size()), LogLevel::Text});
+
               Reconstruction::checkpoint_faces(ctx.faces);
               worker_is_done = true;
             } 
@@ -496,11 +524,12 @@ int main(int argc, char* argv[])
       vertex_program.set_uniform_mat4f(0, &mesh_transform.M[0][0]);
       vertex_program.set_uniform_mat4f(1, &mat_camera[0][0]);
       vertex_program.set_uniform_mat4f(2, &mat_persp[0][0]);
+      pipeline.set_active_program(fragment_program);
+      fragment_program.set_uniform_vector3f(0, &camera.eye[0]);
+      fragment_program.set_uniform_vector3f(1, &light_pos[0]);
+
       static_mesh->vao().bind();
-      if (static_mesh->nr_indices() > 0)
-        glDrawElements(GL_TRIANGLES, static_mesh->nr_indices(), GL_UNSIGNED_INT, 0);
-      else
-        glDrawArrays(GL_TRIANGLES, 0, static_mesh->nr_vertices());
+      glDrawElements(GL_TRIANGLES, static_mesh->nr_indices(), GL_UNSIGNED_INT, 0);
 
       fbo.unbind(FramebufferTarget::READ_DRAW);
 
@@ -517,7 +546,7 @@ int main(int argc, char* argv[])
     // =======================================================
     // Properties panel
     // =======================================================
-    properties_panel(filename, snap_eps, cluster_num_samples, cluster_eps);
+    properties_panel(filename, snap_eps, cluster_num_samples, cluster_eps, light_pos);
     
     render_gui(); 
     glfwSwapBuffers(window_context);

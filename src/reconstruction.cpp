@@ -141,10 +141,6 @@ namespace Reconstruction
       if (v1 != v2)
         edges.push_back(Edge{ v1, v2, seg.layer });
     }
-
-    auto& vertices = hash.vertices();
-    g_logger.push_message({std::format("Vertex snapping completed:\n number of vertices: {}\n number of edges: {}", vertices.size(), edges.size()), LogLevel::Text});
-
     ctx.hash = std::move(hash);
     ctx.edges = std::move(edges);
   }
@@ -166,19 +162,27 @@ namespace Reconstruction
     {
       try 
       {
+        auto edges_before_doors = ctx.edges.size();
         doors_reconstruction(ctx.doors, ctx.hash, ctx.edges);
+        auto doors_edges_added = ctx.edges.size() - edges_before_doors;
+        g_logger.push_message({std::format("Doors: {} processed -> {} edges added", ctx.doors.size(), doors_edges_added), 
+          LogLevel::Text});
       } 
       catch (const std::exception& e) 
       {
         throw std::runtime_error(std::format("Door processing failed.\n{}", e.what()));
       }
     }
-
+    
     if(!ctx.sample_points.empty() && !ctx.clusters.empty())
     {
       try
       {
+        auto edges_before_windows = ctx.edges.size();
         windows_reconstruction(ctx.sample_points, ctx.clusters, ctx.hash, ctx.edges);
+        auto windows_edges_added = ctx.edges.size() - edges_before_windows;
+        g_logger.push_message({std::format("Windows: {} clusters processed -> {} edges added", ctx.clusters.size(), windows_edges_added), 
+          LogLevel::Text});
       } 
       catch (const std::exception& e) 
       {
@@ -192,14 +196,7 @@ namespace Reconstruction
                        const std::vector<Edge>& edges)
   {
     auto arrangement = build_arrangement(vertices, edges);
-
-    g_logger.push_message({std::format("Arrangement completed:\n number of vertices={}\n number of edges={}\n number of faces={}",
-      arrangement.number_of_vertices(), 
-      arrangement.number_of_edges(), 
-      arrangement.number_of_faces()), LogLevel::Text});
-    
     auto faces = extract_faces(arrangement);
-    g_logger.push_message({std::format("Number of extracted faces: {}", faces.size()), LogLevel::Text});
   
     ctx.arrangement = std::move(arrangement);
     ctx.faces = std::move(faces);
@@ -245,27 +242,27 @@ namespace Reconstruction
       {
         case FaceType::FLOOR:
           std::println("FLOOR face found!");
-          build_triangulated_face(vertices, indices, triangles, 0.f, { 1.f, 0.f, 0.f });
-          build_triangulated_face(vertices, indices, triangles, CEIL_HEIGHT, { 1.f, 0.f, 0.f });
+          build_triangulated_face(vertices, indices, triangles, 0.f, true);
+          // build_triangulated_face(vertices, indices, triangles, CEIL_HEIGHT, false);
           break;
 
         case FaceType::WALL:
           std::println("WALL face found!");
-          build_triangulated_face(vertices, indices, triangles, CEIL_HEIGHT, { 0.f, 1.f, 0.f });
+          build_triangulated_face(vertices, indices, triangles, CEIL_HEIGHT, true);
           extrude_face(vertices, indices, 0, CEIL_HEIGHT, face);
           break;
 
         case FaceType::DOOR:
           std::println("DOOR face found!");
-          build_triangulated_face(vertices, indices, triangles, CEIL_HEIGHT, { 0.f, 0.f, 1.f });
+          build_triangulated_face(vertices, indices, triangles, CEIL_HEIGHT, true);
           extrude_face(vertices, indices, DOOR_TOP, CEIL_HEIGHT, face);
           break;
           
         case FaceType::WINDOW:
           std::println("WINDOW face found!");
-          build_triangulated_face(vertices, indices, triangles, WINDOW_BOTTOM, {1.f, 0.f, 1.f});
-          build_triangulated_face(vertices, indices, triangles, WINDOW_TOP, {1.f, 0.f, 1.f});
-          build_triangulated_face(vertices, indices, triangles, CEIL_HEIGHT, {1.f, 0.f, 1.f});
+          build_triangulated_face(vertices, indices, triangles, WINDOW_BOTTOM, true);
+          build_triangulated_face(vertices, indices, triangles, WINDOW_TOP, false);
+          build_triangulated_face(vertices, indices, triangles, CEIL_HEIGHT, true);
           extrude_face(vertices, indices, 0.0f, WINDOW_BOTTOM, face);
           extrude_face(vertices, indices, WINDOW_TOP, CEIL_HEIGHT, face);
           break; 

@@ -28,6 +28,7 @@ void mesh_details_overlay(const class StaticMesh& mesh, glm::vec2 viewport_pos);
 void properties_panel(const std::string_view& file_name, 
                       f64 snap_eps, 
                       i32 cluster_num_samples, 
-                      f64 cluster_eps);
+                      f64 cluster_eps,
+                      glm::vec3& light_pos);
 
 void render_gui();

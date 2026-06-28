@@ -1,4 +1,14 @@
-# Building and running the code
+## Screenshots
+
+![Segments extraction](screenshots/img_1.png)
+
+![Cluster extraction](screenshots/img_2.png)
+
+![Face extraction](screenshots/img_3.png)
+
+![Final mesh](screenshots/img_4.png)
+
+## Building and running the code
 
 Install Conan package manager with pip:
 
@@ -22,21 +32,6 @@ conan install . \
   --build=missing \
   -s build_type=Debug \
   -c tools.system.package_manager:mode=disabled
-```
-
-It might happen sometimes, when you specify a setting not present in the defaults that you receive a message like this:
-
-```bash
-ERROR: Invalid setting '16' is not a valid 'settings.compiler.version' value.
-```
-
-This doesn’t mean that such compiler version is not supported by Conan, it is just that it is not present in the actual defaults settings ~/.conan2/settings.yml.
-
-Open the settings.yml file and look for the section relating to your compiler (gcc or clang), and add "16" to the list. For example:
-
-```YAML
-gcc:
-  version: ["4.1", "4.4", ..., "15", "15.1", "15.2", "16"]
 ```
 
 Conan generated several files under the **build** folder.

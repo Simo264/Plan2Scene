@@ -138,7 +138,7 @@ void build_triangulated_face(std::vector<Vertex_PN>& out_vertices,
                              std::vector<u32>& out_indices,
                              const std::vector<p2t::Triangle*> triangles,
                              f32 height,
-                             const glm::vec3& normal);
+                             bool facing_up);
 
 // Extrudes a 2D face contour into a 3D quad-based wall segment between two heights.
 // Creates four vertices (Bottom-Left, Bottom-Right, Top-Right, Top-Left) for each edge

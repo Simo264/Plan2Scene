@@ -397,7 +397,7 @@ void build_triangulated_face(std::vector<Vertex_PN>& out_vertices,
                              std::vector<u32>& out_indices,
                              const std::vector<p2t::Triangle*> triangles,
                              f32 height,
-                             const glm::vec3& normal)
+                             bool facing_up)
 {
   for (const auto& tri : triangles)
   {
@@ -412,7 +412,7 @@ void build_triangulated_face(std::vector<Vertex_PN>& out_vertices,
       v.position.x = static_cast<f32>(p->x);
       v.position.y = height;
       v.position.z = static_cast<f32>(p->y);
-      v.normal = normal,
+      v.normal = facing_up ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(0.0f, -1.0f, 0.0f);
       out_vertices.push_back(v);
     }
   }

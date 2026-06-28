@@ -223,7 +223,11 @@ ViewportInfo viewport_panel(Texture viewport_image, bool flip_viewport_image)
   return info;
 }
 
-void properties_panel(const std::string_view& file_name, f64 snap_eps, i32 cluster_num_samples, f64 cluster_eps) 
+void properties_panel(const std::string_view& file_name, 
+                      f64 snap_eps, 
+                      i32 cluster_num_samples, 
+                      f64 cluster_eps,
+                      glm::vec3& light_pos)
 {
   ImGui::SetNextWindowSize(ImVec2(300, 0), ImGuiCond_FirstUseEver);
   if (ImGui::Begin("Properties", nullptr)) 
@@ -231,7 +235,7 @@ void properties_panel(const std::string_view& file_name, f64 snap_eps, i32 clust
     ImGui::TextDisabled("Input");
     ImGui::Separator();
     ImGui::Columns(2, "props_input", false);
-    ImGui::SetColumnWidth(0, 160.0f);
+    ImGui::SetColumnWidth(0, 150.0f);
     ImGui::Text("File path:"); ImGui::NextColumn();
     ImGui::TextWrapped("%s", file_name.data()); ImGui::NextColumn();
     ImGui::Columns(1);
@@ -240,7 +244,7 @@ void properties_panel(const std::string_view& file_name, f64 snap_eps, i32 clust
     ImGui::TextDisabled("Vertex snapping");
     ImGui::Separator();
     ImGui::Columns(2, "props_snap", false);
-    ImGui::SetColumnWidth(0, 160.0f);
+    ImGui::SetColumnWidth(0, 150.0f);
     ImGui::Text("Snap tolerance:"); ImGui::NextColumn();
     ImGui::Text("%.6f", snap_eps); ImGui::NextColumn();
     ImGui::Columns(1);
@@ -249,11 +253,20 @@ void properties_panel(const std::string_view& file_name, f64 snap_eps, i32 clust
     ImGui::TextDisabled("Opening reconstruction");
     ImGui::Separator();
     ImGui::Columns(2, "props_cluster", false);
-    ImGui::SetColumnWidth(0, 160.0f);
+    ImGui::SetColumnWidth(0, 150.0f);
     ImGui::Text("Cluster samples:"); ImGui::NextColumn();
     ImGui::Text("%d", cluster_num_samples); ImGui::NextColumn();
     ImGui::Text("Cluster eps:"); ImGui::NextColumn();
     ImGui::Text("%.4f", cluster_eps); ImGui::NextColumn();
+    ImGui::Columns(1);
+
+    ImGui::TextDisabled("Lighting");
+    ImGui::Separator();
+    ImGui::Columns(2, "props_light", false);
+    ImGui::SetColumnWidth(0, 150.0f);
+    ImGui::Text("Light position:"); ImGui::NextColumn();
+    ImGui::DragFloat3("##light_pos", &light_pos.x, 0.01f);
+    ImGui::NextColumn();
     ImGui::Columns(1);
   }
   ImGui::End();

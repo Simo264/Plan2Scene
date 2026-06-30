@@ -1,5 +1,6 @@
 #include "geometry.hpp"
 #include "types.hpp"
+#include "globals.hpp"
 
 #include "dbscan.h"
 
@@ -399,6 +400,36 @@ void windows_reconstruction(std::vector<glm::dvec2>& sample_points,
   }
 }
 
+void triangulate_face(std::vector<Vertex_PNT>& out_vertices,
+                      std::vector<u32>& out_indices,
+                      f32 height,
+                      bool facing_up, 
+                      const Face& face)
+{
+  auto face_bbox = calculate_bbox_2D(face);
+  
+  // Ensure CCW winding
+  auto polyline = face.vertices;
+  if (calculate_signed_area(polyline) < 0.0)
+    std::ranges::reverse(polyline);
+    
+  auto p2t_points = std::vector<p2t::Point>{};
+  auto p2t_ptr_points = std::vector<p2t::Point*>{};
+  p2t_points.reserve(polyline.size());
+  p2t_ptr_points.reserve(polyline.size());
+  for (const auto& p : polyline)
+  {
+    p2t_points.emplace_back(p2t::Point{ p.x, p.y });
+    p2t_ptr_points.push_back(&p2t_points.back());
+  }
+  
+  auto cdt = p2t::CDT{ p2t_ptr_points };
+  cdt.Triangulate();
+  auto triangles = cdt.GetTriangles();
+
+  build_triangulated_face(out_vertices, out_indices, triangles, height, facing_up, face_bbox);
+}
+
 void build_triangulated_face(std::vector<Vertex_PNT>& out_vertices,
                              std::vector<u32>& out_indices,
                              const std::vector<p2t::Triangle*> triangles,
@@ -406,11 +437,6 @@ void build_triangulated_face(std::vector<Vertex_PNT>& out_vertices,
                              bool facing_up, 
                              const BoundingBox2D& face_bbox)
 {
-  float dx = face_bbox.max.x - face_bbox.min.x;
-  float dz = face_bbox.max.y - face_bbox.min.y;
-  if (dx < 1e-6f) dx = 1.0f;
-  if (dz < 1e-6f) dz = 1.0f;
-  
   for (const auto& tri : triangles)
   {
     for (auto i = 0; i < 3; ++i) 
@@ -424,9 +450,8 @@ void build_triangulated_face(std::vector<Vertex_PNT>& out_vertices,
       v.position.z = static_cast<f32>(p->y);
       v.normal = facing_up ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(0.0f, -1.0f, 0.0f);
 
-      // Normalized planar projection in [0, 1]
-      v.text_coord.x = (v.position.x - face_bbox.min.x) / dx;
-      v.text_coord.y = (v.position.z - face_bbox.min.y) / dz;
+      v.text_coord.x = (v.position.x - face_bbox.min.x) / floor_texture_scaling;
+      v.text_coord.y = (v.position.z - face_bbox.min.y) / floor_texture_scaling;
 
       auto idx = static_cast<u32>(out_vertices.size());
       out_vertices.push_back(v);
@@ -444,8 +469,8 @@ void extrude_face(std::vector<Vertex_PNT>& vertices,
   constexpr glm::vec3 up(0.0f, 1.0f, 0.0f);
   const auto& contour = face.vertices;
 
-  auto v_bottom = base_height;
-  auto v_top    = top_height;
+  auto v_bottom_uv = base_height / wall_texture_scaling;
+  auto v_top_uv = top_height / wall_texture_scaling;
   
   for (auto i = 0u; i < contour.size(); ++i) 
   {
@@ -456,12 +481,12 @@ void extrude_face(std::vector<Vertex_PNT>& vertices,
     auto normal = glm::normalize(glm::cross(edge, up));
 
     auto u0 = 0.0f;
-    auto u1 = edge_len;
+    auto u1 = edge_len / wall_texture_scaling;
 
-    auto BL = Vertex_PNT{ {f32(p1.x), base_height, f32(p1.y)}, normal, {u0, v_bottom} };
-    auto BR = Vertex_PNT{ {f32(p2.x), base_height, f32(p2.y)}, normal, {u1, v_bottom} };
-    auto TR = Vertex_PNT{ {f32(p2.x), top_height,  f32(p2.y)}, normal, {u1, v_top} };
-    auto TL = Vertex_PNT{ {f32(p1.x), top_height,  f32(p1.y)}, normal, {u0, v_top} };
+    auto BL = Vertex_PNT{ {f32(p1.x), base_height, f32(p1.y)}, normal, {u0, v_bottom_uv} };
+    auto BR = Vertex_PNT{ {f32(p2.x), base_height, f32(p2.y)}, normal, {u1, v_bottom_uv} };
+    auto TR = Vertex_PNT{ {f32(p2.x), top_height,  f32(p2.y)}, normal, {u1, v_top_uv} };
+    auto TL = Vertex_PNT{ {f32(p1.x), top_height,  f32(p1.y)}, normal, {u0, v_top_uv} };
 
     vertices.push_back(BL); vertices.push_back(BR);
     vertices.push_back(TR); vertices.push_back(TL);

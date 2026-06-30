@@ -132,14 +132,22 @@ void windows_reconstruction(std::vector<glm::dvec2>& sample_points,
                             SpatialHash& hash,
                             std::vector<Edge>& edges);
 
-// Builds a triangulated face by iterating over a set of CDT triangles.
-// Converts 2D polygonal triangle points into 3D vertices.
+
+
+
 void build_triangulated_face(std::vector<Vertex_PNT>& out_vertices,
                              std::vector<u32>& out_indices,
                              const std::vector<p2t::Triangle*> triangles,
                              f32 height,
                              bool facing_up, 
                              const BoundingBox2D& face_bbox);
+
+void triangulate_face(std::vector<Vertex_PNT>& out_vertices,
+                      std::vector<u32>& out_indices,
+                      f32 height,
+                      bool facing_up, 
+                      const Face& face);
+
 
 // Extrudes a 2D face contour into a 3D quad-based wall segment between two heights.
 // Creates four vertices for each edge of the contour, calculates the outward-facing normal based on the edge direction,

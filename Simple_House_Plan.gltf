@@ -3,35 +3,35 @@
     {
       "bufferView": 0,
       "componentType": 5126,
-      "count": 1252,
+      "count": 590,
       "max": [
-        1.79998779296875,
-        1.350000023841858,
-        1.8000001907348633
+        18.0,
+        2.5,
+        17.99999237060547
       ],
       "min": [
-        -1.79998779296875,
-        -1.350000023841858,
-        -1.8000001907348633
+        -18.0,
+        -2.5,
+        -18.0
       ],
       "type": "VEC3"
     },
     {
       "bufferView": 1,
       "componentType": 5126,
-      "count": 1252,
+      "count": 590,
       "type": "VEC3"
     },
     {
       "bufferView": 2,
       "componentType": 5126,
-      "count": 1252,
+      "count": 590,
       "type": "VEC2"
     },
     {
       "bufferView": 3,
       "componentType": 5125,
-      "count": 1656,
+      "count": 882,
       "type": "SCALAR"
     }
   ],
@@ -42,31 +42,31 @@
   "bufferViews": [
     {
       "buffer": 0,
-      "byteLength": 15024,
+      "byteLength": 7080,
       "target": 34962
     },
     {
       "buffer": 0,
-      "byteLength": 15024,
-      "byteOffset": 15024,
+      "byteLength": 7080,
+      "byteOffset": 7080,
       "target": 34962
     },
     {
       "buffer": 0,
-      "byteLength": 10016,
-      "byteOffset": 30048,
+      "byteLength": 4720,
+      "byteOffset": 14160,
       "target": 34962
     },
     {
       "buffer": 0,
-      "byteLength": 6624,
-      "byteOffset": 40064,
+      "byteLength": 3528,
+      "byteOffset": 18880,
       "target": 34963
     }
   ],
   "buffers": [
     {
-      "byteLength": 46688,
+      "byteLength": 22408,
       "uri": "Simple_House_Plan.bin"
     }
   ],

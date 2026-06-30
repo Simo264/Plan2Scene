@@ -46,6 +46,7 @@ add_executable(${PROJECT_NAME}
   src/gui/gui.cpp
   
   src/main.cpp
+  src/globals.cpp
   src/reconstruction.cpp
   src/dump.cpp
   src/geometry.cpp

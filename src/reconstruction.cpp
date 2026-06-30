@@ -17,6 +17,7 @@
 #include "graphics/static_mesh.hpp"
 #include "log.hpp"
 #include "dump.hpp"
+#include "globals.hpp"
 #include "io/drw_parser.hpp"
 
 extern Logger g_logger;
@@ -112,13 +113,14 @@ namespace Reconstruction
     ctx.walls = std::move(parser.walls);
     ctx.doors = std::move(parser.doors);
     ctx.windows = std::move(parser.windows);
-    ctx.unit_scale = parser.unit_scale;
-    auto house_bbox = calculate_bbox_2D(ctx.walls);
-    if(ctx.unit_scale == 0.0)
-    {
-      g_logger.push_message({"Invalid unit scale. Trying to detect it based on the box area", LogLevel::Warning});
-      ctx.unit_scale = detect_unit_scale(house_bbox.calculate_area());
-    }
+    ctx.unit_scale = unit_scale;
+    
+    // auto house_bbox = calculate_bbox_2D(ctx.walls);
+    // if(ctx.unit_scale == 0.0)
+    // {
+    //   g_logger.push_message({"Invalid unit scale. Trying to detect it based on the box area", LogLevel::Warning});
+    //   ctx.unit_scale = detect_unit_scale(house_bbox.calculate_area());
+    // }
 
     g_logger.push_message({std::format(
         "DXF file data:\n unit scale: {} \n number of wall segments: {}\n number of door segments: {}\n number of window segments: {}",
@@ -208,7 +210,26 @@ namespace Reconstruction
     auto vertices = std::vector<Vertex_PNT>{};
     auto floor_indices  = std::vector<u32>{};
     auto wall_indices   = std::vector<u32>{};
- 
+
+    auto floor_face = std::ranges::find_if(faces, [](const Face& f) { return f.type == FaceType::FLOOR; });
+    triangulate_face(vertices, floor_indices, 0.f, true, *floor_face);
+    
+    auto wall_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::WALL; });
+    for(const auto& face : wall_faces)
+      extrude_face(vertices, wall_indices, 0.f, ceil_height_meters, face);
+
+    auto door_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::DOOR; });
+    for(const auto& face : door_faces)
+      extrude_face(vertices, wall_indices, door_frac_top, ceil_height_meters, face);
+
+    // auto window_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::WINDOW; });
+    // for(const auto& face : window_faces)
+    // {
+    //   extrude_face(vertices, wall_indices, 0.f, WINDOW_FRAC_BOTTOM, face);
+    //   extrude_face(vertices, wall_indices, WINDOW_FRAC_TOP, CEIL_HEIGHT, face);
+    // }
+    
+#if 0 
     for(const auto& face : faces)
     {
       auto face_bbox = calculate_bbox_2D(face);
@@ -232,16 +253,6 @@ namespace Reconstruction
       cdt.Triangulate();
       auto triangles = cdt.GetTriangles();
 
-      constexpr auto CEIL_HEIGHT_METERS = 2.7f;
-      // Pure percentages, referring to CEIL_HEIGHT_METERS. DO NOT multiply by any arbitrary factor
-      constexpr auto DOOR_FRAC_TOP      = 0.8f; // from 80% to 100%
-      constexpr auto WINDOW_FRAC_BOTTOM = 0.2f; // from 0% to 20%
-      constexpr auto WINDOW_FRAC_TOP    = 0.8f; // from 80% to 100%
-
-      constexpr auto CEIL_HEIGHT     = CEIL_HEIGHT_METERS;
-      constexpr auto DOOR_TOP        = CEIL_HEIGHT_METERS * DOOR_FRAC_TOP;
-      constexpr auto WINDOW_BOTTOM   = CEIL_HEIGHT_METERS * WINDOW_FRAC_BOTTOM;
-      constexpr auto WINDOW_TOP      = CEIL_HEIGHT_METERS * WINDOW_FRAC_TOP;
       switch(face.type)
       {
         case FaceType::FLOOR:
@@ -276,6 +287,7 @@ namespace Reconstruction
           break;
       }
     }
+#endif
 
     auto all_indices = std::vector<u32>{};
     all_indices.reserve(floor_indices.size() + wall_indices.size());
@@ -285,13 +297,12 @@ namespace Reconstruction
       .index_count=u32(floor_indices.size()),
       .material=MaterialType::Floor 
     };
-    all_indices.insert(all_indices.end(), floor_indices.begin(), floor_indices.end());
-    
     auto wall_range = PrimitiveRange{ 
       .index_offset=u32(all_indices.size()), 
       .index_count=u32(wall_indices.size()), 
       .material=MaterialType::Wall 
     };
+    all_indices.insert(all_indices.end(), floor_indices.begin(), floor_indices.end());
     all_indices.insert(all_indices.end(), wall_indices.begin(), wall_indices.end());
     
     auto result = ReconstructionResult{};

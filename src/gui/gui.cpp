@@ -4,6 +4,8 @@
 #include "../graphics/texture.hpp"
 #include "../graphics/static_mesh.hpp"
 #include "../graphics/transformation.hpp"
+#include "../graphics/camera.hpp"
+#include "../globals.hpp"
 
 #include <format>
 #include <glad/gl.h>
@@ -226,84 +228,112 @@ ViewportInfo viewport_panel(Texture viewport_image, bool flip_viewport_image)
   return info;
 }
 
-void properties_panel(const std::string_view& file_name, 
-                      f64 snap_eps, 
-                      i32 cluster_num_samples, 
-                      f64 cluster_eps,
-                      glm::vec3& light_pos,
-                      Transformation& mesh_transform)
+void properties_panel(const std::string_view& file_name)
 {
   ImGui::SetNextWindowSize(ImVec2(300, 0), ImGuiCond_FirstUseEver);
-  if (ImGui::Begin("Properties", nullptr)) 
+  if(ImGui::Begin("Params"))
   {
-    ImGui::TextDisabled("Input");
+    ImGui::Text("File: %s", file_name.data());
     ImGui::Separator();
-    ImGui::Columns(2, "props_input", false);
-    ImGui::SetColumnWidth(0, 150.0f);
-    ImGui::Text("File path:"); ImGui::NextColumn();
-    ImGui::TextWrapped("%s", file_name.data()); ImGui::NextColumn();
-    ImGui::Columns(1);
-
-    ImGui::Spacing();
-    ImGui::TextDisabled("Vertex snapping");
-    ImGui::Separator();
-    ImGui::Columns(2, "props_snap", false);
-    ImGui::SetColumnWidth(0, 150.0f);
-    ImGui::Text("Snap tolerance:"); ImGui::NextColumn();
-    ImGui::Text("%.6f", snap_eps); ImGui::NextColumn();
-    ImGui::Columns(1);
-
-    ImGui::Spacing();
-    ImGui::TextDisabled("Opening reconstruction");
-    ImGui::Separator();
-    ImGui::Columns(2, "props_cluster", false);
-    ImGui::SetColumnWidth(0, 150.0f);
-    ImGui::Text("Cluster samples:"); ImGui::NextColumn();
-    ImGui::Text("%d", cluster_num_samples); ImGui::NextColumn();
-    ImGui::Text("Cluster eps:"); ImGui::NextColumn();
-    ImGui::Text("%.4f", cluster_eps); ImGui::NextColumn();
-    ImGui::Columns(1);
-
-    // Mesh transformation
-    ImGui::TextDisabled("Mesh transformation");
-    ImGui::Spacing();
-    auto rot_deg = glm::vec3{
-      glm::degrees(mesh_transform.rotation.x),
-      glm::degrees(mesh_transform.rotation.y),
-      glm::degrees(mesh_transform.rotation.z)
-    };
-
-    ImGui::Text("Rotation (deg):");
-    ImGui::NextColumn();
-    if (ImGui::DragFloat3("##trans_rot", &rot_deg[0], 0.5f, -180.0f, 180.0f)) 
+    if (ImGui::BeginTable("PipelineTable", 2, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_SizingFixedFit)) 
     {
-      mesh_transform.rotation.x = glm::radians(rot_deg.x);
-      mesh_transform.rotation.y = glm::radians(rot_deg.y);
-      mesh_transform.rotation.z = glm::radians(rot_deg.y);
-      mesh_transform.update_transformation();
+      ImGui::TableSetupColumn("Parameter", ImGuiTableColumnFlags_WidthFixed, 180.0f);
+      ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+      ImGui::TableHeadersRow();
+
+      auto add_row = [](const char* label, const char* fmt, auto val) {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::TextUnformatted(label);
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text(fmt, val);
+      };
+
+      add_row("Unit Scale", "%.4f", unit_scale);
+      add_row("Snap Epsilon", "%.6f", snap_eps);
+      add_row("Cluster Num Samples", "%d", cluster_num_samples);
+      add_row("Cluster Epsilon", "%.4f", cluster_eps);
+      add_row("Ceiling Height", "%.2f m", ceil_height_meters);
+      ImGui::EndTable();
+    }   
+  }
+  
+  ImGui::End();
+}
+
+void scene_panel(Camera& camera, glm::vec3& light_direction, Transformation& mesh_transform)
+{
+  ImGui::SetNextWindowSize(ImVec2(300, 0), ImGuiCond_FirstUseEver);
+  if(ImGui::Begin("Scene"))
+  {
+    // ==========================================
+    // Camera
+    // ==========================================
+    if (ImGui::CollapsingHeader("Camera Settings", ImGuiTreeNodeFlags_DefaultOpen)) 
+    {
+      ImGui::DragFloat3("Position##Camera", &camera.eye.x, 0.05f);
+
+      auto cam_euler_rad = camera.get_euler_angles();
+      auto cam_euler_deg = glm::degrees(cam_euler_rad); 
+      if (ImGui::DragFloat3("Rotation##Camera", &cam_euler_deg.x, 0.5f, -360.0f, 360.0f, "%.1f")) 
+        camera.set_orientation(glm::radians(cam_euler_deg)); 
+
+      ImGui::Separator();
+
+      ImGui::DragFloat("Near Plane", &camera.near, 0.01f, 0.001f, 10.0f, "%.3f");
+      ImGui::DragFloat("Far Plane", &camera.far, 1.0f, 10.0f, 2000.0f, "%.1f");
+      
+      auto fovy_deg = glm::degrees(camera.fovy);
+      if (ImGui::SliderFloat("FOV Y (Degrees)", &fovy_deg, 10.0f, 120.0f, "%.1f"))
+        camera.fovy = glm::radians(fovy_deg);
+      
+      ImGui::DragFloat("Aspect Ratio", &camera.aspect, 0.01f, 0.1f, 10.0f, "%.2f");
     }
-    ImGui::Columns(1);
-    ImGui::Spacing();
-    ImGui::Text("Scale:");
-    ImGui::NextColumn();
-    if (ImGui::DragFloat3("##trans_scale", &mesh_transform.scale.x, 0.01f, 0.01f, 10.0f)) 
-      mesh_transform.update_transformation();
-    
-    ImGui::NextColumn();
-    ImGui::Columns(1);
     ImGui::Spacing();
 
-    // Lighting properties
-    ImGui::TextDisabled("Lighting");
-    ImGui::Separator();
-    ImGui::Columns(2, "props_light", false);
-    ImGui::SetColumnWidth(0, 150.0f);
-    ImGui::Text("Light position:");
-    ImGui::NextColumn();
-    ImGui::DragFloat3("##light_pos", &light_pos.x, 0.01f);
-    ImGui::NextColumn();
-    ImGui::Columns(1);
+    // ==========================================
+    // Lighting
+    // ==========================================
+    if (ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen)) 
+    {
+      if (ImGui::DragFloat3("Light direction", &light_direction.x, 0.01f, -1.0f, 1.0f, "%.2f")) 
+      {
+        auto len = glm::length(light_direction);
+        if (len > 1e-4f) 
+          light_direction = glm::normalize(light_direction);
+      }
+    }
+    ImGui::Spacing();
+
+    // ==========================================
+    // Mesh transformation
+    // ==========================================
+    if (ImGui::CollapsingHeader("Mesh transformation", ImGuiTreeNodeFlags_DefaultOpen)) 
+    {
+      auto matrix_needs_update = false;
+      if (ImGui::DragFloat3("Position##Mesh", &mesh_transform.position.x, 0.05f, 0.0f, 0.0f, "%.2f")) 
+        matrix_needs_update = true;
+
+      auto mesh_rot_deg = glm::degrees(mesh_transform.rotation);
+      if (ImGui::DragFloat3("Rotation##Mesh", &mesh_rot_deg.x, 0.5f, -360.0f, 360.0f, "%.1f")) 
+      {
+        mesh_transform.rotation = glm::radians(mesh_rot_deg);
+        matrix_needs_update = true;
+      }
+
+      if (ImGui::DragFloat3("Scale##Mesh", &mesh_transform.scale.x, 0.01f, 0.001f, 100.0f, "%.3f")) 
+      {
+        if (mesh_transform.scale.x < 0.001f) mesh_transform.scale.x = 0.001f;
+        if (mesh_transform.scale.y < 0.001f) mesh_transform.scale.y = 0.001f;
+        if (mesh_transform.scale.z < 0.001f) mesh_transform.scale.z = 0.001f;
+        matrix_needs_update = true;
+      }
+
+      if (matrix_needs_update)
+        mesh_transform.update_transformation();
+    }
   }
+  
   ImGui::End();
 }
 

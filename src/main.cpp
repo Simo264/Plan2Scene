@@ -11,6 +11,7 @@
 #include "geometry.hpp"
 #include "reconstruction.hpp"
 #include "log.hpp"
+#include "globals.hpp"
 #include "graphics/texture.hpp"
 #include "graphics/pipeline.hpp"
 #include "graphics/camera.hpp"
@@ -26,12 +27,6 @@
 
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
-
-constexpr auto window_width = 1024;
-constexpr auto window_height = 768;
-constexpr auto snap_eps = 1e-4;
-constexpr auto cluster_num_samples = 20;
-constexpr auto cluster_eps = 0.1;
 
  static auto viewport_info = ViewportInfo{
    .width=window_width, 
@@ -49,7 +44,7 @@ static auto fbo_color_texture = Texture{};
 static auto fbo_depth_texture = Texture{};
 
 static auto camera = Camera(0.1f, 100.0f, 45.f, viewport_info.aspect);
-static auto light_pos = glm::vec3(2, 4.0, 0);
+static auto light_direction = glm::vec3(0, -1.0, 0);
 static auto static_mesh = std::unique_ptr<StaticMesh>{};
 static auto mesh_transform = Transformation{};
 
@@ -154,6 +149,19 @@ static void create_framebuffer(FrameBuffer& fb, Texture& color, Texture& depth, 
     throw std::runtime_error("Invalid framebuffer object!");
   
   fb.unbind(FramebufferTarget::READ_DRAW);
+}
+
+static auto create_floor_face(const BoundingBox2D& house_bbox)
+{
+  auto floor_face = Face{};
+  floor_face.vertices = {
+    glm::dvec2(house_bbox.min.x, house_bbox.min.y),
+    glm::dvec2(house_bbox.max.x, house_bbox.min.y),
+    glm::dvec2(house_bbox.max.x, house_bbox.max.y),
+    glm::dvec2(house_bbox.min.x, house_bbox.max.y) 
+  };
+  floor_face.type = FaceType::FLOOR;
+  return floor_face;
 }
 
 int main(int argc, char* argv[])
@@ -355,16 +363,8 @@ int main(int argc, char* argv[])
               // remove all FLOOR faces and push only one quad for floor
               std::erase_if(ctx.faces, [](auto face) { return face.type == FaceType::FLOOR; });
               auto house_bbox = calculate_bbox_2D(ctx.walls);
-              auto floor_face = Face{};
-              floor_face.vertices = {
-                glm::dvec2(house_bbox.min.x, house_bbox.min.y),
-                glm::dvec2(house_bbox.max.x, house_bbox.min.y),
-                glm::dvec2(house_bbox.max.x, house_bbox.max.y),
-                glm::dvec2(house_bbox.min.x, house_bbox.max.y) 
-              };
-              floor_face.type = FaceType::FLOOR;
+              auto floor_face = create_floor_face(house_bbox);
               ctx.faces.push_back(std::move(floor_face));
-
               build_result = Reconstruction::build_mesh(ctx.faces);
               worker_is_done = true;
             } 
@@ -532,17 +532,16 @@ int main(int argc, char* argv[])
       vertex_program.set_uniform_mat4f(1, &mat_camera[0][0]);
       vertex_program.set_uniform_mat4f(2, &mat_persp[0][0]);
       pipeline.set_active_program(fragment_program);
-      fragment_program.set_uniform_vector3f(0, &camera.eye[0]);
-      fragment_program.set_uniform_vector3f(1, &light_pos[0]);
+      fragment_program.set_uniform_vector3f(0, &light_direction[0]);
 
       static_mesh->vao.bind();
       //glDrawElements(GL_TRIANGLES, static_mesh->nr_indices(), GL_UNSIGNED_INT, 0);
       for (const auto& prim : build_result.primitives)
       {
         if(prim.material == MaterialType::Floor)
-          floor_texture.bind_texture_unit(2);
+          floor_texture.bind_texture_unit(0);
         else
-          wall_texture.bind_texture_unit(2);
+          wall_texture.bind_texture_unit(0);
         
         glDrawElements(GL_TRIANGLES, prim.index_count, GL_UNSIGNED_INT, (void*)(uintptr_t)(prim.index_offset * sizeof(u32)));
       } 
@@ -560,9 +559,10 @@ int main(int argc, char* argv[])
     console_panel(window_context, current_stage, worker_state);
     
     // =======================================================
-    // Properties panel
+    // Properties, Scene panels
     // =======================================================
-    properties_panel(filename, snap_eps, cluster_num_samples, cluster_eps, light_pos, mesh_transform);
+    properties_panel(filename);
+    scene_panel(camera, light_direction, mesh_transform);
     
     render_gui(); 
     glfwSwapBuffers(window_context);

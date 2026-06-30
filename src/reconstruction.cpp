@@ -14,6 +14,7 @@
 #include <glm/glm.hpp> 
 
 #include "geometry.hpp"
+#include "graphics/static_mesh.hpp"
 #include "log.hpp"
 #include "dump.hpp"
 #include "io/drw_parser.hpp"
@@ -204,11 +205,14 @@ namespace Reconstruction
 
   ReconstructionResult build_mesh(const std::vector<Face>& faces)
   {
-    auto vertices = std::vector<Vertex_PN>{};
-    auto indices  = std::vector<u32>{};
-
+    auto vertices = std::vector<Vertex_PNT>{};
+    auto floor_indices  = std::vector<u32>{};
+    auto wall_indices   = std::vector<u32>{};
+ 
     for(const auto& face : faces)
     {
+      auto face_bbox = calculate_bbox_2D(face);
+      
       // Ensure CCW winding
       auto polyline = face.vertices;
       if (calculate_signed_area(polyline) < 0.0)
@@ -242,29 +246,29 @@ namespace Reconstruction
       {
         case FaceType::FLOOR:
           std::println("FLOOR face found!");
-          build_triangulated_face(vertices, indices, triangles, 0.f, true);
+          build_triangulated_face(vertices, floor_indices, triangles, 0.f, true, face_bbox);
           // build_triangulated_face(vertices, indices, triangles, CEIL_HEIGHT, false);
           break;
 
         case FaceType::WALL:
           std::println("WALL face found!");
-          build_triangulated_face(vertices, indices, triangles, CEIL_HEIGHT, true);
-          extrude_face(vertices, indices, 0, CEIL_HEIGHT, face);
+          build_triangulated_face(vertices, wall_indices, triangles, CEIL_HEIGHT, true, face_bbox);
+          extrude_face(vertices, wall_indices, 0, CEIL_HEIGHT, face);
           break;
 
         case FaceType::DOOR:
           std::println("DOOR face found!");
-          build_triangulated_face(vertices, indices, triangles, CEIL_HEIGHT, true);
-          extrude_face(vertices, indices, DOOR_TOP, CEIL_HEIGHT, face);
+          build_triangulated_face(vertices, wall_indices, triangles, CEIL_HEIGHT, true, face_bbox);
+          extrude_face(vertices, wall_indices, DOOR_TOP, CEIL_HEIGHT, face);
           break;
           
         case FaceType::WINDOW:
           std::println("WINDOW face found!");
-          build_triangulated_face(vertices, indices, triangles, WINDOW_BOTTOM, true);
-          build_triangulated_face(vertices, indices, triangles, WINDOW_TOP, false);
-          build_triangulated_face(vertices, indices, triangles, CEIL_HEIGHT, true);
-          extrude_face(vertices, indices, 0.0f, WINDOW_BOTTOM, face);
-          extrude_face(vertices, indices, WINDOW_TOP, CEIL_HEIGHT, face);
+          build_triangulated_face(vertices, wall_indices, triangles, WINDOW_BOTTOM, true, face_bbox);
+          build_triangulated_face(vertices, wall_indices, triangles, WINDOW_TOP, false, face_bbox);
+          build_triangulated_face(vertices, wall_indices, triangles, CEIL_HEIGHT, true, face_bbox);
+          extrude_face(vertices, wall_indices, 0.0f, WINDOW_BOTTOM, face);
+          extrude_face(vertices, wall_indices, WINDOW_TOP, CEIL_HEIGHT, face);
           break; 
 
         default:
@@ -273,9 +277,27 @@ namespace Reconstruction
       }
     }
 
-    auto mesh_data = ReconstructionResult{};
-    mesh_data.mesh_vertices = std::move(vertices);
-    mesh_data.mesh_indices = std::move(indices);
-    return mesh_data;
+    auto all_indices = std::vector<u32>{};
+    all_indices.reserve(floor_indices.size() + wall_indices.size());
+
+    auto floor_range = PrimitiveRange{ 
+      .index_offset=0, 
+      .index_count=u32(floor_indices.size()),
+      .material=MaterialType::Floor 
+    };
+    all_indices.insert(all_indices.end(), floor_indices.begin(), floor_indices.end());
+    
+    auto wall_range = PrimitiveRange{ 
+      .index_offset=u32(all_indices.size()), 
+      .index_count=u32(wall_indices.size()), 
+      .material=MaterialType::Wall 
+    };
+    all_indices.insert(all_indices.end(), wall_indices.begin(), wall_indices.end());
+    
+    auto result = ReconstructionResult{};
+    result.mesh_vertices = std::move(vertices);
+    result.mesh_indices  = std::move(all_indices);
+    result.primitives = { floor_range, wall_range };
+    return result;
   }
 }

@@ -2,7 +2,7 @@
 
 #include <glm/trigonometric.hpp>
 
-void Transformation::update_tranformation()
+void Transformation::update_transformation()
 {
  	// The explicit form of the affine tranfsormation:
  	//

@@ -1,0 +1,102 @@
+{
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "count": 1252,
+      "max": [
+        1.79998779296875,
+        1.350000023841858,
+        1.8000001907348633
+      ],
+      "min": [
+        -1.79998779296875,
+        -1.350000023841858,
+        -1.8000001907348633
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 1252,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 1252,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5125,
+      "count": 1656,
+      "type": "SCALAR"
+    }
+  ],
+  "asset": {
+    "generator": "Plan2Scene",
+    "version": "2.0"
+  },
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteLength": 15024,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 15024,
+      "byteOffset": 15024,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 10016,
+      "byteOffset": 30048,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 6624,
+      "byteOffset": 40064,
+      "target": 34963
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 46688,
+      "uri": "Simple_House_Plan.bin"
+    }
+  ],
+  "meshes": [
+    {
+      "name": "Room",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 1,
+            "POSITION": 0,
+            "TEXCOORD_0": 2
+          },
+          "indices": 3,
+          "mode": 4
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "mesh": 0
+    }
+  ],
+  "scene": 0,
+  "scenes": [
+    {
+      "nodes": [
+        0
+      ]
+    }
+  ]
+}

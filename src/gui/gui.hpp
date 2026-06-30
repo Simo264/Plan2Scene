@@ -29,6 +29,7 @@ void properties_panel(const std::string_view& file_name,
                       f64 snap_eps, 
                       i32 cluster_num_samples, 
                       f64 cluster_eps,
-                      glm::vec3& light_pos);
+                      glm::vec3& light_pos,
+                      class Transformation& mesh_transform);
 
 void render_gui();

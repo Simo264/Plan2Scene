@@ -3,9 +3,7 @@ The goal of the project is as follows: to create a C++ program that takes as inp
 
 The model will be exported in GLTF format with attributes: position (xyz) normal (xyz) texture coordinates (uv). The GLTF model shall not contain materials.
 
-Once the model is exported, we proceed with the photorealistic rendering phase in Blender.
-Here, normals and textures coordinated will already be calculated. Blender is used for rendering only. The idea is to use Blender Python API (BPY) to define the scene, materials and rendering parameters and call the script from CLI like this: `blender -b -P render_scene.py`.
-The renderer to use is Cycles.
+Once the model is exported, we proceed with the photorealistic rendering phase in Blender. Blender is used for rendering only. The idea is to use Blender Python API (BPY) to define the scene, materials and rendering parameters and call the script from CLI like this: `blender -b -P render_scene.py`.
 
 
 ## From plan to model
@@ -60,3 +58,8 @@ We are ready to export in GLTF format.
 
 
 ## Photorealistic rendering
+Textures coordinates will already be calculated during the mesh creation phase together with the calculation of normals. Basically we don't have any weird curves or shapes but we all have quads/boxes. We can take the extremes of each face and project them onto the texture plane. That is, in [0,1] for all two dimensions.
+
+The renderer to use is Cycles.
+
+The material textures will then be taken from the polyheaven site. I can define them directly or within my C++ program or, better yet, do this python script association, so maybe in the future we could change the textures (and consequently the materials) on the fly.

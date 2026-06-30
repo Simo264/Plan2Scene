@@ -79,10 +79,11 @@ struct Edge
   LayerType layer;
 };
 
-struct Vertex_PN
+struct Vertex_PNT
 {
   glm::vec3 position;
   glm::vec3 normal;
+  glm::vec2 text_coord;
 };
 
 struct BoundingBox2D

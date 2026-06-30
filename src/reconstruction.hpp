@@ -3,14 +3,16 @@
 #include "types.hpp"
 #include "spatial_hashing.hpp"
 #include "arrangement.hpp"
+#include "graphics/static_mesh.hpp"
 
 #include <vector>
 #include <filesystem>
 
 struct ReconstructionResult
 {
-  std::vector<Vertex_PN> mesh_vertices;
+  std::vector<Vertex_PNT> mesh_vertices;
   std::vector<u32> mesh_indices;
+  std::vector<PrimitiveRange> primitives;
 };
 
 struct ReconstructionContext

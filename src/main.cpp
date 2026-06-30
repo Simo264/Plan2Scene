@@ -29,12 +29,39 @@
 
 constexpr auto window_width = 1024;
 constexpr auto window_height = 768;
-
 constexpr auto snap_eps = 1e-4;
 constexpr auto cluster_num_samples = 20;
 constexpr auto cluster_eps = 0.1;
 
+ static auto viewport_info = ViewportInfo{
+   .width=window_width, 
+   .height=window_height, 
+   .screen_pos=glm::vec2{0, 0},
+   .aspect=static_cast<f32>(window_width) / static_cast<f32>(window_height)
+ };
+
+static auto vertex_program = ShaderProgram{};
+static auto fragment_program = ShaderProgram{};
+static auto pipeline = ProgramPipelineObject{};
+
+static auto fbo = FrameBuffer{};
+static auto fbo_color_texture = Texture{};
+static auto fbo_depth_texture = Texture{};
+
+static auto camera = Camera(0.1f, 100.0f, 45.f, viewport_info.aspect);
 static auto light_pos = glm::vec3(2, 4.0, 0);
+static auto static_mesh = std::unique_ptr<StaticMesh>{};
+static auto mesh_transform = Transformation{};
+
+static auto viewport_image = Texture{};
+static auto plot_image = Texture{};
+
+static auto current_stage = ReconstructionStage::PrimitivesExtraction;
+static auto worker_state = std::atomic<ThreadState>{ ThreadState::Idle };
+static auto worker = std::optional<std::jthread>{};
+static auto worker_is_done = std::atomic<bool>{ false };
+static auto build_result = ReconstructionResult{};
+static auto ctx = ReconstructionContext{};
 
 auto g_logger = Logger{};
 
@@ -139,36 +166,16 @@ int main(int argc, char* argv[])
   if(!std::filesystem::exists(file_path))
     throw std::runtime_error(std::format("Input file not found: {}", file_path.string()));
 
-  auto viewport_info = ViewportInfo{};
-  viewport_info.width = window_width;
-  viewport_info.height = window_height;
-  viewport_info.aspect = static_cast<f32>(viewport_info.width) / static_cast<f32>(viewport_info.height);
   auto window_context = init_window_context(viewport_info.width, viewport_info.height);
  
-  auto fbo = FrameBuffer{};
-  auto fbo_color_texture = Texture{};
-  auto fbo_depth_texture = Texture{};
-  
-  ShaderProgram vertex_program, fragment_program;
-  ProgramPipelineObject pipeline;
   create_gl_pipeline_object(vertex_program, fragment_program, pipeline);
 
-  auto camera = Camera(0.1f, 100.0f, 45.f, viewport_info.aspect);
   camera.eye = { 0.f, 5.f, 10.f };
   camera.set_orientation(glm::radians(glm::vec3{ -20.f, 0.f, 0.f }));
-
-  auto static_mesh = std::unique_ptr<StaticMesh>{};
-  auto mesh_transform = Transformation{};
-  auto viewport_image = Texture{};
-  auto plot_image = Texture{};
-
-  auto current_stage = ReconstructionStage::PrimitivesExtraction;
-  auto worker_state = std::atomic<ThreadState>{ ThreadState::Idle };
-  auto worker = std::optional<std::jthread>{};
-  auto worker_is_done = std::atomic<bool>{ false };
-  auto build_result = ReconstructionResult{};
-  auto ctx = ReconstructionContext{};
  
+  auto floor_texture = Texture::create_from_file("materials/interior_tiles/interior_tiles_diff_1k.jpg");
+  auto wall_texture = Texture::create_from_file("materials/concrete_layers/concrete_layers_diff_1k.jpg");
+  
   g_logger.push_message({ std::format("Processing CAD file: {}", file_path.string()), LogLevel::Text });
   while (!glfwWindowShouldClose(window_context))
   {
@@ -388,7 +395,7 @@ int main(int argc, char* argv[])
         // On PrimitivesExtraction completed
         // ===========================================
         case ReconstructionStage::PrimitivesExtraction:
-        {  
+        {
           g_logger.push_message({"PrimitivesExtraction completed! Loading segments.png...", LogLevel::Success});
           if(std::filesystem::exists("segments.png"))
           {
@@ -413,7 +420,7 @@ int main(int argc, char* argv[])
         // On ClustersExtraction completed
         // ===========================================
         case ReconstructionStage::ClustersExtraction:
-        {  
+        {
           g_logger.push_message({"ClustersExtraction completed! Loading clusters.png...", LogLevel::Success});
           if(std::filesystem::exists("clusters.png"))
           {
@@ -429,7 +436,7 @@ int main(int argc, char* argv[])
         // On GapsReconstruction completed
         // ===========================================
         case ReconstructionStage::GapsReconstruction:
-        {  
+        {
           g_logger.push_message({"GapsReconstruction completed!", LogLevel::Success});
           break; // no plot, no confirmation prompt
         }
@@ -528,8 +535,17 @@ int main(int argc, char* argv[])
       fragment_program.set_uniform_vector3f(0, &camera.eye[0]);
       fragment_program.set_uniform_vector3f(1, &light_pos[0]);
 
-      static_mesh->vao().bind();
-      glDrawElements(GL_TRIANGLES, static_mesh->nr_indices(), GL_UNSIGNED_INT, 0);
+      static_mesh->vao.bind();
+      //glDrawElements(GL_TRIANGLES, static_mesh->nr_indices(), GL_UNSIGNED_INT, 0);
+      for (const auto& prim : build_result.primitives)
+      {
+        if(prim.material == MaterialType::Floor)
+          floor_texture.bind_texture_unit(2);
+        else
+          wall_texture.bind_texture_unit(2);
+        
+        glDrawElements(GL_TRIANGLES, prim.index_count, GL_UNSIGNED_INT, (void*)(uintptr_t)(prim.index_offset * sizeof(u32)));
+      } 
 
       fbo.unbind(FramebufferTarget::READ_DRAW);
 
@@ -546,7 +562,7 @@ int main(int argc, char* argv[])
     // =======================================================
     // Properties panel
     // =======================================================
-    properties_panel(filename, snap_eps, cluster_num_samples, cluster_eps, light_pos);
+    properties_panel(filename, snap_eps, cluster_num_samples, cluster_eps, light_pos, mesh_transform);
     
     render_gui(); 
     glfwSwapBuffers(window_context);

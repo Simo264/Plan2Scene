@@ -12,6 +12,7 @@ f64 calculate_signed_area(const std::vector<glm::dvec2>& contour);
 
 // Calculate the bounding box for 2D points
 BoundingBox2D calculate_bbox_2D(const std::vector<glm::dvec2>& polyline);
+BoundingBox2D calculate_bbox_2D(const Face& face);
 BoundingBox2D calculate_bbox_2D(const std::vector<Segment>& segments);
 BoundingBox2D calculate_bbox_2D(const std::vector<glm::dvec2>& points, const std::vector<u32>& cluster_indices);
 
@@ -21,7 +22,7 @@ BoundingBox2D calculate_bbox_2D(const std::vector<glm::dvec2>& points, const std
 std::array<Segment, 2> get_long_sides_bbox2d(const BoundingBox2D& bbox);
 
 // Calculates the bounding box for 3D points
-BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PN>& vertices);
+BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PNT>& vertices);
 
 // Calculate the unit scale based on the geometry
 f64 detect_unit_scale(f64 area_bbox);
@@ -132,22 +133,21 @@ void windows_reconstruction(std::vector<glm::dvec2>& sample_points,
                             std::vector<Edge>& edges);
 
 // Builds a triangulated face by iterating over a set of CDT triangles.
-// Converts 2D polygonal triangle points into 3D vertices at a specified height,
-// assigning a uniform normal vector to all vertices.
-void build_triangulated_face(std::vector<Vertex_PN>& out_vertices,
+// Converts 2D polygonal triangle points into 3D vertices.
+void build_triangulated_face(std::vector<Vertex_PNT>& out_vertices,
                              std::vector<u32>& out_indices,
                              const std::vector<p2t::Triangle*> triangles,
                              f32 height,
-                             bool facing_up);
+                             bool facing_up, 
+                             const BoundingBox2D& face_bbox);
 
 // Extrudes a 2D face contour into a 3D quad-based wall segment between two heights.
-// Creates four vertices (Bottom-Left, Bottom-Right, Top-Right, Top-Left) for each edge
-// of the contour, calculates the outward-facing normal based on the edge direction,
+// Creates four vertices for each edge of the contour, calculates the outward-facing normal based on the edge direction,
 // and pushes two triangles per edge to the index buffer.
-void extrude_face(std::vector<Vertex_PN>& vertices, 
+void extrude_face(std::vector<Vertex_PNT>& vertices, 
                   std::vector<u32>& out_indices,
                   f32 base_height,
                   f32 top_height,
                   const Face& face);
 
-void center_mesh(std::vector<Vertex_PN>& vertices);
+void center_mesh(std::vector<Vertex_PNT>& vertices);

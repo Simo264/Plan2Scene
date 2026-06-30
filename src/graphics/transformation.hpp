@@ -12,5 +12,5 @@ struct Transformation
 	// Calculate the transformation matrix `M` which leads vertices from local coordinate system to world coordinate system.
 	// This matrix `M` directly implements the transformation of a vertex from local space to world space.	
 	glm::mat4 M{ 1.0f };
-	void update_tranformation();
+	void update_transformation();
 };

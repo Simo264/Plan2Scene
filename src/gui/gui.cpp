@@ -3,6 +3,7 @@
 #include "../log.hpp"
 #include "../graphics/texture.hpp"
 #include "../graphics/static_mesh.hpp"
+#include "../graphics/transformation.hpp"
 
 #include <format>
 #include <glad/gl.h>
@@ -11,6 +12,8 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+
+#include <glm/trigonometric.hpp>
 
 extern Logger g_logger;
 
@@ -227,7 +230,8 @@ void properties_panel(const std::string_view& file_name,
                       f64 snap_eps, 
                       i32 cluster_num_samples, 
                       f64 cluster_eps,
-                      glm::vec3& light_pos)
+                      glm::vec3& light_pos,
+                      Transformation& mesh_transform)
 {
   ImGui::SetNextWindowSize(ImVec2(300, 0), ImGuiCond_FirstUseEver);
   if (ImGui::Begin("Properties", nullptr)) 
@@ -260,11 +264,42 @@ void properties_panel(const std::string_view& file_name,
     ImGui::Text("%.4f", cluster_eps); ImGui::NextColumn();
     ImGui::Columns(1);
 
+    // Mesh transformation
+    ImGui::TextDisabled("Mesh transformation");
+    ImGui::Spacing();
+    auto rot_deg = glm::vec3{
+      glm::degrees(mesh_transform.rotation.x),
+      glm::degrees(mesh_transform.rotation.y),
+      glm::degrees(mesh_transform.rotation.z)
+    };
+
+    ImGui::Text("Rotation (deg):");
+    ImGui::NextColumn();
+    if (ImGui::DragFloat3("##trans_rot", &rot_deg[0], 0.5f, -180.0f, 180.0f)) 
+    {
+      mesh_transform.rotation.x = glm::radians(rot_deg.x);
+      mesh_transform.rotation.y = glm::radians(rot_deg.y);
+      mesh_transform.rotation.z = glm::radians(rot_deg.y);
+      mesh_transform.update_transformation();
+    }
+    ImGui::Columns(1);
+    ImGui::Spacing();
+    ImGui::Text("Scale:");
+    ImGui::NextColumn();
+    if (ImGui::DragFloat3("##trans_scale", &mesh_transform.scale.x, 0.01f, 0.01f, 10.0f)) 
+      mesh_transform.update_transformation();
+    
+    ImGui::NextColumn();
+    ImGui::Columns(1);
+    ImGui::Spacing();
+
+    // Lighting properties
     ImGui::TextDisabled("Lighting");
     ImGui::Separator();
     ImGui::Columns(2, "props_light", false);
     ImGui::SetColumnWidth(0, 150.0f);
-    ImGui::Text("Light position:"); ImGui::NextColumn();
+    ImGui::Text("Light position:");
+    ImGui::NextColumn();
     ImGui::DragFloat3("##light_pos", &light_pos.x, 0.01f);
     ImGui::NextColumn();
     ImGui::Columns(1);
@@ -354,17 +389,17 @@ void mesh_details_overlay(const StaticMesh& mesh, glm::vec2 viewport_pos)
     ImGui::Columns(2, "mesh_stats", false);
     ImGui::SetColumnWidth(0, 120.0f);
     ImGui::Text("Vertices:"); ImGui::NextColumn();
-    ImGui::Text("%u", mesh.nr_vertices()); ImGui::NextColumn();
+    ImGui::Text("%u", mesh.nr_vertices); ImGui::NextColumn();
     ImGui::Text("Indices:"); ImGui::NextColumn();
-    ImGui::Text("%u", mesh.nr_indices()); ImGui::NextColumn();
+    ImGui::Text("%u", mesh.nr_indices); ImGui::NextColumn();
     ImGui::Columns(1);
 
     ImGui::Spacing();
     ImGui::Text("Video memory (VRAM)");
     ImGui::Separator();
 
-    auto vbo_size = mesh.nr_vertices() * sizeof(Vertex_PN);
-    auto ibo_size = mesh.nr_indices() * sizeof(u32);
+    auto vbo_size = mesh.nr_vertices * sizeof(Vertex_PNT);
+    auto ibo_size = mesh.nr_indices * sizeof(u32);
     auto total_kb = (vbo_size + ibo_size) / 1024.0f;
 
     ImGui::Text("VBO Size:"); ImGui::SameLine();

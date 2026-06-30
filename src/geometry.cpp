@@ -45,6 +45,12 @@ BoundingBox2D calculate_bbox_2D(const std::vector<glm::dvec2>& polyline)
   };
 }
 
+BoundingBox2D calculate_bbox_2D(const Face& face)
+{
+  const auto& polyline = face.vertices;
+  return calculate_bbox_2D(polyline);
+}
+
 BoundingBox2D calculate_bbox_2D(const std::vector<Segment>& segments)
 {
   auto min_x =  std::numeric_limits<f64>::max();
@@ -121,7 +127,7 @@ std::array<Segment, 2> get_long_sides_bbox2d(const BoundingBox2D& bbox)
   }
 }
 
-BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PN>& vertices) 
+BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PNT>& vertices) 
 {
   auto min = vertices.front().position;
   auto max = min;
@@ -393,32 +399,43 @@ void windows_reconstruction(std::vector<glm::dvec2>& sample_points,
   }
 }
 
-void build_triangulated_face(std::vector<Vertex_PN>& out_vertices,
+void build_triangulated_face(std::vector<Vertex_PNT>& out_vertices,
                              std::vector<u32>& out_indices,
                              const std::vector<p2t::Triangle*> triangles,
                              f32 height,
-                             bool facing_up)
+                             bool facing_up, 
+                             const BoundingBox2D& face_bbox)
 {
+  float dx = face_bbox.max.x - face_bbox.min.x;
+  float dz = face_bbox.max.y - face_bbox.min.y;
+  if (dx < 1e-6f) dx = 1.0f;
+  if (dz < 1e-6f) dz = 1.0f;
+  
   for (const auto& tri : triangles)
   {
     for (auto i = 0; i < 3; ++i) 
     {
       // poly2tri gives CCW winding in XY, so we emit points in order 0,1,2 which stays CCW
       auto p = tri->GetPoint(i);
-      auto idx = static_cast<u32>(out_vertices.size());
-      out_indices.push_back(idx);
 
-      auto v = Vertex_PN{};
+      auto v = Vertex_PNT{};
       v.position.x = static_cast<f32>(p->x);
       v.position.y = height;
       v.position.z = static_cast<f32>(p->y);
       v.normal = facing_up ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(0.0f, -1.0f, 0.0f);
+
+      // Normalized planar projection in [0, 1]
+      v.text_coord.x = (v.position.x - face_bbox.min.x) / dx;
+      v.text_coord.y = (v.position.z - face_bbox.min.y) / dz;
+
+      auto idx = static_cast<u32>(out_vertices.size());
       out_vertices.push_back(v);
+      out_indices.push_back(idx);
     }
   }
 }
 
-void extrude_face(std::vector<Vertex_PN>& vertices, 
+void extrude_face(std::vector<Vertex_PNT>& vertices, 
                   std::vector<u32>& out_indices,
                   f32 base_height,
                   f32 top_height,
@@ -426,29 +443,36 @@ void extrude_face(std::vector<Vertex_PN>& vertices,
 {
   constexpr glm::vec3 up(0.0f, 1.0f, 0.0f);
   const auto& contour = face.vertices;
+
+  auto v_bottom = base_height;
+  auto v_top    = top_height;
   
   for (auto i = 0u; i < contour.size(); ++i) 
   {
     auto p1 = contour[i];
     auto p2 = contour[(i + 1) % contour.size()];
     auto edge = glm::vec3(f32(p2.x - p1.x), 0.0f, f32(p2.y - p1.y));
+    auto edge_len = glm::length(edge);
     auto normal = glm::normalize(glm::cross(edge, up));
 
-    auto BL = Vertex_PN{ .position={f32(p1.x), base_height, f32(p1.y)}, .normal=normal };
-    auto BR = Vertex_PN{ .position={f32(p2.x), base_height, f32(p2.y)}, .normal=normal };
-    auto TR = Vertex_PN{ .position={f32(p2.x), top_height, f32(p2.y)},  .normal=normal };
-    auto TL = Vertex_PN{ .position={f32(p1.x), top_height, f32(p1.y)},  .normal=normal };
+    auto u0 = 0.0f;
+    auto u1 = edge_len;
 
-    auto base = static_cast<u32>(vertices.size());
+    auto BL = Vertex_PNT{ {f32(p1.x), base_height, f32(p1.y)}, normal, {u0, v_bottom} };
+    auto BR = Vertex_PNT{ {f32(p2.x), base_height, f32(p2.y)}, normal, {u1, v_bottom} };
+    auto TR = Vertex_PNT{ {f32(p2.x), top_height,  f32(p2.y)}, normal, {u1, v_top} };
+    auto TL = Vertex_PNT{ {f32(p1.x), top_height,  f32(p1.y)}, normal, {u0, v_top} };
+
     vertices.push_back(BL); vertices.push_back(BR);
     vertices.push_back(TR); vertices.push_back(TL);
 
+    auto base = static_cast<u32>(vertices.size());
     out_indices.push_back(base + 0); out_indices.push_back(base + 1); out_indices.push_back(base + 2);
     out_indices.push_back(base + 0); out_indices.push_back(base + 2); out_indices.push_back(base + 3);
   } 
 }
 
-void center_mesh(std::vector<Vertex_PN>& vertices)
+void center_mesh(std::vector<Vertex_PNT>& vertices)
 {
   auto bbox = calculate_bbox_3D(vertices);
   auto center = (bbox.min + bbox.max) * 0.5f;

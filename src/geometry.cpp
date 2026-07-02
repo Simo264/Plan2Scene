@@ -410,33 +410,6 @@ void ensure_winding_matches_normal(Vertex_PNT& v0,
     std::swap(v1, v2);
 }
 
-
-void triangulate_face(std::vector<Vertex_PNT>& out_vertices,
-                      std::vector<u32>& out_indices,
-                      f32 height,
-                      bool facing_up, 
-                      const Face& face)
-{
-  auto polyline = face.vertices;
-  auto face_bbox = calculate_bbox_2D(polyline);
-    
-  auto p2t_points = std::vector<p2t::Point>{};
-  auto p2t_ptr_points = std::vector<p2t::Point*>{};
-  p2t_points.reserve(polyline.size());
-  p2t_ptr_points.reserve(polyline.size());
-  for (const auto& p : polyline)
-  {
-    p2t_points.emplace_back(p2t::Point{ p.x, p.y });
-    p2t_ptr_points.push_back(&p2t_points.back());
-  }
-  
-  auto cdt = p2t::CDT{ p2t_ptr_points };
-  cdt.Triangulate();
-  auto triangles = cdt.GetTriangles();
-
-  build_triangulated_face(out_vertices, out_indices, triangles, height, facing_up, face_bbox);
-}
-
 void build_triangulated_face(std::vector<Vertex_PNT>& out_vertices,
                             std::vector<u32>& out_indices,
                             const std::vector<p2t::Triangle*> triangles,
@@ -472,12 +445,38 @@ void build_triangulated_face(std::vector<Vertex_PNT>& out_vertices,
   } 
 }
 
+void triangulate_face(std::vector<Vertex_PNT>& out_vertices,
+                      std::vector<u32>& out_indices,
+                      f32 height,
+                      bool facing_up, 
+                      const Face& face)
+{
+  auto polyline = face.vertices;
+  auto face_bbox = calculate_bbox_2D(polyline);
+    
+  auto p2t_points = std::vector<p2t::Point>{};
+  auto p2t_ptr_points = std::vector<p2t::Point*>{};
+  p2t_points.reserve(polyline.size());
+  p2t_ptr_points.reserve(polyline.size());
+  for (const auto& p : polyline)
+  {
+    p2t_points.emplace_back(p2t::Point{ p.x, p.y });
+    p2t_ptr_points.push_back(&p2t_points.back());
+  }
+  
+  auto cdt = p2t::CDT{ p2t_ptr_points };
+  cdt.Triangulate();
+  auto triangles = cdt.GetTriangles();
+
+  build_triangulated_face(out_vertices, out_indices, triangles, height, facing_up, face_bbox);
+}
+
 void extrude_face(std::vector<Vertex_PNT>& vertices,
                   std::vector<u32>& out_indices,
                   f32 base_height,
                   f32 top_height,
                   const Face& face)
-{ 
+{
   constexpr glm::vec3 up(0.0f, 1.0f, 0.0f); 
   const auto& contour = face.vertices; 
   auto v_bottom_uv = base_height / wall_texture_scaling; 
@@ -526,6 +525,7 @@ void extrude_face(std::vector<Vertex_PNT>& vertices,
     } 
   } 
 }
+
 void center_mesh(std::vector<Vertex_PNT>& vertices)
 {
   auto bbox = calculate_bbox_3D(vertices);

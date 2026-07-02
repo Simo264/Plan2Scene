@@ -101,7 +101,6 @@ VertexId split_edge(std::vector<glm::dvec2>& vertices,
                     LayerType layer = LayerType::WALL);
 
 // Closes the wall around a door or window gap.
-// 
 // Given the two endpoints of a gap (door/window segment), this function:
 // 1. Finds the four vertices (B,C,D,E) of the wall strip.
 // 2. Checks if the opposite side (C-E) is parallel to the gap (B-D).
@@ -132,13 +131,19 @@ void windows_reconstruction(std::vector<glm::dvec2>& sample_points,
                             SpatialHash& hash,
                             std::vector<Edge>& edges);
 
-
+// Ensures the vertex winding order (v0->v1->v2) matches the desired normal direction.
+// Computes the geometric normal from the three vertices and flips v1/v2 if the
+// dot product with the desired normal is negative, guaranteeing consistent orientation.
 void ensure_winding_matches_normal(Vertex_PNT& v0, 
                                    Vertex_PNT& v1, 
                                    Vertex_PNT& v2, 
                                    const glm::vec3& desired_normal);
 
-
+// Iterates through provided triangles, converting their 2D points into 3D 
+// Vertex_PNT objects at a specific height with a consistent normal direction 
+// (up or down based on 'facing_up'). It calculates texture coordinates relative 
+// to the face's bounding box and ensures correct vertex winding order before 
+// adding the vertices and indices to the output buffers.
 void build_triangulated_face(std::vector<Vertex_PNT>& out_vertices,
                              std::vector<u32>& out_indices,
                              const std::vector<p2t::Triangle*> triangles,
@@ -146,12 +151,15 @@ void build_triangulated_face(std::vector<Vertex_PNT>& out_vertices,
                              bool facing_up, 
                              const BoundingBox2D& face_bbox);
 
+// Triangulates a polygonal face by first extracting its 2D vertices and computing its bounding box.
+// It prepares the data for the P2T (Constrained Delaunay Triangulation) library, runs the triangulation,
+// and then delegates the mesh generation to 'build_triangulated_face', passing the resulting triangles,
+// height, normal direction, and bounding box to create the final 3D geometry.
 void triangulate_face(std::vector<Vertex_PNT>& out_vertices,
                       std::vector<u32>& out_indices,
                       f32 height,
                       bool facing_up, 
                       const Face& face);
-
 
 // Extrudes a 2D face contour into a 3D quad-based wall segment between two heights.
 // Creates four vertices for each edge of the contour, calculates the outward-facing normal based on the edge direction,

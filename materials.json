@@ -1,0 +1,14 @@
+{
+  "materials": {
+    "FloorMaterial": {
+      "albedo": "/home/simone/Desktop/Plan2Scene/materials/interior_tiles/interior_tiles_diff_1k.jpg",
+      "normal": "/home/simone/Desktop/Plan2Scene/materials/interior_tiles/interior_tiles_nor_gl_1k.jpg",
+      "roughness": null
+    },
+    "WallMaterial": {
+      "albedo": "/home/simone/Desktop/Plan2Scene/materials/concrete_layers/concrete_layers_diff_1k.jpg",
+      "normal": "/home/simone/Desktop/Plan2Scene/materials/concrete_layers/concrete_layers_nor_gl_1k.jpg",
+      "roughness": null
+    }
+  }
+}

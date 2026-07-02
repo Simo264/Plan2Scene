@@ -213,21 +213,32 @@ namespace Reconstruction
 
     auto floor_face = std::ranges::find_if(faces, [](const Face& f) { return f.type == FaceType::FLOOR; });
     triangulate_face(vertices, floor_indices, 0.f, true, *floor_face);
+    triangulate_face(vertices, wall_indices, ceil_height_meters, true, *floor_face);
     
     auto wall_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::WALL; });
     for(const auto& face : wall_faces)
+    {
       extrude_face(vertices, wall_indices, 0.f, ceil_height_meters, face);
+      //triangulate_face(vertices, wall_indices, ceil_height_meters, true, face);
+    }
 
     auto door_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::DOOR; });
     for(const auto& face : door_faces)
+    {
       extrude_face(vertices, wall_indices, door_frac_top, ceil_height_meters, face);
+      triangulate_face(vertices, wall_indices, door_frac_top, true, face);
+      // triangulate_face(vertices, wall_indices, ceil_height_meters, true, face);
+    }
 
-    // auto window_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::WINDOW; });
-    // for(const auto& face : window_faces)
-    // {
-    //   extrude_face(vertices, wall_indices, 0.f, WINDOW_FRAC_BOTTOM, face);
-    //   extrude_face(vertices, wall_indices, WINDOW_FRAC_TOP, CEIL_HEIGHT, face);
-    // }
+    auto window_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::WINDOW; });
+    for(const auto& face : window_faces)
+    {
+      extrude_face(vertices, wall_indices, 0.f, window_frac_bottom, face);
+      extrude_face(vertices, wall_indices, window_frac_top, ceil_height_meters, face);
+      triangulate_face(vertices, wall_indices, window_frac_bottom, true, face);
+      triangulate_face(vertices, wall_indices, window_frac_top, false, face);
+      // triangulate_face(vertices, wall_indices, ceil_height_meters, true, face);
+    }
     
 #if 0 
     for(const auto& face : faces)

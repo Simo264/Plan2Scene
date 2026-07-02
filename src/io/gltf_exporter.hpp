@@ -4,6 +4,6 @@
 #include <vector>
 #include <filesystem>
 
-void export_to_gltf(const std::vector<Vertex_PNT>& vertices, 
-                    const std::vector<u32>& indices,
+
+void export_to_gltf(const struct ReconstructionResult& result,
                     const std::filesystem::path& filename);

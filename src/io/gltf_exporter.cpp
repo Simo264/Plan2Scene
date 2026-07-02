@@ -1,163 +1,179 @@
 #include "gltf_exporter.hpp"
+#include "../reconstruction.hpp"
 
 #include <stdexcept>
 #include <tiny_gltf.h>
 #include <glm/common.hpp>
 
-void export_to_gltf(const std::vector<Vertex_PNT>& vertices, 
-                    const std::vector<u32>& indices, 
+
+static tinygltf::BufferView create_buffer_view(i32 buffer, 
+                                               i32 byte_offset,
+                                               i32 byte_length, 
+                                               i32 target)
+{
+  tinygltf::BufferView bv;
+  bv.buffer      = buffer;
+  bv.byteOffset  = byte_offset;
+  bv.byteLength  = byte_length;
+  bv.target      = target;
+  return bv;
+}
+
+static tinygltf::Accessor create_accessor(i32 buffer_view, 
+                                          i32 byte_offset,
+                                          i32 component_type, 
+                                          i64 count,
+                                          i32 type)
+{
+  tinygltf::Accessor acc;
+  acc.bufferView    = buffer_view;
+  acc.byteOffset    = byte_offset;
+  acc.componentType = component_type;
+  acc.count         = count;
+  acc.type          = type;
+  return acc;
+}
+
+static tinygltf::Accessor create_accessor(i32 buffer_view, 
+                                          i32 byte_offset,
+                                          i32 component_type, 
+                                          i64 count,
+                                          i32 type,
+                                          const std::vector<f64>& min_vals,
+                                          const std::vector<f64>& max_vals)
+{
+  auto acc = create_accessor(buffer_view, byte_offset, component_type, count, type);
+  acc.minValues = min_vals;
+  acc.maxValues = max_vals;
+  return acc;
+}
+
+
+
+void export_to_gltf(const ReconstructionResult& result, 
                     const std::filesystem::path& output_path) 
 {
   auto model = tinygltf::Model{};
   model.asset.version = "2.0";
   model.asset.generator = "Plan2Scene";
 
-  // Prepara i vettori di dati
+  // ==========================================
+  // Create materials
+  // ==========================================
+  auto mat_floor = tinygltf::Material{};
+  mat_floor.name = "FloorMaterial";
+  model.materials.push_back(std::move(mat_floor)); // Index 0
+
+  auto mat_wall = tinygltf::Material{};
+  mat_wall.name = "WallMaterial";
+  model.materials.push_back(std::move(mat_wall)); // Index 1
+
+
+  // ==========================================
+  // Prepare vertex data (positions, normals, texture coordinates) and index data
+  // ==========================================
   auto pos_data = std::vector<f32>{};
   auto nor_data = std::vector<f32>{};
-  auto tex_data = std::vector<f32>{}; // Nuovo vettore per UV
-  auto idx_data = std::vector<u32>{};
-
-  pos_data.reserve(vertices.size() * 3);
-  nor_data.reserve(vertices.size() * 3);
-  tex_data.reserve(vertices.size() * 2); // 2 float per UV
-  idx_data.reserve(indices.size());
+  auto tex_data = std::vector<f32>{};
+  pos_data.reserve(result.mesh_vertices.size() * 3);
+  nor_data.reserve(result.mesh_vertices.size() * 3);
+  tex_data.reserve(result.mesh_vertices.size() * 2);
 
   auto pos_min = glm::vec3{std::numeric_limits<f32>::max()};
   auto pos_max = glm::vec3{std::numeric_limits<f32>::lowest()};
-
-  // Popola i dati
-  for (const auto& v : vertices) 
+  for (const auto& v : result.mesh_vertices) 
   {
-    // Posizione
     pos_data.push_back(v.position.x);
     pos_data.push_back(v.position.y);
     pos_data.push_back(v.position.z);
     pos_min = glm::min(pos_min, v.position);
     pos_max = glm::max(pos_max, v.position);
 
-    // Normale
     nor_data.push_back(v.normal.x);
     nor_data.push_back(v.normal.y);
     nor_data.push_back(v.normal.z);
 
-    // Texture Coordinate (UV)
     tex_data.push_back(v.text_coord.x);
     tex_data.push_back(v.text_coord.y);
   }
 
-  for (const auto idx : indices) 
-    idx_data.push_back(idx);
-  
-  // Calcola le lunghezze e gli offset in byte
-  auto pos_byte_len = static_cast<size_t>(pos_data.size()) * sizeof(f32);
-  auto nor_byte_len = static_cast<size_t>(nor_data.size()) * sizeof(f32);
-  auto tex_byte_len = static_cast<size_t>(tex_data.size()) * sizeof(f32); // Nuova lunghezza
-  auto idx_byte_len = static_cast<size_t>(idx_data.size()) * sizeof(u32);
+  auto pos_byte_len = pos_data.size() * sizeof(f32);
+  auto nor_byte_len = nor_data.size() * sizeof(f32);
+  auto tex_byte_len = tex_data.size() * sizeof(f32);
+  auto idx_byte_len = result.mesh_indices.size() * sizeof(u32);
 
-  // Ordine: Pos -> Norm -> Tex -> Indici
   auto nor_byte_offset = pos_byte_len;
-  auto tex_byte_offset = nor_byte_offset + nor_byte_len; // Nuovo offset
-  auto idx_byte_offset = tex_byte_offset + tex_byte_len; // Nuovo offset
+  auto tex_byte_offset = nor_byte_offset + nor_byte_len;
+  auto idx_byte_offset = tex_byte_offset + tex_byte_len;
   auto total_byte_len = idx_byte_offset + idx_byte_len;
 
-  // Crea il Buffer
+  // ==========================================
+  // Create buffer and copy data into it
+  // ==========================================
   auto buffer = tinygltf::Buffer{};
   buffer.data.resize(total_byte_len);
   
   std::memcpy(buffer.data.data(), pos_data.data(), pos_byte_len);
   std::memcpy(buffer.data.data() + nor_byte_offset, nor_data.data(), nor_byte_len);
-  std::memcpy(buffer.data.data() + tex_byte_offset, tex_data.data(), tex_byte_len); // Copia UV
-  std::memcpy(buffer.data.data() + idx_byte_offset, idx_data.data(), idx_byte_len);
+  std::memcpy(buffer.data.data() + tex_byte_offset, tex_data.data(), tex_byte_len);
+  std::memcpy(buffer.data.data() + idx_byte_offset, result.mesh_indices.data(), idx_byte_len);
 
   model.buffers.push_back(std::move(buffer));
 
-  // Crea i BufferViews
-  // View Posizione (Index 0)
-  auto bv_pos = tinygltf::BufferView{};
-  bv_pos.buffer = 0;
-  bv_pos.byteOffset = 0;
-  bv_pos.byteLength = pos_byte_len;
-  bv_pos.target = TINYGLTF_TARGET_ARRAY_BUFFER;
-  model.bufferViews.push_back(std::move(bv_pos));
+  // Aggiungiamo le 4 BufferViews (ID: 0=Pos, 1=Nor, 2=Tex, 3=Idx)
+  model.bufferViews.push_back(create_buffer_view(0, 0, pos_byte_len, TINYGLTF_TARGET_ARRAY_BUFFER));
+  model.bufferViews.push_back(create_buffer_view(0, nor_byte_offset, nor_byte_len, TINYGLTF_TARGET_ARRAY_BUFFER));
+  model.bufferViews.push_back(create_buffer_view(0, tex_byte_offset, tex_byte_len, TINYGLTF_TARGET_ARRAY_BUFFER));
+  model.bufferViews.push_back(create_buffer_view(0, idx_byte_offset, idx_byte_len, TINYGLTF_TARGET_ELEMENT_ARRAY_BUFFER));
 
-  // View Normale (Index 1)
-  auto bv_nor = tinygltf::BufferView{};
-  bv_nor.buffer = 0;
-  bv_nor.byteOffset = nor_byte_offset;
-  bv_nor.byteLength = nor_byte_len;
-  bv_nor.target = TINYGLTF_TARGET_ARRAY_BUFFER;
-  model.bufferViews.push_back(std::move(bv_nor));
 
-  // View Texture (Index 2)
-  auto bv_tex = tinygltf::BufferView{};
-  bv_tex.buffer = 0;
-  bv_tex.byteOffset = tex_byte_offset;
-  bv_tex.byteLength = tex_byte_len;
-  bv_tex.target = TINYGLTF_TARGET_ARRAY_BUFFER;
-  model.bufferViews.push_back(std::move(bv_tex));
+  // ==========================================
+  // Accessors for positions, normals, texture coordinates, and indices
+  // ==========================================
 
-  // View Indici (Index 3)
-  auto bv_idx = tinygltf::BufferView{};
-  bv_idx.buffer = 0;
-  bv_idx.byteOffset = idx_byte_offset;
-  bv_idx.byteLength = idx_byte_len;
-  bv_idx.target = TINYGLTF_TARGET_ELEMENT_ARRAY_BUFFER;
-  model.bufferViews.push_back(std::move(bv_idx));
+  model.accessors.push_back(create_accessor(0, 0, TINYGLTF_COMPONENT_TYPE_FLOAT, result.mesh_vertices.size(), TINYGLTF_TYPE_VEC3, 
+    {pos_min.x, pos_min.y, pos_min.z}, {pos_max.x, pos_max.y, pos_max.z}));
+  model.accessors.push_back(create_accessor(1, 0, TINYGLTF_COMPONENT_TYPE_FLOAT, result.mesh_vertices.size(), TINYGLTF_TYPE_VEC3));
+  model.accessors.push_back(create_accessor(2, 0, TINYGLTF_COMPONENT_TYPE_FLOAT, result.mesh_vertices.size(), TINYGLTF_TYPE_VEC2));
 
-  // Crea gli Accessors
-  // Accessor Posizione (Index 0)
-  auto acc_pos = tinygltf::Accessor{};
-  acc_pos.bufferView = 0;
-  acc_pos.byteOffset = 0;
-  acc_pos.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
-  acc_pos.count = static_cast<i32>(vertices.size());
-  acc_pos.type = TINYGLTF_TYPE_VEC3;
-  acc_pos.minValues = {pos_min.x, pos_min.y, pos_min.z};
-  acc_pos.maxValues = {pos_max.x, pos_max.y, pos_max.z};
-  model.accessors.push_back(std::move(acc_pos));
 
-  // Accessor Normale (Index 1)
-  auto acc_nor = tinygltf::Accessor{};
-  acc_nor.bufferView = 1;
-  acc_nor.byteOffset = 0;
-  acc_nor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
-  acc_nor.count = static_cast<i32>(vertices.size());
-  acc_nor.type = TINYGLTF_TYPE_VEC3;
-  model.accessors.push_back(std::move(acc_nor));
-
-  // Accessor Texture (Index 2)
-  auto acc_tex = tinygltf::Accessor{};
-  acc_tex.bufferView = 2; // Corrisponde a bv_tex
-  acc_tex.byteOffset = 0;
-  acc_tex.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
-  acc_tex.count = static_cast<i32>(vertices.size());
-  acc_tex.type = TINYGLTF_TYPE_VEC2; // Tipo VEC2 per UV
-  model.accessors.push_back(std::move(acc_tex));
-
-  // Accessor Indici (Index 3)
-  auto acc_idx = tinygltf::Accessor{};
-  acc_idx.bufferView = 3; // Corrisponde a bv_idx
-  acc_idx.byteOffset = 0;
-  acc_idx.componentType = TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT;
-  acc_idx.count = static_cast<i32>(indices.size());
-  acc_idx.type = TINYGLTF_TYPE_SCALAR;
-  model.accessors.push_back(std::move(acc_idx));
-
-  // 7. Configura il Primitive
-  auto primitive = tinygltf::Primitive{};
-  primitive.attributes["POSITION"] = 0;
-  primitive.attributes["NORMAL"] = 1;
-  primitive.attributes["TEXCOORD_0"] = 2; // Mappa TEXCOORD_0 all'accessor ID 2
-  
-  primitive.indices = 3; // Mappa indici all'accessor ID 3
-  primitive.mode = TINYGLTF_MODE_TRIANGLES;
-
+  // ==========================================
+  // Primitive and accessor for indices
+  // ==========================================
   auto mesh = tinygltf::Mesh{};
-  mesh.name = "Room";
-  mesh.primitives.push_back(std::move(primitive));
+  mesh.name = "RoomModel";
+  for (const auto& prim_range : result.primitives) 
+  {
+    auto acc_idx = tinygltf::Accessor{};
+    acc_idx.bufferView = 3;
+    acc_idx.byteOffset = prim_range.index_offset * sizeof(u32); 
+    acc_idx.componentType = TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT;
+    acc_idx.count = static_cast<i32>(prim_range.index_count);
+    acc_idx.type = TINYGLTF_TYPE_SCALAR;
+    
+    int current_idx_acc_id = static_cast<int>(model.accessors.size());
+    model.accessors.push_back(std::move(acc_idx));
+
+    auto primitive = tinygltf::Primitive{};
+    primitive.attributes["POSITION"] = 0;
+    primitive.attributes["NORMAL"] = 1;
+    primitive.attributes["TEXCOORD_0"] = 2;
+    primitive.indices = current_idx_acc_id;
+    primitive.mode = TINYGLTF_MODE_TRIANGLES;
+
+    if (prim_range.material == MaterialType::Floor) 
+      primitive.material = 0; // "FloorMaterial"
+    else 
+      primitive.material = 1; // "WallMaterial"
+
+    mesh.primitives.push_back(std::move(primitive));
+  }
+
   model.meshes.push_back(std::move(mesh));
 
+  // ==========================================
+  // Save the GLTF file
+  // ==========================================
   auto node = tinygltf::Node{};
   node.mesh = 0;
   model.nodes.push_back(std::move(node));
@@ -168,8 +184,7 @@ void export_to_gltf(const std::vector<Vertex_PNT>& vertices,
   model.defaultScene = 0;
 
   auto gltf = tinygltf::TinyGLTF{};
-  // Embedding dei binari nel file JSON per semplicità, o esterno se preferisci
-  bool ok = gltf.WriteGltfSceneToFile(&model, output_path, false, false, true, false);
+  bool ok = gltf.WriteGltfSceneToFile(&model, output_path.string(), false, false, true, false);
   if (!ok) 
     throw std::runtime_error("Failed to write GLTF file");
 }

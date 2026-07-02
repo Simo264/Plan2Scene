@@ -3,7 +3,7 @@
     {
       "bufferView": 0,
       "componentType": 5126,
-      "count": 590,
+      "count": 952,
       "max": [
         18.0,
         2.5,
@@ -19,19 +19,25 @@
     {
       "bufferView": 1,
       "componentType": 5126,
-      "count": 590,
+      "count": 952,
       "type": "VEC3"
     },
     {
       "bufferView": 2,
       "componentType": 5126,
-      "count": 590,
+      "count": 952,
       "type": "VEC2"
     },
     {
       "bufferView": 3,
       "componentType": 5125,
-      "count": 882,
+      "count": 6,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5125,
+      "count": 1350,
       "type": "SCALAR"
     }
   ],
@@ -42,37 +48,45 @@
   "bufferViews": [
     {
       "buffer": 0,
-      "byteLength": 7080,
+      "byteLength": 11424,
       "target": 34962
     },
     {
       "buffer": 0,
-      "byteLength": 7080,
-      "byteOffset": 7080,
+      "byteLength": 11424,
+      "byteOffset": 11424,
       "target": 34962
     },
     {
       "buffer": 0,
-      "byteLength": 4720,
-      "byteOffset": 14160,
+      "byteLength": 7616,
+      "byteOffset": 22848,
       "target": 34962
     },
     {
       "buffer": 0,
-      "byteLength": 3528,
-      "byteOffset": 18880,
+      "byteLength": 5424,
+      "byteOffset": 30464,
       "target": 34963
     }
   ],
   "buffers": [
     {
-      "byteLength": 22408,
+      "byteLength": 35888,
       "uri": "Simple_House_Plan.bin"
+    }
+  ],
+  "materials": [
+    {
+      "name": "FloorMaterial"
+    },
+    {
+      "name": "WallMaterial"
     }
   ],
   "meshes": [
     {
-      "name": "Room",
+      "name": "RoomModel",
       "primitives": [
         {
           "attributes": {
@@ -81,6 +95,17 @@
             "TEXCOORD_0": 2
           },
           "indices": 3,
+          "material": 0,
+          "mode": 4
+        },
+        {
+          "attributes": {
+            "NORMAL": 1,
+            "POSITION": 0,
+            "TEXCOORD_0": 2
+          },
+          "indices": 4,
+          "material": 1,
           "mode": 4
         }
       ]

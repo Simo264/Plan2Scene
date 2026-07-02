@@ -44,7 +44,6 @@ static auto fbo_color_texture = Texture{};
 static auto fbo_depth_texture = Texture{};
 
 static auto camera = Camera(0.1f, 100.0f, 45.f, viewport_info.aspect);
-static auto light_direction = glm::vec3(0, -1.0, 0);
 static auto static_mesh = std::unique_ptr<StaticMesh>{};
 static auto mesh_transform = Transformation{};
 
@@ -178,8 +177,8 @@ int main(int argc, char* argv[])
  
   create_gl_pipeline_object(vertex_program, fragment_program, pipeline);
 
-  camera.eye = { 0.f, 5.f, 10.f };
-  camera.set_orientation(glm::radians(glm::vec3{ -20.f, 0.f, 0.f }));
+  camera.eye = { 0.f, 0.f, 0.f };
+  camera.set_orientation(glm::radians(glm::vec3{ -175.f, -30.f, 180.f }));
  
   auto floor_texture = Texture::create_from_file("materials/interior_tiles/interior_tiles_diff_1k.jpg");
   auto wall_texture = Texture::create_from_file("materials/concrete_layers/concrete_layers_diff_1k.jpg");
@@ -200,7 +199,6 @@ int main(int argc, char* argv[])
     // =======================================================
     // Start worker if idle
     // =======================================================
-
     if(worker_state == ThreadState::Idle)
     {
       switch (current_stage) 
@@ -385,7 +383,6 @@ int main(int argc, char* argv[])
     // =======================================================
     // Worker completion (Running -> WaitingConfirmation)
     // =======================================================
-
     else if(worker_state == ThreadState::Running && worker_is_done.load())
     {
       worker_is_done = false;
@@ -471,7 +468,7 @@ int main(int argc, char* argv[])
                                                     build_result.mesh_indices.size());
 
           auto gltf_path = file_path.filename().replace_extension("gltf");
-          export_to_gltf(build_result.mesh_vertices, build_result.mesh_indices, gltf_path);
+          export_to_gltf(build_result, gltf_path);
           g_logger.push_message({std::format("The exported model: {}", gltf_path.string()), LogLevel::Text});
           break;
         }
@@ -531,8 +528,6 @@ int main(int argc, char* argv[])
       vertex_program.set_uniform_mat4f(0, &mesh_transform.M[0][0]);
       vertex_program.set_uniform_mat4f(1, &mat_camera[0][0]);
       vertex_program.set_uniform_mat4f(2, &mat_persp[0][0]);
-      pipeline.set_active_program(fragment_program);
-      fragment_program.set_uniform_vector3f(0, &light_direction[0]);
 
       static_mesh->vao.bind();
       //glDrawElements(GL_TRIANGLES, static_mesh->nr_indices(), GL_UNSIGNED_INT, 0);
@@ -562,7 +557,7 @@ int main(int argc, char* argv[])
     // Properties, Scene panels
     // =======================================================
     properties_panel(filename);
-    scene_panel(camera, light_direction, mesh_transform);
+    scene_panel(camera, mesh_transform);
     
     render_gui(); 
     glfwSwapBuffers(window_context);

@@ -33,6 +33,6 @@ void mesh_details_overlay(const StaticMesh& mesh, glm::vec2 viewport_pos);
 
 void properties_panel(const std::string_view& file_name);
 
-void scene_panel(Camera& camera, glm::vec3& light_pos, Transformation& mesh_transform);
+void scene_panel(Camera& camera, Transformation& mesh_transform);
 
 void render_gui();

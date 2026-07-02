@@ -261,7 +261,7 @@ void properties_panel(const std::string_view& file_name)
   ImGui::End();
 }
 
-void scene_panel(Camera& camera, glm::vec3& light_direction, Transformation& mesh_transform)
+void scene_panel(Camera& camera, Transformation& mesh_transform)
 {
   ImGui::SetNextWindowSize(ImVec2(300, 0), ImGuiCond_FirstUseEver);
   if(ImGui::Begin("Scene"))
@@ -288,20 +288,6 @@ void scene_panel(Camera& camera, glm::vec3& light_direction, Transformation& mes
         camera.fovy = glm::radians(fovy_deg);
       
       ImGui::DragFloat("Aspect Ratio", &camera.aspect, 0.01f, 0.1f, 10.0f, "%.2f");
-    }
-    ImGui::Spacing();
-
-    // ==========================================
-    // Lighting
-    // ==========================================
-    if (ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen)) 
-    {
-      if (ImGui::DragFloat3("Light direction", &light_direction.x, 0.01f, -1.0f, 1.0f, "%.2f")) 
-      {
-        auto len = glm::length(light_direction);
-        if (len > 1e-4f) 
-          light_direction = glm::normalize(light_direction);
-      }
     }
     ImGui::Spacing();
 

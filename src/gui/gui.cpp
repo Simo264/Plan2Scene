@@ -228,7 +228,7 @@ ViewportInfo viewport_panel(Texture viewport_image, bool flip_viewport_image)
   return info;
 }
 
-void properties_panel(const std::string_view& file_name)
+void properties_panel(std::string_view file_name)
 {
   ImGui::SetNextWindowSize(ImVec2(300, 0), ImGuiCond_FirstUseEver);
   if(ImGui::Begin("Params"))
@@ -261,7 +261,7 @@ void properties_panel(const std::string_view& file_name)
   ImGui::End();
 }
 
-void scene_panel(Camera& camera, Transformation& mesh_transform)
+void scene_panel(Camera& camera, Transformation& mesh_transform, glm::vec3 &light_position, f32& light_power)
 {
   ImGui::SetNextWindowSize(ImVec2(300, 0), ImGuiCond_FirstUseEver);
   if(ImGui::Begin("Scene"))
@@ -289,11 +289,11 @@ void scene_panel(Camera& camera, Transformation& mesh_transform)
       
       ImGui::DragFloat("Aspect Ratio", &camera.aspect, 0.01f, 0.1f, 10.0f, "%.2f");
     }
-    ImGui::Spacing();
 
     // ==========================================
     // Mesh transformation
     // ==========================================
+    ImGui::Spacing();
     if (ImGui::CollapsingHeader("Mesh transformation", ImGuiTreeNodeFlags_DefaultOpen)) 
     {
       auto matrix_needs_update = false;
@@ -317,6 +317,16 @@ void scene_panel(Camera& camera, Transformation& mesh_transform)
 
       if (matrix_needs_update)
         mesh_transform.update_transformation();
+    }
+
+    // ==========================================
+    // Light settings
+    // ==========================================
+    ImGui::Spacing();
+    if (ImGui::CollapsingHeader("Light settings", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+      ImGui::DragFloat3("Position##Light", &light_position.x, 0.05f);
+      ImGui::DragFloat("Power##Light", &light_power, 1.0f, 0.0f, 5000.0f, "%.1f");
     }
   }
   
@@ -352,31 +362,37 @@ void console_panel(GLFWwindow* window, ReconstructionStage& current_stage, std::
     }
     ImGui::EndChild();
 
-    static auto input_buf = std::array<char, 2>{};
-    ImGui::PushItemWidth(-1);
-    auto reclaim_focus = false;
-    if (ImGui::InputText("##ConsoleInput", input_buf.data(), 2, ImGuiInputTextFlags_EnterReturnsTrue)) 
+    if (worker_state == ThreadState::WaitingConfirmation)
     {
-      if (worker_state == ThreadState::WaitingConfirmation) 
-      {
-        if (input_buf.at(0) == 'y' || input_buf.at(0) == 'Y')
-        {
-          current_stage = next_stage(current_stage);
-          worker_state = ThreadState::Idle;
-        } 
-        else if (input_buf.at(0) == 'n' || input_buf.at(0) == 'N')
-        {
-          glfwSetWindowShouldClose(window, true);
-        } 
-      } 
-      input_buf.fill(0);
-      reclaim_focus = true;
+      current_stage = next_stage(current_stage);
+      worker_state = ThreadState::Idle;
     }
-    ImGui::PopItemWidth();
-
-    ImGui::SetItemDefaultFocus();
-    if (reclaim_focus)
-      ImGui::SetKeyboardFocusHere(-1);
+    
+    // static auto input_buf = std::array<char, 2>{};
+    // ImGui::PushItemWidth(-1);
+    // auto reclaim_focus = false;
+    // if (ImGui::InputText("##ConsoleInput", input_buf.data(), 2, ImGuiInputTextFlags_EnterReturnsTrue)) 
+    // {
+    //   if (worker_state == ThreadState::WaitingConfirmation) 
+    //   {
+    //     if (input_buf.at(0) == 'y' || input_buf.at(0) == 'Y')
+    //     {
+    //       current_stage = next_stage(current_stage);
+    //       worker_state = ThreadState::Idle;
+    //     } 
+    //     else if (input_buf.at(0) == 'n' || input_buf.at(0) == 'N')
+    //     {
+    //       glfwSetWindowShouldClose(window, true);
+    //     } 
+    //   } 
+    //   input_buf.fill(0);
+    //   reclaim_focus = true;
+    // }
+    // ImGui::PopItemWidth();
+    //
+    // ImGui::SetItemDefaultFocus();
+    // if (reclaim_focus)
+    //   ImGui::SetKeyboardFocusHere(-1);
   }
   ImGui::End();    
 }

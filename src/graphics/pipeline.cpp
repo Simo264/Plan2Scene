@@ -151,7 +151,7 @@ i32 ShaderProgram::get_uniform_location(std::string_view name) const
   return glGetUniformLocation(m_id, name.data());
 }
 
-void ShaderProgram::set_uniform_32(i32 location, f32 value) const
+void ShaderProgram::set_uniform_f32(i32 location, f32 value) const
 {
   glUniform1f(location, value); 
 }

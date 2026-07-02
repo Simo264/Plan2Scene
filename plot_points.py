@@ -9,7 +9,7 @@ def load_points(filename):
     points = [tuple(row) for row in df.values]
     return points
 
-filename = Path("vertices.csv")
+filename = Path("tmp/vertices.csv")
 if not filename.is_file():
     print(f"Error: file does not exixt: {filename}")
     sys.exit(0)
@@ -29,5 +29,5 @@ ax.set_ylabel("Y")
 ax.grid(True, linestyle=":", alpha=0.5)
 ax.legend(loc="upper left")
 
-plt.savefig("points.png", dpi=300, bbox_inches='tight')
-print("Image saved: points.png")
+plt.savefig("tmp/points.png", dpi=300, bbox_inches='tight')
+print("Image saved: tmp/points.png")

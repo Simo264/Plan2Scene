@@ -43,6 +43,8 @@ static auto fbo = FrameBuffer{};
 static auto fbo_color_texture = Texture{};
 static auto fbo_depth_texture = Texture{};
 
+static auto light_position = glm::vec3{ 0.0f, 2.0f, 0.0f };
+static auto light_power = 700.0f; // in watt
 static auto camera = Camera(0.1f, 100.0f, 45.f, viewport_info.aspect);
 static auto static_mesh = std::unique_ptr<StaticMesh>{};
 static auto mesh_transform = Transformation{};
@@ -394,11 +396,11 @@ int main(int argc, char* argv[])
         case ReconstructionStage::PrimitivesExtraction:
         {
           g_logger.push_message({"PrimitivesExtraction completed! Loading segments.png...", LogLevel::Success});
-          if(std::filesystem::exists("segments.png"))
+          if(std::filesystem::exists("tmp/segments.png"))
           {
             if(plot_image.is_valid()) plot_image.destroy();
             
-            plot_image = Texture::create_from_file("segments.png");
+            plot_image = Texture::create_from_file("tmp/segments.png");
             viewport_image = plot_image;
           }
           break;
@@ -419,11 +421,11 @@ int main(int argc, char* argv[])
         case ReconstructionStage::ClustersExtraction:
         {
           g_logger.push_message({"ClustersExtraction completed! Loading clusters.png...", LogLevel::Success});
-          if(std::filesystem::exists("clusters.png"))
+          if(std::filesystem::exists("tmp/clusters.png"))
           {
             if(plot_image.is_valid()) plot_image.destroy();
             
-            plot_image = Texture::create_from_file("clusters.png");
+            plot_image = Texture::create_from_file("tmp/clusters.png");
             viewport_image = plot_image;
           }
           break;
@@ -444,11 +446,11 @@ int main(int argc, char* argv[])
         case ReconstructionStage::FacesExtraction:
         {
           g_logger.push_message({"FaceExtraction completed! Loading faces.png...", LogLevel::Success});
-          if(std::filesystem::exists("faces.png"))
+          if(std::filesystem::exists("tmp/faces.png"))
           {
             if(plot_image.is_valid()) plot_image.destroy();
             
-            plot_image = Texture::create_from_file("faces.png");
+            plot_image = Texture::create_from_file("tmp/faces.png");
             viewport_image = plot_image;
           }
           break;
@@ -467,7 +469,7 @@ int main(int argc, char* argv[])
                                                     build_result.mesh_indices.data(),
                                                     build_result.mesh_indices.size());
 
-          auto gltf_path = file_path.filename().replace_extension("gltf");
+          auto gltf_path = "tmp" / file_path.filename().replace_extension("gltf");
           export_to_gltf(build_result, gltf_path);
           g_logger.push_message({std::format("The exported model: {}", gltf_path.string()), LogLevel::Text});
           break;
@@ -528,6 +530,9 @@ int main(int argc, char* argv[])
       vertex_program.set_uniform_mat4f(0, &mesh_transform.M[0][0]);
       vertex_program.set_uniform_mat4f(1, &mat_camera[0][0]);
       vertex_program.set_uniform_mat4f(2, &mat_persp[0][0]);
+      pipeline.set_active_program(fragment_program);
+      fragment_program.set_uniform_vector3f(0, &light_position[0]);
+      fragment_program.set_uniform_f32(1, light_power);
 
       static_mesh->vao.bind();
       for (const auto& prim : build_result.primitives)
@@ -556,7 +561,7 @@ int main(int argc, char* argv[])
     // Properties, Scene panels
     // =======================================================
     properties_panel(filename);
-    scene_panel(camera, mesh_transform);
+    scene_panel(camera, mesh_transform, light_position, light_power);
     
     render_gui(); 
     glfwSwapBuffers(window_context);

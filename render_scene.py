@@ -3,11 +3,10 @@ import math
 import os
 import mathutils
 
-GLTF_PATH = "/home/simone/Desktop/Plan2Scene/Simple_House_Plan.gltf"
+GLTF_PATH = "/home/simone/Desktop/Plan2Scene/tmp/Simple_House_Plan.gltf"
 FLOOR_TEX = "/home/simone/Desktop/Plan2Scene/materials/interior_tiles/interior_tiles_diff_1k.jpg"
 WALL_TEX = "/home/simone/Desktop/Plan2Scene/materials/concrete_layers/concrete_layers_diff_1k.jpg"
-OUTPUT_IMAGE = "/home/simone/Desktop/Plan2Scene/rendering/output.png"
-
+OUTPUT_IMAGE = "/home/simone/Desktop/Plan2Scene/tmp/output.png"
 
 def setup_material_nodes(mat, image_path):
   mat.use_nodes = True
@@ -71,13 +70,18 @@ def main():
   # ==========================================
   # Import GLTF model
   # ==========================================
-  bpy.ops.import_scene.gltf(filepath=GLTF_PATH)
+  try:
+    bpy.ops.import_scene.gltf(filepath=GLTF_PATH)
+  except Exception as e:
+    print(f"Failed to import GLTF: {e}")
+    exit(1)
+
+  
   for mat in bpy.data.materials:
     if mat.name.startswith("FloorMaterial"):
       setup_material_nodes(mat, FLOOR_TEX)
     elif mat.name.startswith("WallMaterial"):
       setup_material_nodes(mat, WALL_TEX)
-
 
   # ==========================================
   # Camera setup

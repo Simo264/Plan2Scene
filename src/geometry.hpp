@@ -133,6 +133,10 @@ void windows_reconstruction(std::vector<glm::dvec2>& sample_points,
                             std::vector<Edge>& edges);
 
 
+void ensure_winding_matches_normal(Vertex_PNT& v0, 
+                                   Vertex_PNT& v1, 
+                                   Vertex_PNT& v2, 
+                                   const glm::vec3& desired_normal);
 
 
 void build_triangulated_face(std::vector<Vertex_PNT>& out_vertices,

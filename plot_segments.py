@@ -16,9 +16,9 @@ def load_segments(filename):
         print(f"Error reading {filename}: {e}")
         return []
 
-wall_segments = load_segments("walls_segments.csv")
-door_segments = load_segments("doors_segments.csv")
-window_segments = load_segments("windows_segments.csv")
+wall_segments = load_segments("tmp/walls_segments.csv")
+door_segments = load_segments("tmp/doors_segments.csv")
+window_segments = load_segments("tmp/windows_segments.csv")
 
 fig, ax = plt.subplots(figsize=(10, 8))
 
@@ -43,5 +43,5 @@ ax.set_ylabel("Y")
 ax.grid(True, linestyle=":", alpha=0.5)
 ax.legend(loc="upper left")
 
-plt.savefig("segments.png", dpi=300, bbox_inches='tight')
-print("Image saved: segments.png")
+plt.savefig("tmp/segments.png", dpi=300, bbox_inches='tight')
+print("Image saved: tmp/segments.png")

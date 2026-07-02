@@ -7,7 +7,6 @@
 #include <cstdlib>
 #include <stdexcept>
 #include <vector>
-#include <print>
 #include <cstdio>
 
 #include <glm/ext/vector_float4.hpp>
@@ -51,7 +50,7 @@ bool stage_needs_confirmation(ReconstructionStage stage)
 
 static void run_checkpoint_script(std::string_view script_name)
 {
-  auto log_file = std::format("{}.log", script_name); // es. "plot_segments.py.log"
+  auto log_file = std::format("tmp/{}.log", script_name); // es. "plot_segments.py.log"
   auto command = std::format("python {} > \"{}\" 2>&1", script_name, log_file);
   auto ret = std::system(command.c_str());
   if (ret != 0) 
@@ -80,22 +79,31 @@ namespace Reconstruction
                                const std::vector<Segment>& doors, 
                                const std::vector<Segment>& windows)
   {
-    dump_segments_csv(walls, "walls_segments.csv");
-    dump_segments_csv(doors, "doors_segments.csv");
-    dump_segments_csv(windows, "windows_segments.csv");
+    if(std::filesystem::exists("tmp") == false)
+      std::filesystem::create_directory("tmp");
+    
+    dump_segments_csv(walls, "tmp/walls_segments.csv");
+    dump_segments_csv(doors, "tmp/doors_segments.csv");
+    dump_segments_csv(windows, "tmp/windows_segments.csv");
     run_checkpoint_script("plot_segments.py");
   }
 
   void checkpoint_clusters(const std::vector<glm::dvec2>& sample_points,
                            const std::vector<std::vector<u32>>& clusters)
   {
-    dump_clusters_csv(sample_points, clusters, "clusters.csv");
+    if(std::filesystem::exists("tmp") == false)
+      std::filesystem::create_directory("tmp");
+
+    dump_clusters_csv(sample_points, clusters, "tmp/clusters.csv");
     run_checkpoint_script("plot_clusters.py");
   }
 
   void checkpoint_faces(const std::vector<Face>& faces)
   {
-    dump_faces_csv(faces, "faces.csv");
+    if(std::filesystem::exists("tmp") == false)
+      std::filesystem::create_directory("tmp");
+
+    dump_faces_csv(faces, "tmp/faces.csv");
     run_checkpoint_script("plot_faces.py");
   }
 
@@ -237,11 +245,7 @@ namespace Reconstruction
     //   triangulate_face(vertices, wall_indices, window_frac_top, false, face);
     // }
 
-    auto floor_range = PrimitiveRange{ 
-      0, 
-      static_cast<u32>(floor_indices.size()), 
-      MaterialType::Floor };
-
+    auto floor_range = PrimitiveRange{ 0, static_cast<u32>(floor_indices.size()), MaterialType::Floor };
     auto all_indices = std::vector<u32>{};
     all_indices.reserve(floor_indices.size() + wall_indices.size());
     all_indices.insert(all_indices.end(), floor_indices.begin(), floor_indices.end());

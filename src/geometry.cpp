@@ -400,18 +400,25 @@ void windows_reconstruction(std::vector<glm::dvec2>& sample_points,
   }
 }
 
+void ensure_winding_matches_normal(Vertex_PNT& v0, 
+                                   Vertex_PNT& v1, 
+                                   Vertex_PNT& v2, 
+                                   const glm::vec3& desired_normal)
+{
+  auto geometric_normal = glm::cross(v1.position - v0.position, v2.position - v0.position);
+  if (glm::dot(geometric_normal, desired_normal) < 0.0f)
+    std::swap(v1, v2);
+}
+
+
 void triangulate_face(std::vector<Vertex_PNT>& out_vertices,
                       std::vector<u32>& out_indices,
                       f32 height,
                       bool facing_up, 
                       const Face& face)
 {
-  auto face_bbox = calculate_bbox_2D(face);
-  
-  // Ensure CCW winding
   auto polyline = face.vertices;
-  if (calculate_signed_area(polyline) < 0.0)
-    std::ranges::reverse(polyline);
+  auto face_bbox = calculate_bbox_2D(polyline);
     
   auto p2t_points = std::vector<p2t::Point>{};
   auto p2t_ptr_points = std::vector<p2t::Point*>{};
@@ -431,72 +438,94 @@ void triangulate_face(std::vector<Vertex_PNT>& out_vertices,
 }
 
 void build_triangulated_face(std::vector<Vertex_PNT>& out_vertices,
-                             std::vector<u32>& out_indices,
-                             const std::vector<p2t::Triangle*> triangles,
-                             f32 height,
-                             bool facing_up, 
-                             const BoundingBox2D& face_bbox)
-{
-  for (const auto& tri : triangles)
-  {
-    for (auto i = 0; i < 3; ++i) 
-    {
-      // poly2tri gives CCW winding in XY, so we emit points in order 0,1,2 which stays CCW
-      auto p = tri->GetPoint(i);
-
-      auto v = Vertex_PNT{};
-      v.position.x = static_cast<f32>(p->x);
-      v.position.y = height;
-      v.position.z = static_cast<f32>(p->y);
-      v.normal = facing_up ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(0.0f, -1.0f, 0.0f);
-
-      v.text_coord.x = (v.position.x - face_bbox.min.x) / floor_texture_scaling;
-      v.text_coord.y = (v.position.z - face_bbox.min.y) / floor_texture_scaling;
-
-      auto idx = static_cast<u32>(out_vertices.size());
-      out_vertices.push_back(v);
-      out_indices.push_back(idx);
+                            std::vector<u32>& out_indices,
+                            const std::vector<p2t::Triangle*> triangles,
+                            f32 height,
+                            bool facing_up,
+                            const BoundingBox2D& face_bbox)
+{ 
+  auto desired_normal = facing_up ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(0.0f, -1.0f, 0.0f);
+  for (const auto& tri : triangles) 
+  { 
+    auto verts = std::array<Vertex_PNT, 3>{};
+    for (auto i = 0; i < 3; ++i)  
+    {  
+      auto p = tri->GetPoint(i); 
+      auto v = Vertex_PNT{}; 
+      v.position.x = static_cast<f32>(p->x); 
+      v.position.y = height; 
+      v.position.z = static_cast<f32>(p->y); 
+      v.normal = desired_normal;
+      v.text_coord.x = (v.position.x - face_bbox.min.x) / floor_texture_scaling; 
+      v.text_coord.y = (v.position.z - face_bbox.min.y) / floor_texture_scaling; 
+      verts[i] = v;
     }
-  }
+
+    ensure_winding_matches_normal(verts[0], verts[1], verts[2], desired_normal);
+
+    for (const auto& v : verts)
+    {
+      auto idx = static_cast<u32>(out_vertices.size()); 
+      out_vertices.push_back(v); 
+      out_indices.push_back(idx); 
+    }
+  } 
 }
 
-void extrude_face(std::vector<Vertex_PNT>& vertices, 
+void extrude_face(std::vector<Vertex_PNT>& vertices,
                   std::vector<u32>& out_indices,
                   f32 base_height,
                   f32 top_height,
                   const Face& face)
-{
-  constexpr glm::vec3 up(0.0f, 1.0f, 0.0f);
-  const auto& contour = face.vertices;
+{ 
+  constexpr glm::vec3 up(0.0f, 1.0f, 0.0f); 
+  const auto& contour = face.vertices; 
+  auto v_bottom_uv = base_height / wall_texture_scaling; 
+  auto v_top_uv = top_height / wall_texture_scaling; 
 
-  auto v_bottom_uv = base_height / wall_texture_scaling;
-  auto v_top_uv = top_height / wall_texture_scaling;
-  
-  for (auto i = 0u; i < contour.size(); ++i) 
-  {
-    auto p1 = contour[i];
-    auto p2 = contour[(i + 1) % contour.size()];
-    auto edge = glm::vec3(f32(p2.x - p1.x), 0.0f, f32(p2.y - p1.y));
-    auto edge_len = glm::length(edge);
-    auto normal = glm::normalize(glm::cross(edge, up));
+  for (auto i = 0u; i < contour.size(); ++i)  
+  { 
+    auto p1 = contour[i]; 
+    auto p2 = contour[(i + 1) % contour.size()]; 
+    auto edge = glm::vec3(f32(p2.x - p1.x), 0.0f, f32(p2.y - p1.y)); 
+    auto edge_len = glm::length(edge); 
+    auto normal = glm::normalize(glm::cross(up, edge)); 
+    auto u0 = 0.0f; 
+    auto u1 = edge_len / wall_texture_scaling; 
 
-    auto u0 = 0.0f;
-    auto u1 = edge_len / wall_texture_scaling;
+    auto BL = Vertex_PNT{ {f32(p1.x), base_height, f32(p1.y)}, normal, {u0, v_bottom_uv} }; 
+    auto BR = Vertex_PNT{ {f32(p2.x), base_height, f32(p2.y)}, normal, {u1, v_bottom_uv} }; 
+    auto TR = Vertex_PNT{ {f32(p2.x), top_height, f32(p2.y)}, normal, {u1, v_top_uv} }; 
+    auto TL = Vertex_PNT{ {f32(p1.x), top_height, f32(p1.y)}, normal, {u0, v_top_uv} }; 
 
-    auto BL = Vertex_PNT{ {f32(p1.x), base_height, f32(p1.y)}, normal, {u0, v_bottom_uv} };
-    auto BR = Vertex_PNT{ {f32(p2.x), base_height, f32(p2.y)}, normal, {u1, v_bottom_uv} };
-    auto TR = Vertex_PNT{ {f32(p2.x), top_height,  f32(p2.y)}, normal, {u1, v_top_uv} };
-    auto TL = Vertex_PNT{ {f32(p1.x), top_height,  f32(p1.y)}, normal, {u0, v_top_uv} };
-
-    vertices.push_back(BL); vertices.push_back(BR);
-    vertices.push_back(TR); vertices.push_back(TL);
-
-    auto base = static_cast<u32>(vertices.size());
-    out_indices.push_back(base + 0); out_indices.push_back(base + 1); out_indices.push_back(base + 2);
-    out_indices.push_back(base + 0); out_indices.push_back(base + 2); out_indices.push_back(base + 3);
+    auto tri_normal = glm::cross(BR.position - BL.position, TR.position - BL.position);
+    auto winding_ok = glm::dot(tri_normal, normal) >= 0.0f;
+    
+    auto base = static_cast<u32>(vertices.size()); 
+    vertices.push_back(BL); 
+    vertices.push_back(BR); 
+    vertices.push_back(TR); 
+    vertices.push_back(TL); 
+    if (winding_ok)
+    {
+      out_indices.push_back(base + 0);
+      out_indices.push_back(base + 1);
+      out_indices.push_back(base + 2);
+      out_indices.push_back(base + 0);
+      out_indices.push_back(base + 2);
+      out_indices.push_back(base + 3);
+    }
+    else
+    {
+      out_indices.push_back(base + 0);
+      out_indices.push_back(base + 2);
+      out_indices.push_back(base + 1);
+      out_indices.push_back(base + 0);
+      out_indices.push_back(base + 3);
+      out_indices.push_back(base + 2);
+    } 
   } 
 }
-
 void center_mesh(std::vector<Vertex_PNT>& vertices)
 {
   auto bbox = calculate_bbox_3D(vertices);

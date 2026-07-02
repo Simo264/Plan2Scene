@@ -64,10 +64,8 @@ def main():
     scene.cycles.device = 'CPU'
       
   scene.cycles.samples = 32
-  # scene.cycles.use_denoising = True
-  # scene.cycles.denoiser = 'OPENIMAGEDENOISE'
-  scene.render.resolution_x = 1920
-  scene.render.resolution_y = 1080 
+  scene.render.resolution_x = 1280
+  scene.render.resolution_y = 720 
   scene.render.filepath = OUTPUT_IMAGE
 
   # ==========================================
@@ -91,16 +89,12 @@ def main():
   bpy.context.collection.objects.link(cam_obj)
   scene.camera = cam_obj
 
-  cam_obj.location = (0.0, 0.0, 1.2)
-  rot_gl = mathutils.Euler((
-    math.radians(-175.0), 
-    math.radians(-30.0), 
-    math.radians(180.0)
-  ), 'XYZ').to_matrix()
+  cam_obj.location = (0.0, 0.0, 0.0)
+  rot_gl = mathutils.Euler((math.radians(-180.0), math.radians(-30.0), math.radians(-180.0)), 'XYZ').to_matrix()
   
   mat_gl_to_blender = mathutils.Matrix.Rotation(math.radians(90), 3, 'X')
   rot_blender_base = mat_gl_to_blender @ rot_gl
-  mat_local_pitch = mathutils.Matrix.Rotation(math.radians(-15), 3, 'X')
+  mat_local_pitch = mathutils.Matrix.Rotation(math.radians(0), 3, 'X')
   rot_blender_final = rot_blender_base @ mat_local_pitch
   cam_obj.rotation_euler = rot_blender_final.to_euler()
 
@@ -113,15 +107,13 @@ def main():
   light_data.color = (1.0, 0.95, 0.88)
   light_data.shadow_soft_size = 0.15
   light_obj = bpy.data.objects.new(name="IndoorLight", object_data=light_data)
-  light_obj.location = (0.0, 0.0, 1.5) 
+  light_obj.location = (0.0, 0.0, 0.5) 
   bpy.context.collection.objects.link(light_obj)
 
   # ==========================================
   # Start rendering
   # ==========================================
-  print("Inizio il rendering con Cycles...")
   bpy.ops.render.render(write_still=True)
-  print(f"Rendering completato! Salvato in {OUTPUT_IMAGE}")
 
 if __name__ == "__main__":
   main()

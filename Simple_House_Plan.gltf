@@ -3,7 +3,7 @@
     {
       "bufferView": 0,
       "componentType": 5126,
-      "count": 952,
+      "count": 468,
       "max": [
         18.0,
         2.5,
@@ -19,13 +19,13 @@
     {
       "bufferView": 1,
       "componentType": 5126,
-      "count": 952,
+      "count": 468,
       "type": "VEC3"
     },
     {
       "bufferView": 2,
       "componentType": 5126,
-      "count": 952,
+      "count": 468,
       "type": "VEC2"
     },
     {
@@ -36,8 +36,9 @@
     },
     {
       "bufferView": 3,
+      "byteOffset": 24,
       "componentType": 5125,
-      "count": 1350,
+      "count": 690,
       "type": "SCALAR"
     }
   ],
@@ -48,31 +49,31 @@
   "bufferViews": [
     {
       "buffer": 0,
-      "byteLength": 11424,
+      "byteLength": 5616,
       "target": 34962
     },
     {
       "buffer": 0,
-      "byteLength": 11424,
-      "byteOffset": 11424,
+      "byteLength": 5616,
+      "byteOffset": 5616,
       "target": 34962
     },
     {
       "buffer": 0,
-      "byteLength": 7616,
-      "byteOffset": 22848,
+      "byteLength": 3744,
+      "byteOffset": 11232,
       "target": 34962
     },
     {
       "buffer": 0,
-      "byteLength": 5424,
-      "byteOffset": 30464,
+      "byteLength": 2784,
+      "byteOffset": 14976,
       "target": 34963
     }
   ],
   "buffers": [
     {
-      "byteLength": 35888,
+      "byteLength": 17760,
       "uri": "Simple_House_Plan.bin"
     }
   ],

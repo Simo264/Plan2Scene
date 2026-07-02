@@ -177,8 +177,8 @@ int main(int argc, char* argv[])
  
   create_gl_pipeline_object(vertex_program, fragment_program, pipeline);
 
-  camera.eye = { 0.f, 0.f, 0.f };
-  camera.set_orientation(glm::radians(glm::vec3{ -175.f, -30.f, 180.f }));
+  camera.eye = { -2.5f, -1.6f, -4.6f };
+  camera.set_orientation(glm::radians(glm::vec3{ -170.f, -30.f, -180.f }));
  
   auto floor_texture = Texture::create_from_file("materials/interior_tiles/interior_tiles_diff_1k.jpg");
   auto wall_texture = Texture::create_from_file("materials/concrete_layers/concrete_layers_diff_1k.jpg");
@@ -530,7 +530,6 @@ int main(int argc, char* argv[])
       vertex_program.set_uniform_mat4f(2, &mat_persp[0][0]);
 
       static_mesh->vao.bind();
-      //glDrawElements(GL_TRIANGLES, static_mesh->nr_indices(), GL_UNSIGNED_INT, 0);
       for (const auto& prim : build_result.primitives)
       {
         if(prim.material == MaterialType::Floor)

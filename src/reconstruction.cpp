@@ -213,109 +213,45 @@ namespace Reconstruction
 
     auto floor_face = std::ranges::find_if(faces, [](const Face& f) { return f.type == FaceType::FLOOR; });
     triangulate_face(vertices, floor_indices, 0.f, true, *floor_face);
-    triangulate_face(vertices, wall_indices, ceil_height_meters, true, *floor_face);
+    triangulate_face(vertices, wall_indices, ceil_height_meters, false, *floor_face);
     
     auto wall_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::WALL; });
     for(const auto& face : wall_faces)
     {
       extrude_face(vertices, wall_indices, 0.f, ceil_height_meters, face);
-      //triangulate_face(vertices, wall_indices, ceil_height_meters, true, face);
     }
 
-    auto door_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::DOOR; });
-    for(const auto& face : door_faces)
-    {
-      extrude_face(vertices, wall_indices, door_frac_top, ceil_height_meters, face);
-      triangulate_face(vertices, wall_indices, door_frac_top, true, face);
-      // triangulate_face(vertices, wall_indices, ceil_height_meters, true, face);
-    }
+    // auto door_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::DOOR; });
+    // for(const auto& face : door_faces)
+    // {
+    //   extrude_face(vertices, wall_indices, door_frac_top, ceil_height_meters, face);
+    //   triangulate_face(vertices, wall_indices, door_frac_top, true, face);
+    // }
 
-    auto window_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::WINDOW; });
-    for(const auto& face : window_faces)
-    {
-      extrude_face(vertices, wall_indices, 0.f, window_frac_bottom, face);
-      extrude_face(vertices, wall_indices, window_frac_top, ceil_height_meters, face);
-      triangulate_face(vertices, wall_indices, window_frac_bottom, true, face);
-      triangulate_face(vertices, wall_indices, window_frac_top, false, face);
-      // triangulate_face(vertices, wall_indices, ceil_height_meters, true, face);
-    }
-    
-#if 0 
-    for(const auto& face : faces)
-    {
-      auto face_bbox = calculate_bbox_2D(face);
-      
-      // Ensure CCW winding
-      auto polyline = face.vertices;
-      if (calculate_signed_area(polyline) < 0.0)
-        std::ranges::reverse(polyline);
-        
-      auto p2t_points = std::vector<p2t::Point>{};
-      auto p2t_ptr_points = std::vector<p2t::Point*>{};
-      p2t_points.reserve(polyline.size());
-      p2t_ptr_points.reserve(polyline.size());
-      for (const auto& p : polyline)
-      {
-        p2t_points.emplace_back(p2t::Point{ p.x, p.y });
-        p2t_ptr_points.push_back(&p2t_points.back());
-      }
-      
-      auto cdt = p2t::CDT{ p2t_ptr_points };
-      cdt.Triangulate();
-      auto triangles = cdt.GetTriangles();
+    // auto window_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::WINDOW; });
+    // for(const auto& face : window_faces)
+    // {
+    //   extrude_face(vertices, wall_indices, 0.f, window_frac_bottom, face);
+    //   extrude_face(vertices, wall_indices, window_frac_top, ceil_height_meters, face);
+    //   triangulate_face(vertices, wall_indices, window_frac_bottom, true, face);
+    //   triangulate_face(vertices, wall_indices, window_frac_top, false, face);
+    // }
 
-      switch(face.type)
-      {
-        case FaceType::FLOOR:
-          std::println("FLOOR face found!");
-          build_triangulated_face(vertices, floor_indices, triangles, 0.f, true, face_bbox);
-          // build_triangulated_face(vertices, indices, triangles, CEIL_HEIGHT, false);
-          break;
-
-        case FaceType::WALL:
-          std::println("WALL face found!");
-          build_triangulated_face(vertices, wall_indices, triangles, CEIL_HEIGHT, true, face_bbox);
-          extrude_face(vertices, wall_indices, 0, CEIL_HEIGHT, face);
-          break;
-
-        case FaceType::DOOR:
-          std::println("DOOR face found!");
-          build_triangulated_face(vertices, wall_indices, triangles, CEIL_HEIGHT, true, face_bbox);
-          extrude_face(vertices, wall_indices, DOOR_TOP, CEIL_HEIGHT, face);
-          break;
-          
-        case FaceType::WINDOW:
-          std::println("WINDOW face found!");
-          build_triangulated_face(vertices, wall_indices, triangles, WINDOW_BOTTOM, true, face_bbox);
-          build_triangulated_face(vertices, wall_indices, triangles, WINDOW_TOP, false, face_bbox);
-          build_triangulated_face(vertices, wall_indices, triangles, CEIL_HEIGHT, true, face_bbox);
-          extrude_face(vertices, wall_indices, 0.0f, WINDOW_BOTTOM, face);
-          extrude_face(vertices, wall_indices, WINDOW_TOP, CEIL_HEIGHT, face);
-          break; 
-
-        default:
-          std::println("Unknown face type found!");
-          break;
-      }
-    }
-#endif
+    auto floor_range = PrimitiveRange{ 
+      0, 
+      static_cast<u32>(floor_indices.size()), 
+      MaterialType::Floor };
 
     auto all_indices = std::vector<u32>{};
     all_indices.reserve(floor_indices.size() + wall_indices.size());
-
-    auto floor_range = PrimitiveRange{ 
-      .index_offset=0, 
-      .index_count=u32(floor_indices.size()),
-      .material=MaterialType::Floor 
-    };
-    auto wall_range = PrimitiveRange{ 
-      .index_offset=u32(all_indices.size()), 
-      .index_count=u32(wall_indices.size()), 
-      .material=MaterialType::Wall 
-    };
     all_indices.insert(all_indices.end(), floor_indices.begin(), floor_indices.end());
+
+    auto wall_range = PrimitiveRange{ 
+      static_cast<u32>(all_indices.size()), 
+      static_cast<u32>(wall_indices.size()), 
+      MaterialType::Wall };
     all_indices.insert(all_indices.end(), wall_indices.begin(), wall_indices.end());
-    
+
     auto result = ReconstructionResult{};
     result.mesh_vertices = std::move(vertices);
     result.mesh_indices  = std::move(all_indices);

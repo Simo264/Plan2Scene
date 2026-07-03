@@ -1,16 +1,8 @@
 import bpy, math, os, mathutils, json
 
-GLTF_PATH = "/home/simone/Desktop/Plan2Scene/tmp/Simple_House_Plan.gltf"
+GLTF_PATH = "/home/simone/Desktop/Plan2Scene/tmp/draftperson_Technical_Drawing_FLOOR_PLAN.gltf"
 CONFIG_PATH = "/home/simone/Desktop/Plan2Scene/materials.json"
 OUTPUT_IMAGE = "/home/simone/Desktop/Plan2Scene/tmp/output.png"
-
-# Texture diffuse maps
-FLOOR_TEX_DIFF = "/home/simone/Desktop/Plan2Scene/materials/interior_tiles/interior_tiles_diff_1k.jpg"
-WALL_TEX_DIFF = "/home/simone/Desktop/Plan2Scene/materials/concrete_layers/concrete_layers_diff_1k.jpg"
-
-# Texture normal maps
-FLOOR_TEX_NORM = "/home/simone/Desktop/Plan2Scene/materials/interior_tiles/interior_tiles_nor_gl_1k.jpg"
-WALL_TEX_NORM = "/home/simone/Desktop/Plan2Scene/materials/concrete_layers/concrete_layers_nor_gl_1k.jpg"
 
 def load_image_node(nodes, filepath, colorspace='sRGB'):
   if not filepath:
@@ -38,7 +30,9 @@ def setup_material_nodes(mat, mat_config):
   links = mat.node_tree.links
   nodes.clear()
 
+  # ==========================================
   # Nodi Base
+  # ==========================================
   node_output = nodes.new("ShaderNodeOutputMaterial")
   node_principled = nodes.new("ShaderNodeBsdfPrincipled")
   node_mapping = nodes.new("ShaderNodeMapping")
@@ -46,39 +40,110 @@ def setup_material_nodes(mat, mat_config):
 
   node_output.location = (400, 0)
   node_principled.location = (50, 0)
-  node_mapping.location = (-600, 0)
-  node_texcoord.location = (-800, 0)
+  node_mapping.location = (-900, 0)
+  node_texcoord.location = (-1100, 0)
 
   links.new(node_texcoord.outputs["UV"], node_mapping.inputs["Vector"])
   links.new(node_principled.outputs["BSDF"], node_output.inputs["Surface"])
 
-  # Setup albedo
+  # Dizionario per tener traccia degli output da collegare alla fine
+  mat_outputs = {}
+
+  # ==========================================
+  # 1. Albedo (DIFF)
+  # ==========================================
   if mat_config.get("albedo"):
     tex_albedo = load_image_node(nodes, mat_config["albedo"], 'sRGB')
     if tex_albedo:
-      tex_albedo.location = (-300, 200)
+      tex_albedo.location = (-600, 300)
       links.new(node_mapping.outputs["Vector"], tex_albedo.inputs["Vector"])
-      links.new(tex_albedo.outputs["Color"], node_principled.inputs["Base Color"])
+      mat_outputs['albedo'] = tex_albedo.outputs["Color"]
 
-  # Setup roughness
-  if mat_config.get("roughness"):
-    tex_roughness = load_image_node(nodes, mat_config["roughness"], 'Non-Color')
+  # ==========================================
+  # 2. ARM (AO, Roughness, Metallic) Packed
+  # ==========================================
+  if mat_config.get("arm"):
+    tex_arm = load_image_node(nodes, mat_config["arm"], 'Non-Color')
+    if tex_arm:
+      tex_arm.location = (-600, 0)
+      links.new(node_mapping.outputs["Vector"], tex_arm.inputs["Vector"])
+      
+      # Separa i canali (Rosso=AO, Verde=Roughness, Blu=Metallic)
+      node_sep = nodes.new("ShaderNodeSeparateColor")
+      node_sep.location = (-350, -50)
+      links.new(tex_arm.outputs["Color"], node_sep.inputs["Color"])
+      
+      mat_outputs['ao'] = node_sep.outputs["Red"]
+      links.new(node_sep.outputs["Green"], node_principled.inputs["Roughness"])
+      links.new(node_sep.outputs["Blue"], node_principled.inputs["Metallic"])
+
+  # ==========================================
+  # 3. AO Individuale (Se presente, sovrascrive quello dell'ARM)
+  # ==========================================
+  if mat_config.get("ao"):
+    tex_ao = load_image_node(nodes, mat_config["ao"], 'Non-Color')
+    if tex_ao:
+      tex_ao.location = (-600, 150)
+      links.new(node_mapping.outputs["Vector"], tex_ao.inputs["Vector"])
+      mat_outputs['ao'] = tex_ao.outputs["Color"]
+
+  # ==========================================
+  # 4. Roughness Individuale (Sovrascrive l'ARM)
+  # ==========================================
+  if mat_config.get("rough"):
+    tex_roughness = load_image_node(nodes, mat_config["rough"], 'Non-Color')
     if tex_roughness:
-      tex_roughness.location = (-300, -50)
+      tex_roughness.location = (-600, -150)
       links.new(node_mapping.outputs["Vector"], tex_roughness.inputs["Vector"])
       links.new(tex_roughness.outputs["Color"], node_principled.inputs["Roughness"])
 
-  # Setup normal map
+  # ==========================================
+  # 5. Unione Albedo + AO (Moltiplicazione)
+  # ==========================================
+  if 'albedo' in mat_outputs and 'ao' in mat_outputs:
+    node_mix = nodes.new("ShaderNodeMixRGB")
+    node_mix.blend_type = 'MULTIPLY'
+    node_mix.inputs["Fac"].default_value = 1.0  # Intensità dell'AO
+    node_mix.location = (-250, 200)
+    
+    links.new(mat_outputs['albedo'], node_mix.inputs["Color1"])
+    links.new(mat_outputs['ao'], node_mix.inputs["Color2"])
+    links.new(node_mix.outputs["Color"], node_principled.inputs["Base Color"])
+  elif 'albedo' in mat_outputs:
+    links.new(mat_outputs['albedo'], node_principled.inputs["Base Color"])
+
+  # ==========================================
+  # 6. Normal Map (NOR_GL o NORM_DX)
+  # ==========================================
   if mat_config.get("normal"):
     tex_normal = load_image_node(nodes, mat_config["normal"], 'Non-Color')
     if tex_normal:
-      tex_normal.location = (-300, -300)
+      tex_normal.location = (-600, -400)
       node_normal_map = nodes.new("ShaderNodeNormalMap")
-      node_normal_map.location = (-50, -250)
+      node_normal_map.location = (-250, -400)
       
       links.new(node_mapping.outputs["Vector"], tex_normal.inputs["Vector"])
       links.new(tex_normal.outputs["Color"], node_normal_map.inputs["Color"])
       links.new(node_normal_map.outputs["Normal"], node_principled.inputs["Normal"])
+
+  # ==========================================
+  # 7. Displacement (DISP)
+  # ==========================================
+  if mat_config.get("disp"):
+    tex_disp = load_image_node(nodes, mat_config["disp"], 'Non-Color')
+    if tex_disp:
+      tex_disp.location = (-600, -650)
+      node_disp = nodes.new("ShaderNodeDisplacement")
+      node_disp.location = (-250, -650)
+      
+      links.new(node_mapping.outputs["Vector"], tex_disp.inputs["Vector"])
+      links.new(tex_disp.outputs["Color"], node_disp.inputs["Height"])
+      links.new(node_disp.outputs["Displacement"], node_output.inputs["Displacement"])
+      
+      # Indica a Cycles come gestire il displacement
+      mat.cycles.displacement_method = 'BUMP' # Opzioni: 'BUMP', 'DISPLACEMENT', 'BOTH'
+
+
 
 def main():          
   # Clear the scene by deleting all objects
@@ -125,7 +190,8 @@ def main():
 
   for mat in bpy.data.materials:
     # Remove any suffixes (.001) that Blender adds in case of duplicates
-    base_name = mat.name.split('.')[0] 
+    # base_name = mat.name.split('.')[0] 
+    base_name = mat.name
     if base_name in config_data["materials"]:
       print(f"Applying material: {base_name}")
       setup_material_nodes(mat, config_data["materials"][base_name])

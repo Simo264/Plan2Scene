@@ -1,14 +1,20 @@
 {
   "materials": {
     "FloorMaterial": {
-      "albedo": "/home/simone/Desktop/Plan2Scene/materials/interior_tiles/interior_tiles_diff_1k.jpg",
-      "normal": "/home/simone/Desktop/Plan2Scene/materials/interior_tiles/interior_tiles_nor_gl_1k.jpg",
-      "roughness": null
+      "albedo"        : "/home/simone/Desktop/Plan2Scene/materials/patio_tiles/patio_tiles_diff_1k.jpg",
+      "normal"        : "/home/simone/Desktop/Plan2Scene/materials/patio_tiles/patio_tiles_nor_gl_1k.jpg",
+      "roughness"     : "/home/simone/Desktop/Plan2Scene/materials/patio_tiles/patio_tiles_rough_1k.jpg",
+      "displacement"  : "/home/simone/Desktop/Plan2Scene/materials/patio_tiles/patio_tiles_disp_1k.jpg",
+      "ao"            : "/home/simone/Desktop/Plan2Scene/materials/patio_tiles/patio_tiles_ao_1k.jpg",
+      "arm"           : "/home/simone/Desktop/Plan2Scene/materials/patio_tiles/patio_tiles_arm_1k.jpg"
     },
     "WallMaterial": {
-      "albedo": "/home/simone/Desktop/Plan2Scene/materials/concrete_layers/concrete_layers_diff_1k.jpg",
-      "normal": "/home/simone/Desktop/Plan2Scene/materials/concrete_layers/concrete_layers_nor_gl_1k.jpg",
-      "roughness": null
+      "albedo"        : "/home/simone/Desktop/Plan2Scene/materials/beige_wall/beige_wall_001_diff_1k.jpg",
+      "normal"        : "/home/simone/Desktop/Plan2Scene/materials/beige_wall/beige_wall_001_nor_gl_1k.jpg",
+      "roughness"     : "/home/simone/Desktop/Plan2Scene/materials/beige_wall/beige_wall_001_rough_1k.jpg",
+      "displacement"  : "/home/simone/Desktop/Plan2Scene/materials/beige_wall/beige_wall_001_disp_1k.jpg",
+      "ao"            : "/home/simone/Desktop/Plan2Scene/materials/beige_wall/beige_wall_001_ao_1k.jpg",
+      "arm"           : "/home/simone/Desktop/Plan2Scene/materials/beige_wall/beige_wall_001_arm_1k.jpg"
     }
   }
 }

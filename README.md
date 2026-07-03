@@ -1,12 +1,20 @@
 ## Screenshots
 
-![Segments extraction](screenshots/img_1.png)
+![screen 1](screenshots/img_1.png)
 
-![Cluster extraction](screenshots/img_2.png)
+![screen 2](screenshots/img_2.png)
 
-![Face extraction](screenshots/img_3.png)
+![screen 3](screenshots/img_3.png)
 
-![Final mesh](screenshots/img_4.png)
+![screen 4](screenshots/img_4.png)
+
+![screen 5](screenshots/img_5.png)
+
+![screen 6](screenshots/img_6.png)
+
+![screen 7](screenshots/img_7.png)
+
+![screen 8](screenshots/img_8.png)
 
 ## Building and running the code
 

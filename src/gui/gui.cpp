@@ -362,37 +362,36 @@ void console_panel(GLFWwindow* window, ReconstructionStage& current_stage, std::
     }
     ImGui::EndChild();
 
-    if (worker_state == ThreadState::WaitingConfirmation)
-    {
-      current_stage = next_stage(current_stage);
-      worker_state = ThreadState::Idle;
-    }
-    
-    // static auto input_buf = std::array<char, 2>{};
-    // ImGui::PushItemWidth(-1);
-    // auto reclaim_focus = false;
-    // if (ImGui::InputText("##ConsoleInput", input_buf.data(), 2, ImGuiInputTextFlags_EnterReturnsTrue)) 
+    // if (worker_state == ThreadState::WaitingConfirmation)
     // {
-    //   if (worker_state == ThreadState::WaitingConfirmation) 
-    //   {
-    //     if (input_buf.at(0) == 'y' || input_buf.at(0) == 'Y')
-    //     {
-    //       current_stage = next_stage(current_stage);
-    //       worker_state = ThreadState::Idle;
-    //     } 
-    //     else if (input_buf.at(0) == 'n' || input_buf.at(0) == 'N')
-    //     {
-    //       glfwSetWindowShouldClose(window, true);
-    //     } 
-    //   } 
-    //   input_buf.fill(0);
-    //   reclaim_focus = true;
+    //   current_stage = next_stage(current_stage);
+    //   worker_state = ThreadState::Idle;
     // }
-    // ImGui::PopItemWidth();
-    //
-    // ImGui::SetItemDefaultFocus();
-    // if (reclaim_focus)
-    //   ImGui::SetKeyboardFocusHere(-1);
+    
+    static auto input_buf = std::array<char, 2>{};
+    ImGui::PushItemWidth(-1);
+    auto reclaim_focus = false;
+    if (ImGui::InputText("##ConsoleInput", input_buf.data(), 2, ImGuiInputTextFlags_EnterReturnsTrue)) 
+    {
+      if (worker_state == ThreadState::WaitingConfirmation) 
+      {
+        if (input_buf.at(0) == 'y' || input_buf.at(0) == 'Y')
+        {
+          current_stage = next_stage(current_stage);
+          worker_state = ThreadState::Idle;
+        } 
+        else if (input_buf.at(0) == 'n' || input_buf.at(0) == 'N')
+        {
+          glfwSetWindowShouldClose(window, true);
+        } 
+      } 
+      input_buf.fill(0);
+      reclaim_focus = true;
+    }
+    ImGui::PopItemWidth();
+        ImGui::SetItemDefaultFocus();
+    if (reclaim_focus)
+      ImGui::SetKeyboardFocusHere(-1);
   }
   ImGui::End();    
 }

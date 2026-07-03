@@ -122,13 +122,7 @@ namespace Reconstruction
     ctx.doors = std::move(parser.doors);
     ctx.windows = std::move(parser.windows);
     ctx.unit_scale = unit_scale;
-    
-    // auto house_bbox = calculate_bbox_2D(ctx.walls);
-    // if(ctx.unit_scale == 0.0)
-    // {
-    //   g_logger.push_message({"Invalid unit scale. Trying to detect it based on the box area", LogLevel::Warning});
-    //   ctx.unit_scale = detect_unit_scale(house_bbox.calculate_area());
-    // }
+
 
     g_logger.push_message({std::format(
         "DXF file data:\n unit scale: {} \n number of wall segments: {}\n number of door segments: {}\n number of window segments: {}",
@@ -229,21 +223,21 @@ namespace Reconstruction
       extrude_face(vertices, wall_indices, 0.f, ceil_height_meters, face);
     }
 
-    // auto door_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::DOOR; });
-    // for(const auto& face : door_faces)
-    // {
-    //   extrude_face(vertices, wall_indices, door_frac_top, ceil_height_meters, face);
-    //   triangulate_face(vertices, wall_indices, door_frac_top, true, face);
-    // }
+    auto door_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::DOOR; });
+    for(const auto& face : door_faces)
+    {
+      extrude_face(vertices, wall_indices, door_frac_top, ceil_height_meters, face);
+      triangulate_face(vertices, wall_indices, door_frac_top, true, face);
+    }
 
-    // auto window_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::WINDOW; });
-    // for(const auto& face : window_faces)
-    // {
-    //   extrude_face(vertices, wall_indices, 0.f, window_frac_bottom, face);
-    //   extrude_face(vertices, wall_indices, window_frac_top, ceil_height_meters, face);
-    //   triangulate_face(vertices, wall_indices, window_frac_bottom, true, face);
-    //   triangulate_face(vertices, wall_indices, window_frac_top, false, face);
-    // }
+    auto window_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::WINDOW; });
+    for(const auto& face : window_faces)
+    {
+      extrude_face(vertices, wall_indices, 0.f, window_frac_bottom, face);
+      extrude_face(vertices, wall_indices, window_frac_top, ceil_height_meters, face);
+      triangulate_face(vertices, wall_indices, window_frac_bottom, true, face);
+      triangulate_face(vertices, wall_indices, window_frac_top, false, face);
+    }
 
     auto floor_range = PrimitiveRange{ 0, static_cast<u32>(floor_indices.size()), MaterialType::Floor };
     auto all_indices = std::vector<u32>{};

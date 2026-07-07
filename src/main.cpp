@@ -165,9 +165,12 @@ static auto create_floor_face(const BoundingBox2D& house_bbox)
   return floor_face;
 }
 
-int main()
+int main(int argc, char** argv)
 {
-  g_config = load_config("p2s_config.json");
+  if (argc != 2)
+    throw std::runtime_error("Missing argument: <config>.json");
+
+  g_config = load_config(argv[1]);
 
   auto window_context = init_window_context(viewport_info.width, viewport_info.height);
  
@@ -179,7 +182,7 @@ int main()
   auto floor_texture = Texture::create_from_file("materials/interior_tiles/interior_tiles_diff_1k.jpg");
   auto wall_texture = Texture::create_from_file("materials/concrete_layers/concrete_layers_diff_1k.jpg");
   
-  g_logger.push_message({ std::format("Processing CAD file: {}", g_config.dxf_file.string()), LogLevel::Text });
+  g_logger.push_message({ std::format("Processing CAD file: {}", g_config.dxf_path.string()), LogLevel::Text });
   while (!glfwWindowShouldClose(window_context))
   {
     glfwPollEvents();
@@ -209,7 +212,7 @@ int main()
           worker.emplace([&] {
             try
             {
-              Reconstruction::primitives_extraction(ctx, g_config.dxf_file);
+              Reconstruction::primitives_extraction(ctx, g_config.dxf_path);
               Reconstruction::checkpoint_raw_segments(ctx.walls, ctx.doors, ctx.windows);
               worker_is_done = true;
             }
@@ -462,8 +465,8 @@ int main()
                                                     build_result.mesh_vertices.size(),
                                                     build_result.mesh_indices.data(),
                                                     build_result.mesh_indices.size());
-
-          auto gltf_path = "tmp" / g_config.dxf_file.filename().replace_extension("gltf");
+          
+          auto gltf_path = "tmp" / g_config.dxf_path.filename().replace_extension("gltf");
           export_to_gltf(build_result, gltf_path);
           g_logger.push_message({std::format("The exported model: {}", gltf_path.string()), LogLevel::Text});
           break;

@@ -1,7 +1,8 @@
 import bpy, math, os, mathutils, json
 
-GLTF_PATH = "/home/simone/Desktop/Plan2Scene/tmp/draftperson_Technical_Drawing_FLOOR_PLAN.gltf"
-CONFIG_PATH = "/home/simone/Desktop/Plan2Scene/materials.json"
+GLTF_PATH = "/home/simone/Desktop/Plan2Scene/tmp/Simple_House_Plan.gltf"
+HDRI_PATH = "/home/simone/Desktop/Plan2Scene/HDRIs/partly_cloudy_4k.hdr"
+CONFIG_PATH = "/home/simone/Desktop/Plan2Scene/blender_materials.json"
 OUTPUT_IMAGE = "/home/simone/Desktop/Plan2Scene/tmp/output.png"
 
 def load_image_node(nodes, filepath, colorspace='sRGB'):
@@ -143,7 +144,57 @@ def setup_material_nodes(mat, mat_config):
       # Indica a Cycles come gestire il displacement
       mat.cycles.displacement_method = 'BUMP' # Opzioni: 'BUMP', 'DISPLACEMENT', 'BOTH'
 
+def setup_world_hdri(hdri_path, strength=1.0, rotation_z=0.0):
+  abs_path = os.path.abspath(hdri_path)
+  if not os.path.exists(abs_path):
+    print(f"Warning: HDRI not found {abs_path}")
+    return
 
+  # Crea (o riusa) il World
+  world = bpy.data.worlds.get("World")
+  if world is None:
+    world = bpy.data.worlds.new("World")
+  bpy.context.scene.world = world
+
+  world.use_nodes = True
+  nodes = world.node_tree.nodes
+  links = world.node_tree.links
+  nodes.clear()
+
+  # Nodi base
+  node_output = nodes.new("ShaderNodeOutputWorld")
+  node_background = nodes.new("ShaderNodeBackground")
+  node_env_tex = nodes.new("ShaderNodeTexEnvironment")
+  node_mapping = nodes.new("ShaderNodeMapping")
+  node_texcoord = nodes.new("ShaderNodeTexCoord")
+
+  node_output.location = (400, 0)
+  node_background.location = (150, 0)
+  node_env_tex.location = (-100, 0)
+  node_mapping.location = (-350, 0)
+  node_texcoord.location = (-550, 0)
+
+  # Carica l'immagine HDR
+  img_name = os.path.basename(abs_path)
+  if img_name in bpy.data.images:
+      node_env_tex.image = bpy.data.images[img_name]
+  else:
+      node_env_tex.image = bpy.data.images.load(abs_path)
+
+  # Le HDRI vanno caricate come 'Non-Color' (di default Blender usa già lo spazio corretto per .hdr)
+  node_env_tex.image.colorspace_settings.name = 'Non-Color'
+
+  # Collegamenti
+  links.new(node_texcoord.outputs["Generated"], node_mapping.inputs["Vector"])
+  links.new(node_mapping.outputs["Vector"], node_env_tex.inputs["Vector"])
+  links.new(node_env_tex.outputs["Color"], node_background.inputs["Color"])
+  links.new(node_background.outputs["Background"], node_output.inputs["Surface"])
+
+  # Rotazione opzionale (utile per orientare il sole/skybox)
+  node_mapping.inputs["Rotation"].default_value[2] = math.radians(rotation_z)
+
+  # Intensità della luce ambientale
+  node_background.inputs["Strength"].default_value = strength
 
 def main():          
   # Clear the scene by deleting all objects
@@ -178,6 +229,8 @@ def main():
     print(f"Failed to import GLTF: {e}")
     exit(1)
 
+  setup_world_hdri(HDRI_PATH, strength=1.0, rotation_z=0.0)
+
   # ==========================================
   # Load materials from JSON configuration
   # =========================================
@@ -190,8 +243,7 @@ def main():
 
   for mat in bpy.data.materials:
     # Remove any suffixes (.001) that Blender adds in case of duplicates
-    # base_name = mat.name.split('.')[0] 
-    base_name = mat.name
+    base_name = mat.name.split('.')[0] 
     if base_name in config_data["materials"]:
       print(f"Applying material: {base_name}")
       setup_material_nodes(mat, config_data["materials"][base_name])

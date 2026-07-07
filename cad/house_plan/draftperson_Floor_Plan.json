@@ -1,0 +1,17 @@
+{
+  "dxf_filename": "draftperson_Floor_Plan.dxf",
+
+  "unit_scale": 0.01,
+
+  "snap_eps": 1e-3,
+  
+  "cluster_num_samples": 15,
+  
+  "cluster_eps": 2.0,
+  
+  "ceil_height": 10.0,
+  
+  "floor_texture_scaling": 4.0,
+  
+  "wall_texture_scaling": 4.0
+}

@@ -7,7 +7,7 @@
 
 struct Config 
 {
-  std::filesystem::path dxf_file;
+  std::filesystem::path dxf_path;
 
   f64 unit_scale;
 
@@ -24,4 +24,4 @@ struct Config
   f32 wall_texture_scaling;
 };
 
-Config load_config(std::string_view filename);
+Config load_config(std::string_view config_file);

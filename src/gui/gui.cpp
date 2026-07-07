@@ -229,7 +229,7 @@ void properties_panel()
   ImGui::SetNextWindowSize(ImVec2(300, 0), ImGuiCond_FirstUseEver);
   if(ImGui::Begin("Params"))
   {
-    ImGui::Text("DXF file: %s", g_config.dxf_file.string().data());
+    ImGui::Text("DXF file: %s", g_config.dxf_path.string().c_str());
     ImGui::Separator();
     if (ImGui::BeginTable("PipelineTable", 2, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_SizingFixedFit)) 
     {

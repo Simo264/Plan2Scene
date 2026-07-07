@@ -4,25 +4,28 @@
 #include <fstream>
 #include <format>
 
-Config load_config(std::string_view filename)
+Config load_config(std::string_view config_file)
 {
-  auto file = std::ifstream(filename.data());
+  auto file = std::ifstream(config_file.data());
   if (!file.is_open()) 
-    throw std::runtime_error(std::format("Error on opening configuration file: {}", filename));
+    throw std::runtime_error(std::format("Error on opening configuration file: {}", config_file));
 
   auto json = nlohmann::json{};
   file >> json;
 
+  auto filename = json.value("dxf_filename", "");
+  if(filename.empty())
+  throw std::runtime_error("Missing dxf input file");
+
   auto cfg = Config{};
 
-  cfg.dxf_file              = json.value("dxf_file", "");
-  if(cfg.dxf_file.empty())
-    throw std::runtime_error("Missing dxf input file");
+  auto config_dir = std::filesystem::path(config_file).parent_path();
+  cfg.dxf_path = config_dir / filename;
 
   cfg.unit_scale            = json.value("unit_scale", 1.0);
   cfg.snap_eps              = json.value("snap_eps", 1e-4);
   cfg.cluster_num_samples   = json.value("cluster_num_samples", 10);
-  cfg.cluster_eps           = json.value("cluster_eps", 0.1);
+  cfg.cluster_eps           = json.value("cluster_eps", 1.0);
   cfg.ceil_height           = json.value("ceil_height", 10.0f);
   cfg.floor_texture_scaling = json.value("floor_texture_scaling", 2.0f);
   cfg.wall_texture_scaling  = json.value("wall_texture_scaling", 2.0f);

@@ -108,12 +108,12 @@ namespace Reconstruction
   // Steps 
   // ============================
 
-  void primitives_extraction(ReconstructionContext& ctx, const std::filesystem::path& filename)
+  void primitives_extraction(ReconstructionContext& ctx, const std::filesystem::path& file)
   {
     auto parser = DRWParser{};
-    auto dxf = dxfRW(filename.string().c_str());
+    auto dxf = dxfRW(file.string().c_str());
     if (!dxf.read(&parser, false))
-      throw std::runtime_error(std::format("Error reading DXF file `{}` (code: {})", filename.string(), static_cast<i32>(dxf.getError())));
+      throw std::runtime_error(std::format("Error reading DXF file `{}` (code: {})", file.string(), static_cast<i32>(dxf.getError())));
 
     ctx.walls = std::move(parser.walls);
     ctx.doors = std::move(parser.doors);

@@ -7,7 +7,3 @@ build/
 venv/
 tmp/
 compile_commands.json
-
-*.csv
-*.png
-*.log

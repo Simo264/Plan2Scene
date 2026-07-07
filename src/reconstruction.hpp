@@ -48,7 +48,7 @@ bool stage_needs_confirmation(ReconstructionStage stage);
 namespace Reconstruction
 {
   void primitives_extraction(ReconstructionContext& ctx, 
-                             const std::filesystem::path& filename);
+                             const std::filesystem::path& file);
   void checkpoint_raw_segments(const std::vector<Segment>& walls, 
                                const std::vector<Segment>& doors, 
                                const std::vector<Segment>& windows);

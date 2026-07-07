@@ -28,12 +28,14 @@
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
 
- static auto viewport_info = ViewportInfo{
-   .width=window_width, 
-   .height=window_height, 
-   .screen_pos=glm::vec2{0, 0},
-   .aspect=static_cast<f32>(window_width) / static_cast<f32>(window_height)
- };
+static constexpr auto initial_window_width = 1024;
+static constexpr auto initial_window_height = 768;
+static auto viewport_info = ViewportInfo{
+  .width=initial_window_width, 
+  .height=initial_window_height, 
+  .screen_pos=glm::vec2{0, 0},
+  .aspect=static_cast<f32>(initial_window_width) / static_cast<f32>(initial_window_height)
+};
 
 static auto vertex_program = ShaderProgram{};
 static auto fragment_program = ShaderProgram{};
@@ -45,7 +47,7 @@ static auto fbo_depth_texture = Texture{};
 
 static auto light_position = glm::vec3{ 0.0f, 2.0f, 0.0f };
 static auto light_power = 700.0f; // in watt
-static auto camera = Camera(0.1f, 100.0f, 45.f, viewport_info.aspect);
+static auto camera = Camera(0.1f, 500.0f, 45.f, viewport_info.aspect);
 static auto static_mesh = std::unique_ptr<StaticMesh>{};
 static auto mesh_transform = Transformation{};
 
@@ -58,8 +60,6 @@ static auto worker = std::optional<std::jthread>{};
 static auto worker_is_done = std::atomic<bool>{ false };
 static auto build_result = ReconstructionResult{};
 static auto ctx = ReconstructionContext{};
-
-auto g_logger = Logger{};
 
 static void create_gl_pipeline_object(ShaderProgram& vertex_program, ShaderProgram& fragment_program, ProgramPipelineObject& pipeline)
 {
@@ -165,15 +165,9 @@ static auto create_floor_face(const BoundingBox2D& house_bbox)
   return floor_face;
 }
 
-int main(int argc, char* argv[])
+int main()
 {
-  if(argc != 2)
-    throw std::runtime_error("Usage: ./build/Plan2Scene <input.dxf>");
-  
-  auto file_path = std::filesystem::path(argv[1]);
-  auto filename = file_path.string();
-  if(!std::filesystem::exists(file_path))
-    throw std::runtime_error(std::format("Input file not found: {}", file_path.string()));
+  g_config = load_config("p2s_config.json");
 
   auto window_context = init_window_context(viewport_info.width, viewport_info.height);
  
@@ -185,7 +179,7 @@ int main(int argc, char* argv[])
   auto floor_texture = Texture::create_from_file("materials/interior_tiles/interior_tiles_diff_1k.jpg");
   auto wall_texture = Texture::create_from_file("materials/concrete_layers/concrete_layers_diff_1k.jpg");
   
-  g_logger.push_message({ std::format("Processing CAD file: {}", file_path.string()), LogLevel::Text });
+  g_logger.push_message({ std::format("Processing CAD file: {}", g_config.dxf_file.string()), LogLevel::Text });
   while (!glfwWindowShouldClose(window_context))
   {
     glfwPollEvents();
@@ -215,7 +209,7 @@ int main(int argc, char* argv[])
           worker.emplace([&] {
             try
             {
-              Reconstruction::primitives_extraction(ctx, file_path);
+              Reconstruction::primitives_extraction(ctx, g_config.dxf_file);
               Reconstruction::checkpoint_raw_segments(ctx.walls, ctx.doors, ctx.windows);
               worker_is_done = true;
             }
@@ -241,13 +235,13 @@ int main(int argc, char* argv[])
             {
               auto vertices_before = ctx.walls.size() * 2;
 
-              Reconstruction::vertex_snapping(ctx, snap_eps);
+              Reconstruction::vertex_snapping(ctx, g_config.snap_eps);
 
               auto vertices_after = ctx.hash.vertices().size();
               auto merged = vertices_before - vertices_after;
               g_logger.push_message({
                 std::format("{} vertices in -> {} vertices out ({} merged, eps={:.4f})",
-                vertices_before, vertices_after, merged, snap_eps),
+                vertices_before, vertices_after, merged, g_config.snap_eps),
                 LogLevel::Text});
 
               worker_is_done = true;
@@ -272,7 +266,7 @@ int main(int argc, char* argv[])
           worker.emplace([&] {
             try 
             {
-              Reconstruction::clusters_extraction(ctx, cluster_num_samples, cluster_eps);
+              Reconstruction::clusters_extraction(ctx, g_config.cluster_num_samples, g_config.cluster_eps);
               Reconstruction::checkpoint_clusters(ctx.sample_points, ctx.clusters);
               worker_is_done = true;
             } 
@@ -469,7 +463,7 @@ int main(int argc, char* argv[])
                                                     build_result.mesh_indices.data(),
                                                     build_result.mesh_indices.size());
 
-          auto gltf_path = "tmp" / file_path.filename().replace_extension("gltf");
+          auto gltf_path = "tmp" / g_config.dxf_file.filename().replace_extension("gltf");
           export_to_gltf(build_result, gltf_path);
           g_logger.push_message({std::format("The exported model: {}", gltf_path.string()), LogLevel::Text});
           break;
@@ -560,7 +554,7 @@ int main(int argc, char* argv[])
     // =======================================================
     // Properties, Scene panels
     // =======================================================
-    properties_panel(filename);
+    properties_panel();
     scene_panel(camera, mesh_transform, light_position, light_power);
     
     render_gui(); 

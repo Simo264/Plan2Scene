@@ -31,7 +31,7 @@ void console_panel(GLFWwindow* window,
 
 void mesh_details_overlay(const StaticMesh& mesh, glm::vec2 viewport_pos);
 
-void properties_panel(std::string_view file_name);
+void properties_panel();
 
 void scene_panel(Camera& camera, 
                  Transformation& mesh_transform, 

@@ -11,8 +11,9 @@ find_package(OpenGL REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
 find_package(poly2tri REQUIRED)
-find_package(clipper2 REQUIRED)
 find_package(cgal REQUIRED)
+find_package(nlohmann_json REQUIRED)
+
 
 include(FetchContent)
 set(FETCHCONTENT_QUIET FALSE)
@@ -33,6 +34,7 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/externals/SimpleDBSCAN/")
 add_executable(${PROJECT_NAME} 
   src/io/drw_parser.cpp
   src/io/gltf_exporter.cpp
+  src/io/config_loader.cpp
 
   src/graphics/buffer.cpp
   src/graphics/pipeline.cpp
@@ -62,12 +64,12 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
   dxfrw
   poly2tri::poly2tri
-  clipper2::clipper2
   CGAL::CGAL
 
   imgui::imgui
   tiny_gltf::tiny_gltf
   simple_dbscan::simple_dbscan
+  nlohmann_json::nlohmann_json
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${libdxfrw_SOURCE_DIR}/src)

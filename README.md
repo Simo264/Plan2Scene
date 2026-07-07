@@ -16,6 +16,26 @@
 
 ![screen 8](screenshots/img_8.png)
 
+## Configuration
+
+All program parameters are now readable from the JSON file **p2s.config.json**.
+It also contains the name of the DXF file to be processed, via the "dxf_file" field.
+
+Example of 'p2s.config.json':
+
+```json
+{
+  "dxf_file": "plan.dxf",
+  "unit_scale": 0.01,
+  "snap_eps": 1e-4,
+  "cluster_num_samples": 10,
+  "cluster_eps": 0.1,
+  "ceil_height_meters": 10.0,
+  "floor_texture_scaling": 2.0,
+  "wall_texture_scaling": 2.0
+}
+```
+
 ## Building and running the code
 
 Install Conan package manager with pip:
@@ -59,5 +79,9 @@ cmake --build ./build/ --parallel 8
 Run:
 
 ```bash
-./build/Plan2Scene <input.dxf>
+./build/Plan2Scene
+```
+
+```bash
+blender -b -P render_scene.py
 ```

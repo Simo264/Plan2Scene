@@ -1,5 +1,4 @@
 #include "drw_parser.hpp"
-#include "../log.hpp"
 
 #include <glm/ext/vector_double2.hpp>
 #include <glm/trigonometric.hpp>
@@ -13,6 +12,7 @@
 #include <map>
 
 #include "../geometry.hpp"
+#include "../globals.hpp"
 
 // Important: When you read data inside a block, those vertices are in local space. 
 // Inside the addInsert call you need to transform those vertices into world spaces. 
@@ -22,8 +22,6 @@ struct DoorBlockInfo
 {
   f64 radius;
 };
-
-extern Logger g_logger;
 
 static auto s_current_block_name = std::string{};
 static auto s_is_parsing_block = false;

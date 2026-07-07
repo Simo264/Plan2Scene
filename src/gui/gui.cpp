@@ -1,13 +1,11 @@
 #include "gui.hpp"
 
-#include "../log.hpp"
 #include "../graphics/texture.hpp"
 #include "../graphics/static_mesh.hpp"
 #include "../graphics/transformation.hpp"
 #include "../graphics/camera.hpp"
 #include "../globals.hpp"
 
-#include <format>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 
@@ -16,8 +14,6 @@
 #include <imgui_impl_opengl3.h>
 
 #include <glm/trigonometric.hpp>
-
-extern Logger g_logger;
 
 static void setup_catppuccin_mocha_theme() 
 {
@@ -228,12 +224,12 @@ ViewportInfo viewport_panel(Texture viewport_image, bool flip_viewport_image)
   return info;
 }
 
-void properties_panel(std::string_view file_name)
+void properties_panel()
 {
   ImGui::SetNextWindowSize(ImVec2(300, 0), ImGuiCond_FirstUseEver);
   if(ImGui::Begin("Params"))
   {
-    ImGui::Text("File: %s", file_name.data());
+    ImGui::Text("DXF file: %s", g_config.dxf_file.string().data());
     ImGui::Separator();
     if (ImGui::BeginTable("PipelineTable", 2, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_SizingFixedFit)) 
     {
@@ -249,11 +245,11 @@ void properties_panel(std::string_view file_name)
         ImGui::Text(fmt, val);
       };
 
-      add_row("Unit Scale", "%.4f", unit_scale);
-      add_row("Snap Epsilon", "%.6f", snap_eps);
-      add_row("Cluster Num Samples", "%d", cluster_num_samples);
-      add_row("Cluster Epsilon", "%.4f", cluster_eps);
-      add_row("Ceiling Height", "%.2f m", ceil_height_meters);
+      add_row("Unit Scale", "%.4f", g_config.unit_scale);
+      add_row("Snap Epsilon", "%.6f", g_config.snap_eps);
+      add_row("Cluster Num Samples", "%d", g_config.cluster_num_samples);
+      add_row("Cluster Epsilon", "%.4f", g_config.cluster_eps);
+      add_row("Ceiling Height", "%.2f m", g_config.ceil_height);
       ImGui::EndTable();
     }   
   }

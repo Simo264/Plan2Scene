@@ -429,8 +429,8 @@ void build_triangulated_face(std::vector<Vertex_PNT>& out_vertices,
       v.position.y = height; 
       v.position.z = static_cast<f32>(p->y); 
       v.normal = desired_normal;
-      v.text_coord.x = (v.position.x - face_bbox.min.x) / floor_texture_scaling; 
-      v.text_coord.y = (v.position.z - face_bbox.min.y) / floor_texture_scaling; 
+      v.text_coord.x = (v.position.x - face_bbox.min.x) / g_config.floor_texture_scaling; 
+      v.text_coord.y = (v.position.z - face_bbox.min.y) / g_config.floor_texture_scaling; 
       verts[i] = v;
     }
 
@@ -479,8 +479,8 @@ void extrude_face(std::vector<Vertex_PNT>& vertices,
 {
   constexpr glm::vec3 up(0.0f, 1.0f, 0.0f); 
   const auto& contour = face.vertices; 
-  auto v_bottom_uv = base_height / wall_texture_scaling; 
-  auto v_top_uv = top_height / wall_texture_scaling; 
+  auto v_bottom_uv = base_height / g_config.wall_texture_scaling; 
+  auto v_top_uv = top_height / g_config.wall_texture_scaling; 
 
   for (auto i = 0u; i < contour.size(); ++i)  
   { 
@@ -490,7 +490,7 @@ void extrude_face(std::vector<Vertex_PNT>& vertices,
     auto edge_len = glm::length(edge); 
     auto normal = glm::normalize(glm::cross(up, edge)); 
     auto u0 = 0.0f; 
-    auto u1 = edge_len / wall_texture_scaling; 
+    auto u1 = edge_len / g_config.wall_texture_scaling; 
 
     auto BL = Vertex_PNT{ {f32(p1.x), base_height, f32(p1.y)}, normal, {u0, v_bottom_uv} }; 
     auto BR = Vertex_PNT{ {f32(p2.x), base_height, f32(p2.y)}, normal, {u1, v_bottom_uv} }; 

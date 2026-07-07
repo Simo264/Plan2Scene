@@ -8,8 +8,6 @@
 #include <glm/geometric.hpp>
 #include <glm/common.hpp>
 
-#include <clipper2/clipper.h>
-
 f64 calculate_signed_area(const std::vector<glm::dvec2>& contour)
 {
   auto area = 0.0;

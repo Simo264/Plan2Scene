@@ -6,6 +6,7 @@
 #include <memory>
 #include <stdexcept>
 #include <atomic>
+#include <iostream>
 
 #include "types.hpp"
 #include "geometry.hpp"
@@ -28,8 +29,8 @@
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
 
-static constexpr auto initial_window_width = 1024;
-static constexpr auto initial_window_height = 768;
+static constexpr auto initial_window_width = 1280;
+static constexpr auto initial_window_height = 720; // aspect ratio 16:9
 static auto viewport_info = ViewportInfo{
   .width=initial_window_width, 
   .height=initial_window_height, 
@@ -176,9 +177,9 @@ int main(int argc, char** argv)
  
   create_gl_pipeline_object(vertex_program, fragment_program, pipeline);
 
-  camera.eye = { -2.5f, -1.6f, -4.6f };
-  camera.set_orientation(glm::radians(glm::vec3{ -170.f, -30.f, -180.f }));
- 
+  camera.eye = { 14.0f, -2.0f, 8.0f };
+  camera.set_orientation(glm::radians(glm::vec3{ 170.f, 40.f, 180.f }));
+  
   auto floor_texture = Texture::create_from_file("materials/interior_tiles/interior_tiles_diff_1k.jpg");
   auto wall_texture = Texture::create_from_file("materials/concrete_layers/concrete_layers_diff_1k.jpg");
   
@@ -507,7 +508,7 @@ int main(int argc, char** argv)
     }
     
     // =======================================================
-    // Model rendering (RenderMesh only)
+    // Model rendering
     // =======================================================
     if(current_stage == ReconstructionStage::RenderMesh && static_mesh)
     {

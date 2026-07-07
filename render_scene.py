@@ -1,6 +1,6 @@
 import bpy, math, os, mathutils, json
 
-GLTF_PATH = "/home/simone/Desktop/Plan2Scene/tmp/Simple_House_Plan.gltf"
+GLTF_PATH = "/home/simone/Desktop/Plan2Scene/tmp/draftperson_Floor_Plan.gltf"
 HDRI_PATH = "/home/simone/Desktop/Plan2Scene/HDRIs/partly_cloudy_4k.hdr"
 CONFIG_PATH = "/home/simone/Desktop/Plan2Scene/blender_materials.json"
 OUTPUT_IMAGE = "/home/simone/Desktop/Plan2Scene/tmp/output.png"
@@ -31,9 +31,6 @@ def setup_material_nodes(mat, mat_config):
   links = mat.node_tree.links
   nodes.clear()
 
-  # ==========================================
-  # Nodi Base
-  # ==========================================
   node_output = nodes.new("ShaderNodeOutputMaterial")
   node_principled = nodes.new("ShaderNodeBsdfPrincipled")
   node_mapping = nodes.new("ShaderNodeMapping")
@@ -47,11 +44,10 @@ def setup_material_nodes(mat, mat_config):
   links.new(node_texcoord.outputs["UV"], node_mapping.inputs["Vector"])
   links.new(node_principled.outputs["BSDF"], node_output.inputs["Surface"])
 
-  # Dizionario per tener traccia degli output da collegare alla fine
   mat_outputs = {}
 
   # ==========================================
-  # 1. Albedo (DIFF)
+  # Albedo
   # ==========================================
   if mat_config.get("albedo"):
     tex_albedo = load_image_node(nodes, mat_config["albedo"], 'sRGB')
@@ -61,7 +57,7 @@ def setup_material_nodes(mat, mat_config):
       mat_outputs['albedo'] = tex_albedo.outputs["Color"]
 
   # ==========================================
-  # 2. ARM (AO, Roughness, Metallic) Packed
+  # ARM (AO, Roughness, Metallic)
   # ==========================================
   if mat_config.get("arm"):
     tex_arm = load_image_node(nodes, mat_config["arm"], 'Non-Color')
@@ -69,7 +65,6 @@ def setup_material_nodes(mat, mat_config):
       tex_arm.location = (-600, 0)
       links.new(node_mapping.outputs["Vector"], tex_arm.inputs["Vector"])
       
-      # Separa i canali (Rosso=AO, Verde=Roughness, Blu=Metallic)
       node_sep = nodes.new("ShaderNodeSeparateColor")
       node_sep.location = (-350, -50)
       links.new(tex_arm.outputs["Color"], node_sep.inputs["Color"])
@@ -79,7 +74,7 @@ def setup_material_nodes(mat, mat_config):
       links.new(node_sep.outputs["Blue"], node_principled.inputs["Metallic"])
 
   # ==========================================
-  # 3. AO Individuale (Se presente, sovrascrive quello dell'ARM)
+  # Ambient Occlusion - AO
   # ==========================================
   if mat_config.get("ao"):
     tex_ao = load_image_node(nodes, mat_config["ao"], 'Non-Color')
@@ -89,7 +84,7 @@ def setup_material_nodes(mat, mat_config):
       mat_outputs['ao'] = tex_ao.outputs["Color"]
 
   # ==========================================
-  # 4. Roughness Individuale (Sovrascrive l'ARM)
+  # Roughness
   # ==========================================
   if mat_config.get("rough"):
     tex_roughness = load_image_node(nodes, mat_config["rough"], 'Non-Color')
@@ -99,7 +94,7 @@ def setup_material_nodes(mat, mat_config):
       links.new(tex_roughness.outputs["Color"], node_principled.inputs["Roughness"])
 
   # ==========================================
-  # 5. Unione Albedo + AO (Moltiplicazione)
+  # Albedo + AO
   # ==========================================
   if 'albedo' in mat_outputs and 'ao' in mat_outputs:
     node_mix = nodes.new("ShaderNodeMixRGB")
@@ -114,7 +109,7 @@ def setup_material_nodes(mat, mat_config):
     links.new(mat_outputs['albedo'], node_principled.inputs["Base Color"])
 
   # ==========================================
-  # 6. Normal Map (NOR_GL o NORM_DX)
+  # Normal map
   # ==========================================
   if mat_config.get("normal"):
     tex_normal = load_image_node(nodes, mat_config["normal"], 'Non-Color')
@@ -122,13 +117,14 @@ def setup_material_nodes(mat, mat_config):
       tex_normal.location = (-600, -400)
       node_normal_map = nodes.new("ShaderNodeNormalMap")
       node_normal_map.location = (-250, -400)
+      node_normal_map.inputs["Strength"].default_value = mat_config.get("normal_strength", 1.5)
       
       links.new(node_mapping.outputs["Vector"], tex_normal.inputs["Vector"])
       links.new(tex_normal.outputs["Color"], node_normal_map.inputs["Color"])
       links.new(node_normal_map.outputs["Normal"], node_principled.inputs["Normal"])
 
   # ==========================================
-  # 7. Displacement (DISP)
+  # Displacement map 
   # ==========================================
   if mat_config.get("disp"):
     tex_disp = load_image_node(nodes, mat_config["disp"], 'Non-Color')
@@ -136,13 +132,14 @@ def setup_material_nodes(mat, mat_config):
       tex_disp.location = (-600, -650)
       node_disp = nodes.new("ShaderNodeDisplacement")
       node_disp.location = (-250, -650)
+      node_disp.inputs["Scale"].default_value = mat_config.get("disp_scale", 0.05)
+      node_disp.inputs["Midlevel"].default_value = 0.5
       
       links.new(node_mapping.outputs["Vector"], tex_disp.inputs["Vector"])
       links.new(tex_disp.outputs["Color"], node_disp.inputs["Height"])
       links.new(node_disp.outputs["Displacement"], node_output.inputs["Displacement"])
       
-      # Indica a Cycles come gestire il displacement
-      mat.cycles.displacement_method = 'BUMP' # Opzioni: 'BUMP', 'DISPLACEMENT', 'BOTH'
+      mat.cycles.displacement_method = 'BOTH' # Opzioni: 'BUMP', 'DISPLACEMENT', 'BOTH'
 
 def setup_world_hdri(hdri_path, strength=1.0, rotation_z=0.0):
   abs_path = os.path.abspath(hdri_path)
@@ -150,7 +147,6 @@ def setup_world_hdri(hdri_path, strength=1.0, rotation_z=0.0):
     print(f"Warning: HDRI not found {abs_path}")
     return
 
-  # Crea (o riusa) il World
   world = bpy.data.worlds.get("World")
   if world is None:
     world = bpy.data.worlds.new("World")
@@ -196,7 +192,7 @@ def setup_world_hdri(hdri_path, strength=1.0, rotation_z=0.0):
   # Intensità della luce ambientale
   node_background.inputs["Strength"].default_value = strength
 
-def main():          
+def main():  
   # Clear the scene by deleting all objects
   bpy.ops.object.select_all(action='SELECT')
   bpy.ops.object.delete()
@@ -215,20 +211,24 @@ def main():
     print("No GPU found! Falling back to CPU rendering.")
     scene.cycles.device = 'CPU'
       
-  scene.cycles.samples = 32
+  scene.cycles.samples = 128
+  scene.cycles.use_denoising = True
+  # aspect ratio 16:9
+  # - 640 x 360
+  # - 960 x 540
+  # - 1280 x 720
   scene.render.resolution_x = 1280
-  scene.render.resolution_y = 720 
+  scene.render.resolution_y = 720
   scene.render.filepath = OUTPUT_IMAGE
 
   # ==========================================
   # Import GLTF model
   # ==========================================
-  try:
-    bpy.ops.import_scene.gltf(filepath=GLTF_PATH)
-  except Exception as e:
-    print(f"Failed to import GLTF: {e}")
-    exit(1)
+  bpy.ops.import_scene.gltf(filepath=GLTF_PATH)
 
+  # ==========================================
+  # Load environment map - HDRI
+  # ==========================================
   setup_world_hdri(HDRI_PATH, strength=1.0, rotation_z=0.0)
 
   # ==========================================
@@ -256,23 +256,24 @@ def main():
   cam_data = bpy.data.cameras.new('MainCamera')
   cam_data.lens_unit = 'FOV'
   cam_data.angle_y = math.radians(60)
+  
   cam_obj = bpy.data.objects.new('MainCamera', cam_data)
   bpy.context.collection.objects.link(cam_obj)
   scene.camera = cam_obj
-
-  cam_obj.location = (0.0, 0.0, 0.0)
-  rot_gl = mathutils.Euler((math.radians(-180.0), math.radians(-30.0), math.radians(-180.0)), 'XYZ').to_matrix()
   
-  mat_gl_to_blender = mathutils.Matrix.Rotation(math.radians(90), 3, 'X')
-  rot_blender_base = mat_gl_to_blender @ rot_gl
-  mat_local_pitch = mathutils.Matrix.Rotation(math.radians(0), 3, 'X')
-  rot_blender_final = rot_blender_base @ mat_local_pitch
-  cam_obj.rotation_euler = rot_blender_final.to_euler()
+  cam_obj.location = (3, 30, 3.0)
+  cam_obj.rotation_euler = mathutils.Euler((
+    math.radians(80),
+    math.radians(0), 
+    math.radians(-185)
+  ), 'XYZ')
+  bpy.context.view_layer.update()
 
 
   # ==========================================
   # Lighting setup (directional light)
   # ==========================================
+
   light_data = bpy.data.lights.new(name="IndoorLight", type='POINT')
   light_data.energy = 700.0
   light_data.color = (1.0, 0.95, 0.88)
@@ -280,6 +281,14 @@ def main():
   light_obj = bpy.data.objects.new(name="IndoorLight", object_data=light_data)
   light_obj.location = (0.0, 0.0, 0.5) 
   bpy.context.collection.objects.link(light_obj)
+
+  sun_data = bpy.data.lights.new(name="KeyLight", type='SUN')
+  sun_data.energy = 2.5
+  sun_data.angle = math.radians(2)  # ombre più nitide
+  sun_obj = bpy.data.objects.new(name="KeyLight", object_data=sun_data)
+  sun_obj.rotation_euler = (math.radians(60), 0, math.radians(35))  # angolazione radente
+  bpy.context.collection.objects.link(sun_obj)
+
 
   # ==========================================
   # Start rendering

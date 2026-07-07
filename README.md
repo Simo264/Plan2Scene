@@ -1,20 +1,16 @@
 ## Screenshots
 
-![screen 1](screenshots/img_1.png)
+![primitives_extraction](screenshots/primitives_extraction.png)
 
-![screen 2](screenshots/img_2.png)
+![clustering](screenshots/clustering.png)
 
-![screen 3](screenshots/img_3.png)
+![faces_extraction](screenshots/faces_extraction.png)
 
-![screen 4](screenshots/img_4.png)
+![preview_textured_mesh](screenshots/preview_textured_mesh.png)
 
-![screen 5](screenshots/img_5.png)
+![preview_mesh_with_lighting](screenshots/preview_mesh_with_lighting.png)
 
-![screen 6](screenshots/img_6.png)
 
-![screen 7](screenshots/img_7.png)
-
-![screen 8](screenshots/img_8.png)
 
 ## Configuration
 

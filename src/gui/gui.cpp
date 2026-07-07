@@ -358,12 +358,15 @@ void console_panel(GLFWwindow* window, ReconstructionStage& current_stage, std::
     }
     ImGui::EndChild();
 
-    // if (worker_state == ThreadState::WaitingConfirmation)
-    // {
-    //   current_stage = next_stage(current_stage);
-    //   worker_state = ThreadState::Idle;
-    // }
-    
+#define BYPASS_CONFIRM
+
+#ifdef BYPASS_CONFIRM
+  if (worker_state == ThreadState::WaitingConfirmation)
+  {
+    current_stage = next_stage(current_stage);
+    worker_state = ThreadState::Idle;
+  }
+#else
     static auto input_buf = std::array<char, 2>{};
     ImGui::PushItemWidth(-1);
     auto reclaim_focus = false;
@@ -385,9 +388,10 @@ void console_panel(GLFWwindow* window, ReconstructionStage& current_stage, std::
       reclaim_focus = true;
     }
     ImGui::PopItemWidth();
-        ImGui::SetItemDefaultFocus();
+    ImGui::SetItemDefaultFocus();
     if (reclaim_focus)
       ImGui::SetKeyboardFocusHere(-1);
+#endif
   }
   ImGui::End();    
 }

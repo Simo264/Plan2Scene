@@ -180,7 +180,7 @@ int main(int argc, char** argv)
   camera.eye = { 14.0f, -2.0f, 8.0f };
   camera.set_orientation(glm::radians(glm::vec3{ 170.f, 40.f, 180.f }));
   
-  auto floor_texture = Texture::create_from_file("materials/interior_tiles/interior_tiles_diff_1k.jpg");
+  auto floor_texture = Texture::create_from_file("materials/patio_tiles/patio_tiles_diff_1k.jpg");
   auto wall_texture = Texture::create_from_file("materials/concrete_layers/concrete_layers_diff_1k.jpg");
   
   g_logger.push_message({ std::format("Processing CAD file: {}", g_config.dxf_path.string()), LogLevel::Text });

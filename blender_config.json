@@ -1,0 +1,63 @@
+{
+  "rendering": {
+    "samples": 128,
+    "resolution_x": 1280,
+    "resolution_y": 720,
+    "output_image": "tmp/output.png"
+  },
+  "scene": {
+    "gltf_path": "tmp/draftperson_Floor_Plan.gltf",
+    "hdri_path": "HDRIs/partly_cloudy_4k.hdr",
+    "hdri_intensity": 1.0,
+    "camera": {
+      "location": [3.0, 30.0, 3.0],
+      "rotation_degrees": [80.0, 0.0, -185.0],
+      "fov_degrees": 60.0
+    },
+    "lights": {
+      "point": {
+        "energy": 700.0,
+        "color": [1.0, 0.95, 0.88],
+        "shadow_soft_size": 0.15,
+        "location": [0.0, 0.0, 0.5]
+      },
+      "sun": {
+        "energy": 2.5,
+        "angle_degrees": 2.0,
+        "rotation_degrees": [60.0, 0.0, 35.0]
+      }
+    }
+  },
+  "materials": {
+    "Floor_Mat": {
+      "albedo": "materials/patio_tiles/patio_tiles_diff_1k.jpg",
+      "base_color": [0.8, 0.8, 0.8],
+      "normal": "materials/patio_tiles/patio_tiles_nor_gl_1k.jpg",
+      "normal_strength": 1.5,
+      "roughness": "materials/patio_tiles/patio_tiles_rough_1k.jpg",
+      "roughness_value": 0.5,
+      "metallic": "materials/patio_tiles/patio_tiles_metallic_1k.jpg",
+      "metallic_value": 0.0,
+      "displacement": "materials/patio_tiles/patio_tiles_disp_1k.jpg",
+      "disp_scale": 0.05,
+      "ao": "materials/patio_tiles/patio_tiles_ao_1k.jpg",
+      "ao_mix_factor": 1.0,
+      "arm": "materials/patio_tiles/patio_tiles_arm_1k.jpg"
+    },
+    "Wall_And_Ceil_Mat": {
+      "albedo": "materials/beige_wall/beige_wall_001_diff_1k.jpg",
+      "normal": "materials/beige_wall/beige_wall_001_nor_gl_1k.jpg",
+      "normal_strength": 1.2,
+      "roughness": "materials/beige_wall/beige_wall_001_rough_1k.jpg",
+      "displacement": "materials/beige_wall/beige_wall_001_disp_1k.jpg",
+      "disp_scale": 0.03,
+      "ao": "materials/beige_wall/beige_wall_001_ao_1k.jpg",
+      "arm": "materials/beige_wall/beige_wall_001_arm_1k.jpg"
+    },
+    "Simple_Material": {
+      "base_color": [0.2, 0.6, 0.9],
+      "roughness_value": 0.4,
+      "metallic_value": 0.0
+    }
+  }
+}

@@ -61,11 +61,11 @@ void export_to_gltf(const ReconstructionResult& result,
   // Create materials
   // ==========================================
   auto mat_floor = tinygltf::Material{};
-  mat_floor.name = "FloorMaterial";
+  mat_floor.name = "Floor_Mat";
   model.materials.push_back(std::move(mat_floor)); // Index 0
 
   auto mat_wall = tinygltf::Material{};
-  mat_wall.name = "WallMaterial";
+  mat_wall.name = "Wall_And_Ceil_Mat";
   model.materials.push_back(std::move(mat_wall)); // Index 1
 
 
@@ -141,7 +141,7 @@ void export_to_gltf(const ReconstructionResult& result,
   // Primitive and accessor for indices
   // ==========================================
   auto mesh = tinygltf::Mesh{};
-  mesh.name = "RoomModel";
+  mesh.name = "HouseModel";
   for (const auto& prim_range : result.primitives) 
   {
     auto acc_idx = tinygltf::Accessor{};
@@ -162,9 +162,9 @@ void export_to_gltf(const ReconstructionResult& result,
     primitive.mode = TINYGLTF_MODE_TRIANGLES;
 
     if (prim_range.material == MaterialType::Floor) 
-      primitive.material = 0; // "FloorMaterial"
+      primitive.material = 0; // "Floor_Mat"
     else 
-      primitive.material = 1; // "WallMaterial"
+      primitive.material = 1; // "Wall_And_Ceil_Mat"
 
     mesh.primitives.push_back(std::move(primitive));
   }

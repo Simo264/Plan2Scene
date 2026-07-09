@@ -6,7 +6,6 @@
 #include <memory>
 #include <stdexcept>
 #include <atomic>
-#include <iostream>
 
 #include "types.hpp"
 #include "geometry.hpp"

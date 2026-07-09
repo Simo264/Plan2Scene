@@ -74,6 +74,14 @@ cmake --build ./build/ --parallel 8
 
 ## Run
 
+Before execute the program, you need to create and activate the Python virtual environment:
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install pandas matplotlib
+```
+
 The program accepts a JSON configuration file as an argument:
 
 ```bash

@@ -69,8 +69,14 @@ We are ready to export in GLTF format.
 
 ## Photorealistic rendering
 
-Textures coordinates will already be calculated during the mesh creation phase together with the calculation of normals. 
+The final 3D model is exported as a GLTF file containing vertex positions, normals, and texture coordinates (UV).
+It does not include any material definition inside the file.
 
-The renderer to use is Cycles.
+The photorealistic rendering pipeline is implemented using Blender and its Python API (bpy).
+The render engine used is Cycles, which provides physically‑based ray tracing for high‑quality results.
 
-The material textures will then be taken from the polyheaven site. I can define them directly or within my C++ program or, better yet, do this python script association, so maybe in the future we could change the textures (and consequently the materials) on the fly.
+The rendering process is driven by a JSON configuration file that centralises all scene parameters.
+This file specifies: rendering settings, scene assets, camera parameters, lighting setup, and material definitions.
+
+A dedicated Python script (render_scene.py) reads the configuration, sets up the Blender scene, assigns materials and textures, and launches the rendering in headless mode.
+All texture images (albedo, normal, roughness, etc.) are expected to be provided as separate files, typically sourced from libraries such as Poly Haven, and are applied to the corresponding material slots using the GLTF material names as keys.

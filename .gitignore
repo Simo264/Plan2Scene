@@ -2,6 +2,7 @@
 .continue/
 .zed/
 .vscode/
+__pycache__/
 
 build/
 venv/

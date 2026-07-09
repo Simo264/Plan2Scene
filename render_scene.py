@@ -26,8 +26,6 @@ CONFIG_JSON = os.path.join(PROJECT_ROOT, "blender_config.json")
 # - 640 x 360
 # - 960 x 540
 # - 1280 x 720
-# IMAGE_RESOLUTION_W = 640;
-# IMAGE_RESOLUTION_H = 360;
 
 def main():
   # ==========================================
@@ -37,6 +35,7 @@ def main():
     print(f"Config file not found: {CONFIG_JSON}")
     return
 
+  print(f"LOADING CONFIG: {CONFIG_JSON}")
   with open(CONFIG_JSON, 'r') as f:
     config = json.load(f)
 
@@ -63,7 +62,8 @@ def main():
   point_params = lights["point"]
   sun_params = lights["sun"]
 
-  # setup blender
+  # blender setup
+  
   clear_scene()
   
   setup_rendering_engine(samples, res_x, res_y, output_path)
@@ -78,7 +78,6 @@ def main():
 
   setup_lights(point_params, sun_params)
 
-  # Start rendering
   bpy.ops.render.render(write_still=True)
 
 if __name__ == "__main__":

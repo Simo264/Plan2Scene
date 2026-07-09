@@ -3,7 +3,7 @@
     "samples": 128,
     "resolution_x": 1280,
     "resolution_y": 720,
-    "output_image": "tmp/output.png"
+    "output_image": "tmp/draftperson_Floor_Plan_cycles.png"
   },
   "scene": {
     "gltf_path": "tmp/draftperson_Floor_Plan.gltf",

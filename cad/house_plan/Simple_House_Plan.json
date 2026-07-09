@@ -1,17 +1,17 @@
 {
   "dxf_filename": "Simple_House_Plan.dxf",
 
-  "unit_scale": 0.5,
+  "unit_scale": 0.1,
 
   "snap_eps": 1e-4,
   
   "cluster_num_samples": 10,
   
-  "cluster_eps": 10.0,
+  "cluster_eps": 1.0,
   
-  "ceil_height": 10.0,
+  "ceil_height": 4.0,
   
-  "floor_texture_scaling": 4.0,
+  "floor_texture_scaling": 2.0,
   
   "wall_texture_scaling": 4.0
 }

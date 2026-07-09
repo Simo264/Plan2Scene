@@ -47,7 +47,10 @@ static auto fbo_depth_texture = Texture{};
 
 static auto light_position = glm::vec3{ 0.0f, 2.0f, 0.0f };
 static auto light_power = 700.0f; // in watt
+
 static auto camera = Camera(0.1f, 500.0f, 45.f, viewport_info.aspect);
+static constexpr auto camera_speed = 0.1f;
+
 static auto static_mesh = std::unique_ptr<StaticMesh>{};
 static auto mesh_transform = Transformation{};
 
@@ -111,7 +114,7 @@ static void create_gl_pipeline_object(ShaderProgram& vertex_program, ShaderProgr
 
 static void handle_camera_input(GLFWwindow* window, Camera& camera)
 {
-  constexpr auto velocity = 0.1f;
+  constexpr auto velocity = camera_speed;
   
   if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)    camera.rotate_pitch(+glm::radians(1.0f));
   if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)  camera.rotate_pitch(-glm::radians(1.0f));

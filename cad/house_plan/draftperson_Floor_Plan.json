@@ -11,7 +11,7 @@
   
   "ceil_height": 10.0,
   
-  "floor_texture_scaling": 4.0,
+  "floor_texture_scaling": 8.0,
   
-  "wall_texture_scaling": 4.0
+  "wall_texture_scaling": 8.0
 }

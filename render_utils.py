@@ -27,16 +27,19 @@ def setup_rendering_engine(samples, resolution_x, resolution_y, output_path):
   scene.render.resolution_x = resolution_x
   scene.render.resolution_y = resolution_y
   scene.render.filepath = output_path
-  
-  print(f"Rendering engine set: {scene.cycles.device}, samples={samples}, resolution={resolution_x}x{resolution_y}")
+
+  print(f"RENDER ENGINE: {scene.cycles.device}, samples={samples}, resolution={resolution_x}x{resolution_y}")
+  print(f"OUTPUT IMAGE : {os.path.abspath(output_path)}")
 
 def import_gltf(filepath):
   if not os.path.isabs(filepath):
     filepath = os.path.join(PROJECT_ROOT, filepath)
-  if not os.path.exists(filepath):
-    print(f"GLTF file not found: {filepath}")
+  abs_path = os.path.abspath(filepath)
+  if not os.path.exists(abs_path):
+    print(f"GLTF file not found: {abs_path}")
     return
-  bpy.ops.import_scene.gltf(filepath=filepath)
+  print(f"IMPORT GLTF  : {abs_path}")
+  bpy.ops.import_scene.gltf(filepath=abs_path)
 
 def setup_camera(location, rotation, fov_degrees):
   cam_data = bpy.data.cameras.new('MainCamera')
@@ -77,6 +80,7 @@ def setup_world_hdri(hdri_path, strength=1.0):
     print(f"Warning: HDRI not found {abs_path}")
     return
 
+  print(f"HDRI IMAGE   : {abs_path} (intensity={strength})")
   world = bpy.data.worlds.get("World")
   if world is None:
     world = bpy.data.worlds.new("World")
@@ -148,6 +152,8 @@ def load_image_node(nodes, imagepath, colorspace='sRGB'):
   return node_tex
 
 def setup_material_nodes(mat, mat_config):
+  mat_name = mat.name
+  print(f"  Configuring material: '{mat_name}'")
   nodes, links, node_principled, node_output, node_mapping = _setup_base_nodes(mat)
 
   albedo_output = _handle_albedo(nodes, links, node_mapping, node_principled, mat_config)
@@ -156,8 +162,6 @@ def setup_material_nodes(mat, mat_config):
   _mix_albedo_ao(nodes, links, albedo_output, ao_output, node_principled, mat_config)
   _handle_normal(nodes, links, node_mapping, node_principled, mat_config)
   _handle_displacement(nodes, links, node_mapping, node_output, mat, mat_config)
-
-
 
 
 # ==========================================
@@ -189,17 +193,18 @@ def _handle_albedo(nodes, links, node_mapping, node_principled, mat_config):
   albedo_path = mat_config.get("albedo")
   base_color = mat_config.get("base_color", [1.0, 1.0, 1.0])
   if albedo_path:
+    print(f"    - Albedo texture: {albedo_path}")
     tex_albedo = load_image_node(nodes, albedo_path, 'sRGB')
     if tex_albedo:
       tex_albedo.location = (-600, 300)
       links.new(node_mapping.outputs["Vector"], tex_albedo.inputs["Vector"])
       return tex_albedo.outputs["Color"]
     else:
-      print("Failed to load albedo texture: `{albedo}`. Using default base color.")
+      print(f"    - Albedo texture NOT FOUND, fallback to base color {base_color}")
       node_principled.inputs["Base Color"].default_value = (*base_color, 1.0)
       return None
   else:
-    print("No albedo texture specified. Using default base color.")
+    print(f"    - No albedo texture, using base color {base_color}")
     node_principled.inputs["Base Color"].default_value = (*base_color, 1.0)
     return None
 
@@ -217,6 +222,7 @@ def _handle_arm_or_single(nodes, links, node_mapping, node_principled, mat_confi
   metallic_output = None
 
   if arm_path:
+    print(f"    - Using ARM texture: {arm_path}")
     tex_arm = load_image_node(nodes, arm_path, 'Non-Color')
     if tex_arm:
       tex_arm.location = (-600, 0)
@@ -227,34 +233,53 @@ def _handle_arm_or_single(nodes, links, node_mapping, node_principled, mat_confi
       ao_output = node_sep.outputs["Red"]
       roughness_output = node_sep.outputs["Green"]
       metallic_output = node_sep.outputs["Blue"]
-  else:
-    print("No arm texture provided.")
-    # AO
+      print("      - ARM: AO=R, Roughness=G, Metallic=B")
+    else:
+      print("      - ARM texture NOT FOUND, fallback to individual channels/values")
+      arm_path = None 
+
+  if not arm_path:
+    # Ambient occlusion - AO
     if ao_path:
+      print(f"    - AO texture: {ao_path}")
       tex_ao = load_image_node(nodes, ao_path, 'Non-Color')
       if tex_ao:
         tex_ao.location = (-600, 150)
         links.new(node_mapping.outputs["Vector"], tex_ao.inputs["Vector"])
         ao_output = tex_ao.outputs["Color"]
+      else:
+        print("      - AO texture NOT FOUND, no AO applied")
+    else:
+      print("    - No AO texture, no AO applied")
 
     # Roughness
     if roughness_path:
+      print(f"    - Roughness texture: {roughness_path}")
       tex_rough = load_image_node(nodes, roughness_path, 'Non-Color')
       if tex_rough:
         tex_rough.location = (-600, -150)
         links.new(node_mapping.outputs["Vector"], tex_rough.inputs["Vector"])
         roughness_output = tex_rough.outputs["Color"]
+      else:
+        print(f"      - Roughness texture NOT FOUND, using value {roughness_val}")
+        node_principled.inputs["Roughness"].default_value = roughness_val
     else:
+      print(f"    - No roughness texture, using value {roughness_val}")
       node_principled.inputs["Roughness"].default_value = roughness_val
-    
+
     # Metallic
     if metallic_path:
+      print(f"    - Metallic texture: {metallic_path}")
       tex_metallic = load_image_node(nodes, metallic_path, 'Non-Color')
       if tex_metallic:
         tex_metallic.location = (-600, -300)
         links.new(node_mapping.outputs["Vector"], tex_metallic.inputs["Vector"])
         metallic_output = tex_metallic.outputs["Color"]
+      else:
+        print(f"      - Metallic texture NOT FOUND, using value {metallic_val}")
+        node_principled.inputs["Metallic"].default_value = metallic_val
     else:
+      print(f"    - No metallic texture, using value {metallic_val}")
       node_principled.inputs["Metallic"].default_value = metallic_val
 
   if roughness_output:
@@ -267,6 +292,7 @@ def _handle_arm_or_single(nodes, links, node_mapping, node_principled, mat_confi
 def _mix_albedo_ao(nodes, links, albedo_output, ao_output, node_principled, mat_config):
   if albedo_output is not None and ao_output is not None:
     ao_mix_factor = mat_config.get("ao_mix_factor", 1.0)
+    print(f"    - Mixing Albedo with AO (factor={ao_mix_factor})")
     node_mix = nodes.new("ShaderNodeMixRGB")
     node_mix.blend_type = 'MULTIPLY'
     node_mix.inputs["Fac"].default_value = ao_mix_factor
@@ -275,12 +301,16 @@ def _mix_albedo_ao(nodes, links, albedo_output, ao_output, node_principled, mat_
     links.new(ao_output, node_mix.inputs["Color2"])
     links.new(node_mix.outputs["Color"], node_principled.inputs["Base Color"])
   elif albedo_output is not None:
+    print("    - No AO to mix, using Albedo directly")
     links.new(albedo_output, node_principled.inputs["Base Color"])
+  else:
+    print("    - No Albedo, base color already set")
 
 def _handle_normal(nodes, links, node_mapping, node_principled, mat_config):
   normal_path = mat_config.get("normal")
   normal_strength = mat_config.get("normal_strength", 1.5)
   if normal_path:
+    print(f"    - Normal map: {normal_path} (strength={normal_strength})")
     tex_normal = load_image_node(nodes, normal_path, 'Non-Color')
     if tex_normal:
       tex_normal.location = (-600, -400)
@@ -290,11 +320,16 @@ def _handle_normal(nodes, links, node_mapping, node_principled, mat_config):
       links.new(node_mapping.outputs["Vector"], tex_normal.inputs["Vector"])
       links.new(tex_normal.outputs["Color"], node_normal_map.inputs["Color"])
       links.new(node_normal_map.outputs["Normal"], node_principled.inputs["Normal"])
+    else:
+      print("      - Normal map texture NOT FOUND, skipping")
+  else:
+    print("    - No normal map")
 
 def _handle_displacement(nodes, links, node_mapping, node_output, mat, mat_config):
   disp_path = mat_config.get("displacement")
   disp_scale = mat_config.get("disp_scale", 0.05)
   if disp_path:
+    print(f"    - Displacement map: {disp_path} (scale={disp_scale})")
     tex_disp = load_image_node(nodes, disp_path, 'Non-Color')
     if tex_disp:
       tex_disp.location = (-600, -650)
@@ -305,7 +340,15 @@ def _handle_displacement(nodes, links, node_mapping, node_output, mat, mat_confi
       links.new(node_mapping.outputs["Vector"], tex_disp.inputs["Vector"])
       links.new(tex_disp.outputs["Color"], node_disp.inputs["Height"])
       links.new(node_disp.outputs["Displacement"], node_output.inputs["Displacement"])
+      
       if hasattr(mat.cycles, 'displacement_method'):
         mat.cycles.displacement_method = 'BOTH'
+        print("      - Displacement method set to 'BOTH'")
+      else:
+        print("      - Displacement_method not available, using default")
+    else:
+      print("      - Displacement texture NOT FOUND, skipping")
+  else:
+    print("    - No displacement map")
 
 

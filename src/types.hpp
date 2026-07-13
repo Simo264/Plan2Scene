@@ -121,7 +121,7 @@ enum class OpeningType { Door, Window };
 struct OpeningInstance
 {
   OpeningType type; // DOOR or WINDOW
-  glm::dvec3 center;
+  glm::vec3 center;
   f32 width;
   f32 height;
   f32 thickness;

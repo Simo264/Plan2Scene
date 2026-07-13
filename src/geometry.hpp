@@ -179,4 +179,4 @@ OpeningInstance compute_opening_instance(const Face& face,
                                          f32 z_max);
 
 
-void center_mesh(std::vector<Vertex_PNT>& vertices);
+void center_mesh(std::vector<Vertex_PNT>& vertices, std::vector<OpeningInstance>& openings);

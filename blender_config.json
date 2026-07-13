@@ -1,12 +1,12 @@
 {
   "rendering": {
-    "samples": 128,
-    "resolution_x": 1280,
-    "resolution_y": 720,
-    "output_image": "tmp/draftperson_Floor_Plan_cycles.png"
+    "samples": 16,
+    "resolution_x": 640,
+    "resolution_y": 360,
+    "output_image": "out/draftperson_Floor_Plan_cycles.png"
   },
   "scene": {
-    "gltf_path": "tmp/draftperson_Floor_Plan.gltf",
+    "gltf_path": "out/draftperson_Floor_Plan.gltf",
     "hdri_path": "HDRIs/partly_cloudy_4k.hdr",
     "hdri_intensity": 1.0,
     "camera": {

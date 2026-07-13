@@ -41,6 +41,9 @@ def import_gltf(filepath):
   print(f"IMPORT GLTF  : {abs_path}")
   bpy.ops.import_scene.gltf(filepath=abs_path)
 
+
+
+
 def setup_camera(location, rotation, fov_degrees):
   cam_data = bpy.data.cameras.new('MainCamera')
   cam_data.lens_unit = 'FOV'

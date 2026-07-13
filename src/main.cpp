@@ -463,16 +463,22 @@ int main(int argc, char** argv)
         {
           g_logger.push_message({"BuildMesh completed! Creating static_mesh...", LogLevel::Success});
           // Center the vertices at the origin. No transform needed.
-          center_mesh(build_result.mesh_vertices);
+          center_mesh(build_result.mesh_vertices, build_result.openings);
           static_mesh = std::make_unique<StaticMesh>(build_result.mesh_vertices.data(),
                                                     build_result.mesh_vertices.size(),
                                                     build_result.mesh_indices.data(),
                                                     build_result.mesh_indices.size());
-          
-          auto gltf_path = "out" / g_config.dxf_path.filename().replace_extension("gltf");
-          export_to_gltf(build_result, gltf_path);
-          export_opening_placeholders(build_result, "./out/opening_placeholders.json");
+
+          // e.g. out/draftperson_Floor_Plan.gltf
+          auto gltf_path = std::filesystem::path("out") / g_config.dxf_path.filename().replace_extension("gltf"); 
+          export_to_gltf(build_result, gltf_path); 
           g_logger.push_message({std::format("The exported model: {}", gltf_path.string()), LogLevel::Text});
+          
+          // e.g. out/draftperson_Floor_Plan_openings.json
+          auto json_filename = g_config.dxf_path.stem().string() + "_openings.json";
+          auto json_path = std::filesystem::path("out") / json_filename;          
+          export_opening_placeholders(build_result, json_path);
+          g_logger.push_message({std::format("The exported placeholder: {}", json_path.string()), LogLevel::Text});
           break;
         }
 

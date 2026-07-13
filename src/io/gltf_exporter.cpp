@@ -190,7 +190,7 @@ void export_to_gltf(const ReconstructionResult& result,
   auto gltf = tinygltf::TinyGLTF{};
   bool ok = gltf.WriteGltfSceneToFile(&model, output_path.string(), false, false, true, false);
   if (!ok) 
-    throw std::runtime_error("Failed to write GLTF file");
+    throw std::runtime_error(std::format("Failed to write GLTF file: {}", output_path.string()));
 }
 
 

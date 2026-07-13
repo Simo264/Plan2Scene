@@ -223,9 +223,7 @@ namespace Reconstruction
     // =======================
     auto wall_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::WALL; });
     for(const auto& face : wall_faces)
-    {
       extrude_face(vertices, wall_indices, 0.f, g_config.ceil_height, face);
-    }
 
     // =======================
     // Extrude doors

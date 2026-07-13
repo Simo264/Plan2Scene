@@ -1,7 +1,6 @@
 #include "arrangement.hpp"
 #include "types.hpp"
 #include <vector>
-#include <print>
 
 static inline Point2 glm_to_cgal(const glm::dvec2& p)
 {

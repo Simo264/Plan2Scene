@@ -31,7 +31,7 @@ def load_faces(filename):
     return faces
 
 
-filename = Path("tmp/faces.csv")
+filename = Path("out/faces.csv")
 if not filename.is_file():
     print(f"Error: file does not exixt: {filename}")
     sys.exit(0)
@@ -71,5 +71,5 @@ ax.set_title("Debug Facce con ID Univoci")
 ax.grid(True, linestyle=":", alpha=0.5)
 ax.legend(loc="upper right")
 
-plt.savefig("tmp/faces.png", dpi=300, bbox_inches='tight')
-print("Image saved: tmp/faces.png")
+plt.savefig("out/faces.png", dpi=300, bbox_inches='tight')
+print("Image saved: out/faces.png")

@@ -1,10 +1,14 @@
 #include "gltf_exporter.hpp"
-#include "../reconstruction.hpp"
 
+#include "../types.hpp"
+#include "../reconstruction.hpp"
+#include "../globals.hpp"
+#include <vector>
 #include <stdexcept>
+
 #include <tiny_gltf.h>
 #include <glm/common.hpp>
-
+#include <nlohmann/json.hpp>
 
 static tinygltf::BufferView create_buffer_view(i32 buffer, 
                                                i32 byte_offset,
@@ -187,4 +191,35 @@ void export_to_gltf(const ReconstructionResult& result,
   bool ok = gltf.WriteGltfSceneToFile(&model, output_path.string(), false, false, true, false);
   if (!ok) 
     throw std::runtime_error("Failed to write GLTF file");
+}
+
+
+void export_opening_placeholders(const ReconstructionResult& result, const std::filesystem::path& filename)
+{
+  using json = nlohmann::json;
+
+  json j_config;
+  json j_openings = json::array();
+  for (const auto& op : result.openings) 
+  {
+    j_openings.push_back({
+      {"type", (op.type == OpeningType::Door) ? "Door" : "Window"},
+      {"center", {op.center.x, op.center.y, op.center.z}},
+      {"width", op.width},
+      {"height", op.height},
+      {"thickness", op.thickness},
+      {"rotation_z", op.rotation_z}
+    });
+  }
+  j_config["openings"] = j_openings;
+
+  if (auto file = std::ofstream(filename); file.is_open()) 
+  {
+    file << j_config.dump(2);
+    file.close();
+  } 
+  else 
+  {
+    g_logger.push_message({ std::format("Error on opening file: {}", filename.string()), LogLevel::Error });
+  }
 }

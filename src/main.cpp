@@ -287,7 +287,7 @@ int main(int argc, char** argv)
         }
         
         // =======================================================
-        // Clusters extraction
+        // Gaps reconstruction
         // =======================================================
         case ReconstructionStage::GapsReconstruction:
         {
@@ -396,11 +396,11 @@ int main(int argc, char** argv)
         case ReconstructionStage::PrimitivesExtraction:
         {
           g_logger.push_message({"PrimitivesExtraction completed! Loading segments.png...", LogLevel::Success});
-          if(std::filesystem::exists("tmp/segments.png"))
+          if(std::filesystem::exists("out/segments.png"))
           {
             if(plot_image.is_valid()) plot_image.destroy();
             
-            plot_image = Texture::create_from_file("tmp/segments.png");
+            plot_image = Texture::create_from_file("out/segments.png");
             viewport_image = plot_image;
           }
           break;
@@ -421,11 +421,11 @@ int main(int argc, char** argv)
         case ReconstructionStage::ClustersExtraction:
         {
           g_logger.push_message({"ClustersExtraction completed! Loading clusters.png...", LogLevel::Success});
-          if(std::filesystem::exists("tmp/clusters.png"))
+          if(std::filesystem::exists("out/clusters.png"))
           {
             if(plot_image.is_valid()) plot_image.destroy();
             
-            plot_image = Texture::create_from_file("tmp/clusters.png");
+            plot_image = Texture::create_from_file("out/clusters.png");
             viewport_image = plot_image;
           }
           break;
@@ -446,11 +446,11 @@ int main(int argc, char** argv)
         case ReconstructionStage::FacesExtraction:
         {
           g_logger.push_message({"FaceExtraction completed! Loading faces.png...", LogLevel::Success});
-          if(std::filesystem::exists("tmp/faces.png"))
+          if(std::filesystem::exists("out/faces.png"))
           {
             if(plot_image.is_valid()) plot_image.destroy();
             
-            plot_image = Texture::create_from_file("tmp/faces.png");
+            plot_image = Texture::create_from_file("out/faces.png");
             viewport_image = plot_image;
           }
           break;
@@ -469,8 +469,9 @@ int main(int argc, char** argv)
                                                     build_result.mesh_indices.data(),
                                                     build_result.mesh_indices.size());
           
-          auto gltf_path = "tmp" / g_config.dxf_path.filename().replace_extension("gltf");
+          auto gltf_path = "out" / g_config.dxf_path.filename().replace_extension("gltf");
           export_to_gltf(build_result, gltf_path);
+          export_opening_placeholders(build_result, "./out/opening_placeholders.json");
           g_logger.push_message({std::format("The exported model: {}", gltf_path.string()), LogLevel::Text});
           break;
         }
@@ -485,7 +486,7 @@ int main(int argc, char** argv)
       } 
       else 
       {
-         // advance immediately without asking for confirmation
+        // advance immediately without asking for confirmation
         current_stage = next_stage(current_stage);
         worker_state = ThreadState::Idle;
       }

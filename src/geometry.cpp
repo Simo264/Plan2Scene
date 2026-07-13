@@ -4,9 +4,14 @@
 
 #include "dbscan.h"
 
+#include <numeric>
+
 #include <glm/ext/vector_double2.hpp>
 #include <glm/geometric.hpp>
 #include <glm/common.hpp>
+
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/norm.hpp>
 
 f64 calculate_signed_area(const std::vector<glm::dvec2>& contour)
 {
@@ -136,6 +141,12 @@ BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PNT>& vertices)
     max = glm::max(max, p.position);
   }
   return BoundingBox3D{ min, max };
+}
+
+glm::dvec2 calculate_center(const Face& face)
+{
+  auto sum = std::accumulate(face.vertices.begin(), face.vertices.end(), glm::dvec2(0.0));
+  return sum / static_cast<double>(face.vertices.size());
 }
 
 f64 detect_unit_scale(f64 area_bbox) 
@@ -523,6 +534,49 @@ void extrude_face(std::vector<Vertex_PNT>& vertices,
     } 
   } 
 }
+
+OpeningInstance compute_opening_instance(const Face& face,
+                                         OpeningType type,
+                                         f32 z_min,
+                                         f32 z_max) 
+{
+  OpeningInstance op;
+  op.type = type;
+
+  auto center_2d = calculate_center(face);
+  op.height = z_max - z_min;
+  op.center = glm::dvec3(center_2d.x, center_2d.y, static_cast<f64>(z_min + op.height * 0.5f));
+
+  // Find longest side of the face
+  size_t max_edge_idx = 0;
+  double max_len_sqr = 0.0;
+  for (size_t i = 0; i < face.vertices.size(); ++i) 
+  {
+    glm::dvec2 v1 = face.vertices[i];
+    glm::dvec2 v2 = face.vertices[(i + 1) % face.vertices.size()];
+    double len_sqr = glm::length2(v2 - v1);
+    if (len_sqr > max_len_sqr) 
+    {
+      max_len_sqr = len_sqr;
+      max_edge_idx = i;
+    }
+  }
+  op.width = static_cast<f32>(std::sqrt(max_len_sqr));
+
+  // Calculate direction and rotation
+  glm::dvec2 p1 = face.vertices[max_edge_idx];
+  glm::dvec2 p2 = face.vertices[(max_edge_idx + 1) % face.vertices.size()];
+  glm::dvec2 dir = glm::normalize(p2 - p1);
+  op.rotation_z = static_cast<f32>(std::atan2(dir.y, dir.x));
+
+  // Calculate thickness
+  size_t next_edge_idx = (max_edge_idx + 1) % face.vertices.size();
+  glm::dvec2 p3 = face.vertices[(next_edge_idx + 1) % face.vertices.size()];
+  op.thickness = static_cast<f32>(glm::distance(p2, p3));
+  return op;
+}
+
+
 
 void center_mesh(std::vector<Vertex_PNT>& vertices)
 {

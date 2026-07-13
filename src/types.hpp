@@ -40,6 +40,8 @@ using f64 = double;
 // ----------------------------------------------------------------------------
 // Geometric types
 // ----------------------------------------------------------------------------
+enum class ThreadState { Idle, Running, WaitingConfirmation, Error };
+
 using VertexId = u32;
 constexpr VertexId INVALID_VERTEX_ID = std::numeric_limits<VertexId>::max();
 
@@ -107,7 +109,7 @@ struct ProjResult
   bool is_inside;   // True if projection lies strictly inside the segment
 };
 
-struct WallVertices 
+struct WallVertices
 {
   VertexId B; // Start of the gap (snapped to gap_start)
   VertexId D; // End of the gap (snapped to gap_end)
@@ -115,7 +117,13 @@ struct WallVertices
   VertexId E; // Adjacent vertex to D along the wall
 };
 
-enum class ThreadState 
-{ 
-  Idle, Running, WaitingConfirmation, Error
+enum class OpeningType { Door, Window };
+struct OpeningInstance
+{
+  OpeningType type; // DOOR or WINDOW
+  glm::dvec3 center;
+  f32 width;
+  f32 height;
+  f32 thickness;
+  f32 rotation_z; // in radiants
 };

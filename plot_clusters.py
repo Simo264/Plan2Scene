@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 import sys
 
-filename = Path("tmp/clusters.csv")
+filename = Path("out/clusters.csv")
 if not filename.is_file():
     print(f"Error: file does not exixt: {filename}")
     sys.exit(0)
@@ -49,5 +49,5 @@ ax.grid(True, linestyle='--', alpha=0.6)
 
 plt.tight_layout()
 
-plt.savefig("tmp/clusters.png", dpi=300, bbox_inches='tight')
-print("Image saved: tmp/clusters.png")
+plt.savefig("out/clusters.png", dpi=300, bbox_inches='tight')
+print("Image saved: out/clusters.png")

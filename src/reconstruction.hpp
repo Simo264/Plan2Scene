@@ -13,6 +13,7 @@ struct ReconstructionResult
   std::vector<Vertex_PNT> mesh_vertices;
   std::vector<u32> mesh_indices;
   std::vector<PrimitiveRange> primitives;
+  std::vector<OpeningInstance> openings;
 };
 
 struct ReconstructionContext

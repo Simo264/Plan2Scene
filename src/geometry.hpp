@@ -24,6 +24,9 @@ std::array<Segment, 2> get_long_sides_bbox2d(const BoundingBox2D& bbox);
 // Calculates the bounding box for 3D points
 BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PNT>& vertices);
 
+// Calculate the center of the face
+glm::dvec2 calculate_center(const Face& face);
+
 // Calculate the unit scale based on the geometry
 f64 detect_unit_scale(f64 area_bbox);
 
@@ -169,5 +172,11 @@ void extrude_face(std::vector<Vertex_PNT>& vertices,
                   f32 base_height,
                   f32 top_height,
                   const Face& face);
+
+OpeningInstance compute_opening_instance(const Face& face, 
+                                         OpeningType type,
+                                         f32 z_min, 
+                                         f32 z_max);
+
 
 void center_mesh(std::vector<Vertex_PNT>& vertices);

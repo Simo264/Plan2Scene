@@ -17,6 +17,7 @@
 #include "dump.hpp"
 #include "globals.hpp"
 #include "io/drw_parser.hpp"
+#include "types.hpp"
 
 ReconstructionStage next_stage(ReconstructionStage stage) 
 {
@@ -47,7 +48,7 @@ bool stage_needs_confirmation(ReconstructionStage stage)
 
 static void run_checkpoint_script(std::string_view script_name)
 {
-  auto log_file = std::format("tmp/{}.log", script_name); // es. "plot_segments.py.log"
+  auto log_file = std::format("out/{}.log", script_name); // es. "plot_segments.py.log"
   auto command = std::format("python {} > \"{}\" 2>&1", script_name, log_file);
   auto ret = std::system(command.c_str());
   if (ret != 0) 
@@ -76,31 +77,31 @@ namespace Reconstruction
                                const std::vector<Segment>& doors, 
                                const std::vector<Segment>& windows)
   {
-    if(std::filesystem::exists("tmp") == false)
-      std::filesystem::create_directory("tmp");
+    if(std::filesystem::exists("out") == false)
+      std::filesystem::create_directory("out");
     
-    dump_segments_csv(walls, "tmp/walls_segments.csv");
-    dump_segments_csv(doors, "tmp/doors_segments.csv");
-    dump_segments_csv(windows, "tmp/windows_segments.csv");
+    dump_segments_csv(walls, "out/walls_segments.csv");
+    dump_segments_csv(doors, "out/doors_segments.csv");
+    dump_segments_csv(windows, "out/windows_segments.csv");
     run_checkpoint_script("plot_segments.py");
   }
 
   void checkpoint_clusters(const std::vector<glm::dvec2>& sample_points,
                            const std::vector<std::vector<u32>>& clusters)
   {
-    if(std::filesystem::exists("tmp") == false)
-      std::filesystem::create_directory("tmp");
+    if(std::filesystem::exists("out") == false)
+      std::filesystem::create_directory("out");
 
-    dump_clusters_csv(sample_points, clusters, "tmp/clusters.csv");
+    dump_clusters_csv(sample_points, clusters, "out/clusters.csv");
     run_checkpoint_script("plot_clusters.py");
   }
 
   void checkpoint_faces(const std::vector<Face>& faces)
   {
-    if(std::filesystem::exists("tmp") == false)
-      std::filesystem::create_directory("tmp");
+    if(std::filesystem::exists("out") == false)
+      std::filesystem::create_directory("out");
 
-    dump_faces_csv(faces, "tmp/faces.csv");
+    dump_faces_csv(faces, "out/faces.csv");
     run_checkpoint_script("plot_faces.py");
   }
 
@@ -205,27 +206,43 @@ namespace Reconstruction
 
   ReconstructionResult build_mesh(const std::vector<Face>& faces)
   {
-    auto vertices = std::vector<Vertex_PNT>{};
+    auto vertices       = std::vector<Vertex_PNT>{};
     auto floor_indices  = std::vector<u32>{};
     auto wall_indices   = std::vector<u32>{};
+    auto result         = ReconstructionResult{};
 
+    // =======================
+    // Create floor plan
+    // =======================
     auto floor_face = std::ranges::find_if(faces, [](const Face& f) { return f.type == FaceType::FLOOR; });
     triangulate_face(vertices, floor_indices, 0.f, true, *floor_face);
     triangulate_face(vertices, wall_indices, g_config.ceil_height, false, *floor_face);
     
+    // =======================
+    // Extrude walls
+    // =======================
     auto wall_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::WALL; });
     for(const auto& face : wall_faces)
     {
       extrude_face(vertices, wall_indices, 0.f, g_config.ceil_height, face);
     }
 
+    // =======================
+    // Extrude doors
+    // =======================
     auto door_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::DOOR; });
     for(const auto& face : door_faces)
     {
       extrude_face(vertices, wall_indices, g_config.door_frac_top, g_config.ceil_height, face);
       triangulate_face(vertices, wall_indices, g_config.door_frac_top, true, face);
+
+      OpeningInstance opening = compute_opening_instance(face, OpeningType::Door, 0.0f, g_config.door_frac_top);
+      result.openings.push_back(opening);
     }
 
+    // =======================
+    // Extrude windows
+    // =======================
     auto window_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::WINDOW; });
     for(const auto& face : window_faces)
     {
@@ -245,8 +262,7 @@ namespace Reconstruction
       static_cast<u32>(wall_indices.size()), 
       MaterialType::Wall };
     all_indices.insert(all_indices.end(), wall_indices.begin(), wall_indices.end());
-
-    auto result = ReconstructionResult{};
+    
     result.mesh_vertices = std::move(vertices);
     result.mesh_indices  = std::move(all_indices);
     result.primitives = { floor_range, wall_range };

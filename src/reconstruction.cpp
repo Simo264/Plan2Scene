@@ -129,14 +129,15 @@ namespace Reconstruction
     normalize_segments(ctx.unit_scale, ctx.walls);
     normalize_segments(ctx.unit_scale, ctx.doors);
     normalize_segments(ctx.unit_scale, ctx.windows);
+
+    center_mesh(ctx.walls, ctx.doors, ctx.windows);
   }
 
   void vertex_snapping(ReconstructionContext& ctx, f64 snap_eps)
   {
     auto hash = SpatialHash{ snap_eps };
     auto edges = std::vector<Edge>{};
-    auto wall_segments_view = std::array{ ctx.walls };
-    for (const auto& seg : wall_segments_view | std::views::join)
+    for (const auto& seg : ctx.walls)
     {
       auto v1 = hash.snap(seg.start);
       auto v2 = hash.snap(seg.end);
@@ -167,7 +168,7 @@ namespace Reconstruction
         auto edges_before_doors = ctx.edges.size();
         doors_reconstruction(ctx.doors, ctx.hash, ctx.edges);
         auto doors_edges_added = ctx.edges.size() - edges_before_doors;
-        g_logger.push_message({std::format("Doors: {} processed -> {} edges added", ctx.doors.size(), doors_edges_added), 
+        g_logger.push_message({std::format("Doors: {} processed -> {} edges added", ctx.doors.size(), doors_edges_added),
           LogLevel::Text});
       } 
       catch (const std::exception& e) 

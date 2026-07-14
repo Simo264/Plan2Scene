@@ -3,7 +3,7 @@
 
   "unit_scale": 0.1,
 
-  "snap_eps": 1e-4,
+  "snap_eps": 1e-2,
   
   "cluster_num_samples": 10,
   

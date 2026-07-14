@@ -34,6 +34,11 @@ f64 detect_unit_scale(f64 area_bbox);
 // Scales the start and end spatial coordinates of every segment in the collection by a conversion factor. 
 void normalize_segments(f64 unit, std::vector<Segment>& segments);
 
+// Centers the mesh by moving all vertices along their
+void center_mesh(std::vector<Segment>& walls, 
+                 std::vector<Segment>& doors, 
+                 std::vector<Segment>& windows);
+
 // Retrieves the topological neighbors connected to a specific vertex.
 // Searches through the edge list to find the two adjacent vertices connected to the 
 // target vertex. In a manifold wall layout, each inner corner or wall endpoint vertex 
@@ -47,75 +52,39 @@ std::array<VertexId, 2> find_neighboors(VertexId vertex,
 // absolute dot product between the door/wall longitudinal direction and the normalized direction 
 // vectors of both neighbors. The neighbor with the lowest dot product (closest to being 
 // perpendicular, i.e., 0) is selected as the correct opposite vertex.
-VertexId get_adjacent_vertex(const glm::dvec2& wall_dir,
+VertexId get_adjacent_vertex(glm::dvec2 wall_dir,
                              VertexId vertex_id,
-                             const std::array<VertexId, 2>& vertex_neighbors, 
+                             std::array<VertexId, 2> vertex_neighbors, 
                              const std::vector<glm::dvec2>& vertices);
 
 // Samples a set of 2D segments into discrete points.
 // Iterates through each segment and generates a specified number of evenly spaced 
 // points along its length using linear interpolation (LERP).
-std::vector<glm::dvec2> sample_segments(const std::vector<Segment>& segments, 
-                                        i32 num_samples);
+std::vector<glm::dvec2> sample_segments(const std::vector<Segment>& segments, i32 num_samples);
 
 // Identifies spatial groups within a point cloud using the DBSCAN clustering algorithm.
 // Initializes and executes a DBSCAN instance configured with a minimum of 2 points per cluster.
 // It groups the sampled window points based on the specified epsilon distance threshold,
 // allowing individual window objects to be extracted from a disjointed set of input geometries.
-std::vector<std::vector<u32>> calculate_clusters(std::vector<glm::dvec2>& sample_points,
-                                                 f64 eps);
+std::vector<std::vector<u32>> calculate_clusters(std::vector<glm::dvec2>& sample_points, f64 eps);
 
 // Finds the four vertices that define the wall strip around a gap.
-// Given the two endpoints of a door/window gap, this function snaps them to
-// the nearest wall vertices (B and D). It then determines the adjacent
-// vertices C and E along the wall direction, completing the wall strip.
-WallVertices get_wall_vertices(const glm::dvec2& gap_start,
-                               const glm::dvec2& gap_end,
+WallVertices get_wall_vertices(glm::dvec2 gap_start,
+                               glm::dvec2 gap_end,
                                const SpatialHash& hash,
                                const std::vector<Edge>& edges,
                                const std::vector<glm::dvec2>& vertices);
 
-// Checks whether two vectors are parallel (or anti-parallel) within a tolerance.
-// Two vectors are considered parallel if the absolute value of the cosine of
-// the angle between them is close to 1. The tolerance is applied to the
-// cosine value (e.g., 1e-4 means angle < ~ 0.1°).
-bool are_parallel(const glm::dvec2& v1, 
-                  const glm::dvec2& v2, 
-                  f64 tol = 1e-4);
-
-// Projects a point onto a line segment defined by two endpoints.
-// The projection is computed using the parameter t along the segment.
-// The result indicates whether the projection falls strictly inside the
-// segment (with a small tolerance to avoid boundary issues).
-ProjResult project_point_on_segment(const glm::dvec2& p,
-                                    const glm::dvec2& a,
-                                    const glm::dvec2& b,
-                                    f64 tol = 1e-4);
-
-// Splits an existing edge into two by inserting a new vertex.
-// The original edge between v1 and v2 is removed and replaced by two edges:
-// (v1, new_id) and (new_id, v2), both with the specified layer type.
-// The new vertex coordinates are added to the vertices list.
-VertexId split_edge(std::vector<glm::dvec2>& vertices,
-                    std::vector<Edge>& edges,
-                    VertexId v1,
-                    VertexId v2,
-                    const glm::dvec2& new_point,
-                    LayerType layer = LayerType::WALL);
+// Checks whether two vectors are parallel within a tolerance.
+bool are_vectors_parallel(glm::dvec2 v1, glm::dvec2 v2, f64 eps = 1e-4);
 
 // Closes the wall around a door or window gap.
-// Given the two endpoints of a gap (door/window segment), this function:
-// 1. Finds the four vertices (B,C,D,E) of the wall strip.
-// 2. Checks if the opposite side (C-E) is parallel to the gap (B-D).
-// 3. If not parallel, it projects E onto B-C or C onto D-E to create a new
-//    vertex that makes the opposite side parallel, splitting the corresponding wall edge.
-// 4. Finally, it adds two edges: one for the gap (B-D) and one for the
-//    opposite side (the new parallel segment), both with the given layer type.
 void close_wall_gap(glm::dvec2 gap_start,
                     glm::dvec2 gap_end,
                     LayerType type,
                     SpatialHash& hash,
-                    std::vector<Edge>& edges);
+                    std::vector<Edge>& edges,
+                    f64 width_scale);
 
 // Reconstructs topological elements for doors and bridges the gaps between walls.
 // Iterates through a collection of raw door segments, delegates the geometry snapping and graph
@@ -179,4 +148,3 @@ OpeningInstance compute_opening_instance(const Face& face,
                                          f32 z_max);
 
 
-void center_mesh(std::vector<Vertex_PNT>& vertices, std::vector<OpeningInstance>& openings);

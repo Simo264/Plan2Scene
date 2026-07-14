@@ -179,8 +179,8 @@ int main(int argc, char** argv)
  
   create_gl_pipeline_object(vertex_program, fragment_program, pipeline);
 
-  camera.eye = { 14.0f, -2.0f, 8.0f };
-  camera.set_orientation(glm::radians(glm::vec3{ 170.f, 40.f, 180.f }));
+  camera.eye = { 0.0f, 2.0f, 8.0f };
+  // camera.set_orientation(glm::radians(glm::vec3{ 170.f, 40.f, 180.f }));
   
   auto floor_texture = Texture::create_from_file("materials/patio_tiles/patio_tiles_diff_1k.jpg");
   auto wall_texture = Texture::create_from_file("materials/concrete_layers/concrete_layers_diff_1k.jpg");
@@ -462,8 +462,6 @@ int main(int argc, char** argv)
         case ReconstructionStage::BuildMesh:
         {
           g_logger.push_message({"BuildMesh completed! Creating static_mesh...", LogLevel::Success});
-          // Center the vertices at the origin. No transform needed.
-          center_mesh(build_result.mesh_vertices, build_result.openings);
           static_mesh = std::make_unique<StaticMesh>(build_result.mesh_vertices.data(),
                                                     build_result.mesh_vertices.size(),
                                                     build_result.mesh_indices.data(),

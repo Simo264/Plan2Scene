@@ -358,9 +358,9 @@ void console_panel(GLFWwindow* window, ReconstructionStage& current_stage, std::
     }
     ImGui::EndChild();
 
-#define BYPASS_CONFIRM
+#define BYPASS_CONFIRM 1
 
-#ifdef BYPASS_CONFIRM
+#if BYPASS_CONFIRM
   if (worker_state == ThreadState::WaitingConfirmation)
   {
     current_stage = next_stage(current_stage);
@@ -396,7 +396,7 @@ void console_panel(GLFWwindow* window, ReconstructionStage& current_stage, std::
   ImGui::End();    
 }
 
-void mesh_details_overlay(const StaticMesh& mesh, glm::vec2 viewport_pos) 
+void mesh_details_overlay(const StaticMesh& mesh, glm::vec2 viewport_pos)
 {
   constexpr auto margin = 12.0f;
 

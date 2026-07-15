@@ -362,7 +362,7 @@ int main(int argc, char** argv)
             {
               // remove all FLOOR faces and push only one quad for floor
               std::erase_if(ctx.faces, [](auto face) { return face.type == FaceType::Floor; });
-              auto house_bbox = BoundingBox2D::calculate_from_segments(ctx.walls);
+              auto house_bbox = BoundingBox2D(ctx.walls);
               auto floor_face = create_floor_face(house_bbox);
               ctx.faces.push_back(std::move(floor_face));
               build_result = Reconstruction::build_mesh(ctx.faces);

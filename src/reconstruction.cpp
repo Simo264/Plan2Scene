@@ -117,7 +117,7 @@ namespace Reconstruction
     if (!dxf.read(&parser, false))
       throw std::runtime_error(std::format("Error reading DXF file `{}` (code: {})", file.string(), static_cast<i32>(dxf.getError())));
 
-    auto bbox = BoundingBox2D::calculate_from_segments(parser.walls);
+    auto bbox = BoundingBox2D(parser.walls);
     auto area = bbox.calculate_area();
     auto unit_scale = g_config.unit_scale;
     g_logger.push_message({std::format(
@@ -222,8 +222,8 @@ namespace Reconstruction
     // Create floor plan
     // =======================
     auto floor_face = std::ranges::find_if(faces, [](const Face& f) { return f.type == FaceType::Floor; });
-    triangulate_face(mesh_vertices, mesh_floor_indices, 0.f, true, *floor_face);
-    triangulate_face(mesh_vertices, mesh_wall_indices, ceil_height, false, *floor_face);
+    floor_face->triangulate(mesh_vertices, mesh_floor_indices, 0.f, floor_tex_scaling, true);
+    floor_face->triangulate(mesh_vertices, mesh_wall_indices, ceil_height, wall_tex_scaling, false);
     
     // =======================
     // Extrude walls
@@ -235,32 +235,40 @@ namespace Reconstruction
     // =======================
     // Extrude doors
     // =======================
-    // auto door_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::Door; });
-    // for(const auto& face : door_faces)
-    // {
-    //   auto door_base = ceil_height * 0.8f;
-    //   auto door_top = ceil_height;
+    auto door_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::Door; });
+    for(const auto& face : door_faces)
+    {
+      auto door_base = ceil_height * 0.8f;
+      auto door_top = ceil_height;
 
-    //   face.extrude(mesh_vertices, mesh_wall_indices, door_base, door_top, wall_tex_scaling);
-    //   face.triangulate(mesh_vertices, mesh_wall_indices, door_base, wall_tex_scaling, true);
+      face.extrude(mesh_vertices, mesh_wall_indices, door_base, door_top, wall_tex_scaling);
+      face.triangulate(mesh_vertices, mesh_wall_indices, door_base, wall_tex_scaling, true);
 
-    //   auto opening = compute_opening_instance(face, OpeningType::Door, 0.0f, door_base);
-    //   result.openings.push_back(opening);
-    // }
+      auto opening = compute_opening_instance(face, OpeningType::Door, 0.0f, door_base);
+      result.openings.push_back(opening);
+    }
 
     // =======================
     // Extrude windows
     // =======================
-    // auto window_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::Window; });
-    // for(const auto& face : window_faces)
-    // {
-    //   extrude_face(vertices, wall_indices, 0.f, g_config.window_frac_bottom, face);
-    //   extrude_face(vertices, wall_indices, g_config.window_frac_top, g_config.ceil_height, face);
-    //   triangulate_face(vertices, wall_indices, g_config.window_frac_bottom, true, face);
-    //   triangulate_face(vertices, wall_indices, g_config.window_frac_top, false, face);
-    // }
+    auto window_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::Window; });
+    for(const auto& face : window_faces)
+    {
+      auto window_base = 0.0f;
+      auto window_top  = ceil_height * 0.2f;
+      face.extrude(mesh_vertices, mesh_wall_indices, window_base, window_top, wall_tex_scaling);
+      face.triangulate(mesh_vertices, mesh_wall_indices, window_top, wall_tex_scaling, true);
+      
+      window_base = ceil_height * 0.8f;
+      window_top  = ceil_height;
+      face.extrude(mesh_vertices, mesh_wall_indices, window_base, window_top, wall_tex_scaling);
+      face.triangulate(mesh_vertices, mesh_wall_indices, window_base, wall_tex_scaling, false);
+    }
 
-    auto floor_range = PrimitiveRange{ 0, static_cast<u32>(mesh_floor_indices.size()), MaterialType::Floor };
+    auto floor_range = PrimitiveRange{ 
+      0, 
+      static_cast<u32>(mesh_floor_indices.size()), 
+      MaterialType::Floor };
     auto all_indices = std::vector<u32>{};
     all_indices.reserve(mesh_floor_indices.size() + mesh_wall_indices.size());
     all_indices.insert(all_indices.end(), mesh_floor_indices.begin(), mesh_floor_indices.end());

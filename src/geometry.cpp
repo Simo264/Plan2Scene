@@ -37,7 +37,7 @@ void normalize_segments(f64 unit, std::vector<Segment>& segments)
 
 void center_mesh(std::vector<Segment>& walls, std::vector<Segment>& doors, std::vector<Segment>& windows)
 {
-  auto bbox = BoundingBox2D::calculate_from_segments(walls);
+  auto bbox = BoundingBox2D(walls);
   auto center = (bbox.min + bbox.max) * 0.5;
   auto translate = [&center](Segment& s) 
   {
@@ -213,7 +213,7 @@ void windows_reconstruction(std::vector<glm::dvec2>& sample_points,
     if (cluster_indices.empty()) 
       continue;
         
-    auto box = BoundingBox2D::calculate_from_cluster(sample_points, cluster_indices);
+    auto box = BoundingBox2D(sample_points, cluster_indices);
     auto sides = box.get_long_sides();
     auto longest_side = sides.at(0);
     try 
@@ -271,75 +271,3 @@ OpeningInstance compute_opening_instance(const Face& face,
 
 
 
-
-
-void ensure_winding_matches_normal(Vertex_PNT& v0, 
-                                   Vertex_PNT& v1, 
-                                   Vertex_PNT& v2, 
-                                   const glm::vec3& desired_normal)
-{
-  auto geometric_normal = glm::cross(v1.position - v0.position, v2.position - v0.position);
-  if (glm::dot(geometric_normal, desired_normal) < 0.0f)
-    std::swap(v1, v2);
-}
-
-void build_triangulated_face(std::vector<Vertex_PNT>& out_vertices,
-                            std::vector<u32>& out_indices,
-                            const std::vector<p2t::Triangle*> triangles,
-                            f32 height,
-                            bool facing_up,
-                            const BoundingBox2D& face_bbox)
-{ 
-  auto desired_normal = facing_up ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(0.0f, -1.0f, 0.0f);
-  for (const auto& tri : triangles) 
-  { 
-    auto verts = std::array<Vertex_PNT, 3>{};
-    for (auto i = 0; i < 3; ++i)  
-    {  
-      auto p = tri->GetPoint(i); 
-      auto v = Vertex_PNT{}; 
-      v.position.x = static_cast<f32>(p->x); 
-      v.position.y = height; 
-      v.position.z = static_cast<f32>(p->y); 
-      v.normal = desired_normal;
-      v.text_coord.x = (v.position.x - face_bbox.min.x) / g_config.floor_texture_scaling; 
-      v.text_coord.y = (v.position.z - face_bbox.min.y) / g_config.floor_texture_scaling; 
-      verts[i] = v;
-    }
-
-    ensure_winding_matches_normal(verts[0], verts[1], verts[2], desired_normal);
-
-    for (const auto& v : verts)
-    {
-      auto idx = static_cast<u32>(out_vertices.size()); 
-      out_vertices.push_back(v); 
-      out_indices.push_back(idx); 
-    }
-  } 
-}
-
-void triangulate_face(std::vector<Vertex_PNT>& out_vertices,
-                      std::vector<u32>& out_indices,
-                      f32 height,
-                      bool facing_up, 
-                      const Face& face)
-{
-  auto polyline = face.vertices;
-  auto face_bbox = BoundingBox2D::calculate_from_contour(polyline);
-    
-  auto p2t_points = std::vector<p2t::Point>{};
-  auto p2t_ptr_points = std::vector<p2t::Point*>{};
-  p2t_points.reserve(polyline.size());
-  p2t_ptr_points.reserve(polyline.size());
-  for (const auto& p : polyline)
-  {
-    p2t_points.emplace_back(p2t::Point{ p.x, p.y });
-    p2t_ptr_points.push_back(&p2t_points.back());
-  }
-  
-  auto cdt = p2t::CDT{ p2t_ptr_points };
-  cdt.Triangulate();
-  auto triangles = cdt.GetTriangles();
-
-  build_triangulated_face(out_vertices, out_indices, triangles, height, facing_up, face_bbox);
-}

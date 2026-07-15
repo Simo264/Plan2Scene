@@ -13,11 +13,8 @@
 // BoundingBox2D
 // =========================
 
-BoundingBox2D BoundingBox2D::calculate_from_contour(const std::vector<glm::dvec2>& polyline)
+BoundingBox2D::BoundingBox2D(const std::vector<glm::dvec2>& polyline)
 {
-  if (polyline.empty()) 
-    return BoundingBox2D{ glm::dvec2{0.0, 0.0}, glm::dvec2{0.0, 0.0} };
-
   auto min_x = std::numeric_limits<f64>::max();
   auto min_y = std::numeric_limits<f64>::max();
   auto max_x = -std::numeric_limits<f64>::max();
@@ -30,19 +27,11 @@ BoundingBox2D BoundingBox2D::calculate_from_contour(const std::vector<glm::dvec2
     max_y = std::max(max_y, p.y);
   }
 
-  return BoundingBox2D{
-    .min = glm::dvec2{ min_x, min_y },
-    .max = glm::dvec2{ max_x, max_y }
-  };
+  this->min = glm::dvec2{ min_x, min_y };
+  this->max = glm::dvec2{ max_x, max_y };
 }
 
-BoundingBox2D BoundingBox2D::calculate_from_face(const Face& face)
-{
-  const auto& polyline = face.vertices;
-  return BoundingBox2D::calculate_from_contour(polyline);
-}
-
-BoundingBox2D BoundingBox2D::calculate_from_segments(const std::vector<Segment>& segments)
+BoundingBox2D::BoundingBox2D(const std::vector<Segment>& segments)
 {
   auto min_x =  std::numeric_limits<f64>::max();
   auto min_y =  std::numeric_limits<f64>::max();
@@ -55,13 +44,12 @@ BoundingBox2D BoundingBox2D::calculate_from_segments(const std::vector<Segment>&
     max_x = std::max({max_x, seg.start.x, seg.end.x});
     max_y = std::max({max_y, seg.start.y, seg.end.y});
   }
-  return BoundingBox2D{
-    .min = glm::dvec2{ min_x, min_y },
-    .max = glm::dvec2{ max_x, max_y }
-  };
+
+  this->min = glm::dvec2{ min_x, min_y };
+  this->max = glm::dvec2{ max_x, max_y };
 }
 
-BoundingBox2D BoundingBox2D::calculate_from_cluster(const std::vector<glm::dvec2>& points, const std::vector<u32>& cluster_indices)
+BoundingBox2D::BoundingBox2D(const std::vector<glm::dvec2>& points, const std::vector<u32>& cluster_indices)
 {
   auto min_x = std::numeric_limits<f64>::max();
   auto min_y = std::numeric_limits<f64>::max();
@@ -76,10 +64,8 @@ BoundingBox2D BoundingBox2D::calculate_from_cluster(const std::vector<glm::dvec2
     max_y = std::max(max_y, p.y);
   }
 
-  return BoundingBox2D{
-    .min = glm::dvec2{ min_x, min_y },
-    .max = glm::dvec2{ max_x, max_y }
-  };
+  this->min = glm::dvec2{ min_x, min_y };
+  this->max = glm::dvec2{ max_x, max_y };
 }
 
 f64 BoundingBox2D::calculate_area() const
@@ -132,7 +118,7 @@ std::array<Segment, 2> BoundingBox2D::get_long_sides() const
 // BoundingBox3D
 // =========================
 
-BoundingBox3D BoundingBox3D::calculate_from_vertices(const std::vector<Vertex_PNT>& vertices)
+BoundingBox3D::BoundingBox3D(const std::vector<Vertex_PNT>& vertices)
 {
   auto min = vertices.front().position;
   auto max = min;
@@ -141,7 +127,8 @@ BoundingBox3D BoundingBox3D::calculate_from_vertices(const std::vector<Vertex_PN
     min = glm::min(min, p.position);
     max = glm::max(max, p.position);
   }
-  return BoundingBox3D{ min, max };
+  this->min = min;
+  this->max = max;
 }
 
 // =========================
@@ -154,14 +141,15 @@ glm::dvec2 Face::calculate_center() const
   return sum / static_cast<double>(vertices.size());
 }
 
+
 void Face::extrude(std::vector<Vertex_PNT>& out_vertices,
                    std::vector<u32>& out_indices,
-                   f32 base_height, 
-                   f32 top_height, 
+                   f32 base_height,
+                   f32 top_height,
                    f32 texture_scaling) const
 {
-  constexpr glm::vec3 up(0.0f, 1.0f, 0.0f);
-  const auto& contour = vertices; 
+  constexpr glm::vec3 up(0.0f, 1.0f, 0.0f); 
+  const auto& contour = this->vertices; 
   auto v_bottom_uv = base_height / texture_scaling; 
   auto v_top_uv = top_height / texture_scaling; 
   for (auto i = 0u; i < contour.size(); ++i)  
@@ -205,76 +193,75 @@ void Face::extrude(std::vector<Vertex_PNT>& out_vertices,
       out_indices.push_back(base + 3);
       out_indices.push_back(base + 2);
     } 
-  }
+  } 
 }
 
-// void Face::ensure_winding_matches_normal(Vertex_PNT& v0, 
-//                                          Vertex_PNT& v1, 
-//                                          Vertex_PNT& v2, 
-//                                          glm::vec3 desired_normal) const
-// {
-//   auto geometric_normal = glm::cross(v1.position - v0.position, v2.position - v0.position);
-//   if (glm::dot(geometric_normal, desired_normal) < 0.0f)
-//     std::swap(v1, v2);
-// }
-
-// void Face::perform_triangulation(std::vector<Vertex_PNT>& out_vertices,
-//                                  std::vector<u32>& out_indices,
-//                                  const std::vector<p2t::Triangle*> triangles,
-//                                  f32 height,
-//                                  f32 texture_scaling,
-//                                  bool facing_up) const
-// {
-//   auto face_bbox = BoundingBox2D::calculate_from_contour(this->vertices);
-
-//   auto desired_normal = facing_up ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(0.0f, -1.0f, 0.0f);
-//   for (const auto& tri : triangles) 
-//   { 
-//     auto verts = std::array<Vertex_PNT, 3>{};
-//     for (auto i = 0; i < 3; ++i)  
-//     {  
-//       auto p = tri->GetPoint(i); 
-//       auto v = Vertex_PNT{}; 
-//       v.position.x = static_cast<f32>(p->x); 
-//       v.position.y = height; 
-//       v.position.z = static_cast<f32>(p->y); 
-//       v.normal = desired_normal;
-//       v.text_coord.x = (v.position.x - face_bbox.min.x) / texture_scaling; 
-//       v.text_coord.y = (v.position.z - face_bbox.min.y) / texture_scaling; 
-//       verts[i] = v;
-//     }
-
-//     ensure_winding_matches_normal(verts[0], verts[1], verts[2], desired_normal);
-
-//     for (const auto& v : verts)
-//     {
-//       auto idx = static_cast<u32>(out_vertices.size()); 
-//       out_vertices.push_back(v); 
-//       out_indices.push_back(idx); 
-//     }
-//   } 
-// }
-
-// void Face::triangulate(std::vector<Vertex_PNT>& out_vertices,
-//                        std::vector<u32>& out_indices,
-//                        f32 height,
-//                        f32 texture_scaling,
-//                        bool facing_up) const
-// {
-//   auto polyline = vertices;
-//   auto p2t_points = std::vector<p2t::Point>{};
-//   auto p2t_ptr_points = std::vector<p2t::Point*>{};
-//   p2t_points.reserve(polyline.size());
-//   p2t_ptr_points.reserve(polyline.size());
-//   for (const auto& p : polyline)
-//   {
-//     p2t_points.emplace_back(p2t::Point{ p.x, p.y });
-//     p2t_ptr_points.push_back(&p2t_points.back());
-//   }
+void Face::triangulate(std::vector<Vertex_PNT>& out_vertices,
+                       std::vector<u32>& out_indices,
+                       f32 height,
+                       f32 texture_scaling,
+                       bool facing_up) const
+{
+  auto polyline = this->vertices;
+  auto face_bbox = BoundingBox2D(polyline);
+    
+  auto p2t_points = std::vector<p2t::Point>{};
+  auto p2t_ptr_points = std::vector<p2t::Point*>{};
+  p2t_points.reserve(polyline.size());
+  p2t_ptr_points.reserve(polyline.size());
+  for (const auto& p : polyline)
+  {
+    p2t_points.emplace_back(p2t::Point{ p.x, p.y });
+    p2t_ptr_points.push_back(&p2t_points.back());
+  }
   
-//   auto cdt = p2t::CDT{ p2t_ptr_points };
-//   cdt.Triangulate();
-//   auto triangles = cdt.GetTriangles();
+  auto cdt = p2t::CDT{ p2t_ptr_points };
+  cdt.Triangulate();
+  auto triangles = cdt.GetTriangles();
 
-//   perform_triangulation(out_vertices, out_indices, triangles, texture_scaling, height, facing_up);
-// }
+  perform_triangulation(out_vertices, out_indices, triangles, height, texture_scaling, facing_up, face_bbox);
+}
+
+
+void Face::perform_triangulation(std::vector<Vertex_PNT>& out_vertices,
+                                 std::vector<u32>& out_indices,
+                                 const std::vector<p2t::Triangle*> triangles,
+                                 f32 height,
+                                 f32 texture_scaling,
+                                 bool facing_up,
+                                 BoundingBox2D face_bbox) const
+{
+  auto ensure_winding_matches_normal = [](Vertex_PNT& v0, Vertex_PNT& v1, Vertex_PNT& v2, const glm::vec3& desired_normal)
+  {
+    auto geometric_normal = glm::cross(v1.position - v0.position, v2.position - v0.position);
+    if (glm::dot(geometric_normal, desired_normal) < 0.0f)
+      std::swap(v1, v2);
+  };
+  
+  auto desired_normal = facing_up ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(0.0f, -1.0f, 0.0f);
+  for (const auto& tri : triangles) 
+  { 
+    auto verts = std::array<Vertex_PNT, 3>{};
+    for (auto i = 0; i < 3; ++i)  
+    {  
+      auto p = tri->GetPoint(i); 
+      auto v = Vertex_PNT{}; 
+      v.position.x = static_cast<f32>(p->x); 
+      v.position.y = height; 
+      v.position.z = static_cast<f32>(p->y); 
+      v.normal = desired_normal;
+      v.text_coord.x = (v.position.x - face_bbox.min.x) / texture_scaling; 
+      v.text_coord.y = (v.position.z - face_bbox.min.y) / texture_scaling; 
+      verts[i] = v;
+    }
+
+    ensure_winding_matches_normal(verts[0], verts[1], verts[2], desired_normal);
+
+    for (const auto& v : verts)
+    {
+      auto idx = static_cast<u32>(out_vertices.size()); 
+      out_vertices.push_back(v); 
+      out_indices.push_back(idx); 
+    }
+  } 
+}

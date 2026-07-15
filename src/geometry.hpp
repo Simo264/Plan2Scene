@@ -86,20 +86,4 @@ OpeningInstance compute_opening_instance(const Face& face,
                                          f32 z_max);
 
 
-void ensure_winding_matches_normal(Vertex_PNT& v0, 
-                                   Vertex_PNT& v1, 
-                                   Vertex_PNT& v2, 
-                                   const glm::vec3& desired_normal);
 
-void build_triangulated_face(std::vector<Vertex_PNT>& out_vertices,
-                            std::vector<u32>& out_indices,
-                            const std::vector<p2t::Triangle*> triangles,
-                            f32 height,
-                            bool facing_up,
-                            const BoundingBox2D& face_bbox);
-
-void triangulate_face(std::vector<Vertex_PNT>& out_vertices,
-                      std::vector<u32>& out_indices,
-                      f32 height,
-                      bool facing_up, 
-                      const Face& face);

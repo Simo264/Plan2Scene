@@ -145,7 +145,7 @@ void DRWParser::addLWPolyline(const DRW_LWPolyline& data)
   {
     // Calculate bb from points
     auto pts = to_points();
-    auto bbox = BoundingBox2D::calculate_from_contour(pts);
+    auto bbox = BoundingBox2D(pts);
     // We look for the longest side
     auto long_sides = bbox.get_long_sides();
     auto longest_side = long_sides[0];

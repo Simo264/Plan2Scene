@@ -84,13 +84,6 @@ public:
   // Calculate the center of the face
   glm::dvec2 calculate_center() const;
 
-  // Triangulates a polygonal face
-  // void triangulate(std::vector<Vertex_PNT>& out_vertices,
-  //                  std::vector<u32>& out_indices,
-  //                  f32 height,
-  //                  f32 texture_scaling,
-  //                  bool facing_up) const;
-
   // Extrudes a 2D face into a 3D quad-based.
   // Creates four vertices for each edge of the contour, calculates the outward-facing normal based on the edge direction
   void extrude(std::vector<Vertex_PNT>& out_vertices,
@@ -99,18 +92,21 @@ public:
                f32 top_height, 
                f32 texture_scaling = 1.0f) const;
 
-private:
-  // void perform_triangulation(std::vector<Vertex_PNT>& out_vertices,
-  //                            std::vector<u32>& out_indices,
-  //                            const std::vector<p2t::Triangle*> triangles,
-  //                            f32 height,
-  //                            f32 texture_scaling,
-  //                            bool facing_up) const;
+  // Triangulates a polygonal face
+  void triangulate(std::vector<Vertex_PNT>& out_vertices,
+                   std::vector<u32>& out_indices,
+                   f32 height,
+                   f32 texture_scaling,
+                   bool facing_up) const;
 
-  // void ensure_winding_matches_normal(Vertex_PNT& v0,
-  //                                    Vertex_PNT& v1, 
-  //                                    Vertex_PNT& v2, 
-  //                                    glm::vec3 desired_normal) const;
+private:
+  void perform_triangulation(std::vector<Vertex_PNT>& out_vertices,
+                             std::vector<u32>& out_indices,
+                             const std::vector<p2t::Triangle*> triangles,
+                             f32 height,
+                             f32 texture_scaling,
+                             bool facing_up,
+                             struct BoundingBox2D face_bbox) const;
 };
 
 struct WallVertices
@@ -133,12 +129,14 @@ struct OpeningInstance
 
 struct BoundingBox2D
 {
+  BoundingBox2D() : min{}, max{} {}
+  BoundingBox2D(const std::vector<glm::dvec2>& polyline);
+  BoundingBox2D(const Face& face) : BoundingBox2D(face.vertices) {}
+  
+  BoundingBox2D(const std::vector<Segment>& segments);
+  BoundingBox2D(const std::vector<glm::dvec2>& points, const std::vector<u32>& cluster_indices);
+  
   glm::dvec2 min, max;
-
-  static BoundingBox2D calculate_from_contour(const std::vector<glm::dvec2>& polyline);
-  static BoundingBox2D calculate_from_face(const Face& face);
-  static BoundingBox2D calculate_from_segments(const std::vector<Segment>& segments);
-  static BoundingBox2D calculate_from_cluster(const std::vector<glm::dvec2>& points, const std::vector<u32>& cluster_indices);
 
   // calculate the area of the bounding box
   f64 calculate_area() const;
@@ -151,9 +149,10 @@ struct BoundingBox2D
 
 struct BoundingBox3D
 {
-  glm::vec3 min, max;
-
+  BoundingBox3D() : min{}, max{} {}
   // Calculates the bounding box for 3D points
-  static BoundingBox3D calculate_from_vertices(const std::vector<Vertex_PNT>& vertices);
+  BoundingBox3D(const std::vector<Vertex_PNT>& vertices);
+  
+  glm::vec3 min, max;
 };
 

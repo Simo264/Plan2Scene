@@ -19,7 +19,6 @@ struct ReconstructionResult
 struct ReconstructionContext
 {
   std::vector<Segment> walls, doors, windows;
-  f64 unit_scale;
 
   SpatialHash hash;
   std::vector<Edge> edges;

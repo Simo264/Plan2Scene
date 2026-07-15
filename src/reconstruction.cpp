@@ -17,6 +17,7 @@
 #include "dump.hpp"
 #include "globals.hpp"
 #include "io/drw_parser.hpp"
+#include "log.hpp"
 #include "types.hpp"
 
 ReconstructionStage next_stage(ReconstructionStage stage) 
@@ -116,21 +117,23 @@ namespace Reconstruction
     if (!dxf.read(&parser, false))
       throw std::runtime_error(std::format("Error reading DXF file `{}` (code: {})", file.string(), static_cast<i32>(dxf.getError())));
 
+    auto bbox = BoundingBox2D::calculate_from_segments(parser.walls);
+    auto area = bbox.calculate_area();
+    auto unit_scale = g_config.unit_scale;
+    g_logger.push_message({std::format(
+      "DXF file data:\n number of wall segments: {}\n number of door segments: {}\n number of window segments: {}\n area: {}\n unit scale:{}",
+      parser.walls.size(), parser.doors.size(), parser.windows.size(), area, unit_scale),
+      LogLevel::Text});
+    
+    normalize_segments(unit_scale, parser.walls);
+    normalize_segments(unit_scale, parser.doors);
+    normalize_segments(unit_scale, parser.windows);
+
+    center_mesh(parser.walls, parser.doors, parser.windows);
+
     ctx.walls = std::move(parser.walls);
     ctx.doors = std::move(parser.doors);
     ctx.windows = std::move(parser.windows);
-    ctx.unit_scale = g_config.unit_scale;
-
-    g_logger.push_message({std::format(
-        "DXF file data:\n unit scale: {} \n number of wall segments: {}\n number of door segments: {}\n number of window segments: {}",
-        ctx.unit_scale, ctx.walls.size(), ctx.doors.size(), ctx.windows.size()),
-        LogLevel::Text});
-    
-    normalize_segments(ctx.unit_scale, ctx.walls);
-    normalize_segments(ctx.unit_scale, ctx.doors);
-    normalize_segments(ctx.unit_scale, ctx.windows);
-
-    center_mesh(ctx.walls, ctx.doors, ctx.windows);
   }
 
   void vertex_snapping(ReconstructionContext& ctx, f64 snap_eps)
@@ -207,62 +210,68 @@ namespace Reconstruction
 
   ReconstructionResult build_mesh(const std::vector<Face>& faces)
   {
-    auto vertices       = std::vector<Vertex_PNT>{};
-    auto floor_indices  = std::vector<u32>{};
-    auto wall_indices   = std::vector<u32>{};
-    auto result         = ReconstructionResult{};
+    auto mesh_vertices       = std::vector<Vertex_PNT>{};
+    auto mesh_floor_indices  = std::vector<u32>{};
+    auto mesh_wall_indices   = std::vector<u32>{};
+    auto result              = ReconstructionResult{};
+    auto ceil_height         = g_config.ceil_height;
+    auto wall_tex_scaling    = g_config.wall_texture_scaling;
+    auto floor_tex_scaling   = g_config.floor_texture_scaling;
 
     // =======================
     // Create floor plan
     // =======================
-    auto floor_face = std::ranges::find_if(faces, [](const Face& f) { return f.type == FaceType::FLOOR; });
-    triangulate_face(vertices, floor_indices, 0.f, true, *floor_face);
-    triangulate_face(vertices, wall_indices, g_config.ceil_height, false, *floor_face);
+    auto floor_face = std::ranges::find_if(faces, [](const Face& f) { return f.type == FaceType::Floor; });
+    triangulate_face(mesh_vertices, mesh_floor_indices, 0.f, true, *floor_face);
+    triangulate_face(mesh_vertices, mesh_wall_indices, ceil_height, false, *floor_face);
     
     // =======================
     // Extrude walls
     // =======================
-    auto wall_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::WALL; });
+    auto wall_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::Wall; });
     for(const auto& face : wall_faces)
-      extrude_face(vertices, wall_indices, 0.f, g_config.ceil_height, face);
+      face.extrude(mesh_vertices, mesh_wall_indices, 0.f, ceil_height, wall_tex_scaling);
 
     // =======================
     // Extrude doors
     // =======================
-    auto door_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::DOOR; });
-    for(const auto& face : door_faces)
-    {
-      extrude_face(vertices, wall_indices, g_config.door_frac_top, g_config.ceil_height, face);
-      triangulate_face(vertices, wall_indices, g_config.door_frac_top, true, face);
+    // auto door_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::Door; });
+    // for(const auto& face : door_faces)
+    // {
+    //   auto door_base = ceil_height * 0.8f;
+    //   auto door_top = ceil_height;
 
-      OpeningInstance opening = compute_opening_instance(face, OpeningType::Door, 0.0f, g_config.door_frac_top);
-      result.openings.push_back(opening);
-    }
+    //   face.extrude(mesh_vertices, mesh_wall_indices, door_base, door_top, wall_tex_scaling);
+    //   face.triangulate(mesh_vertices, mesh_wall_indices, door_base, wall_tex_scaling, true);
+
+    //   auto opening = compute_opening_instance(face, OpeningType::Door, 0.0f, door_base);
+    //   result.openings.push_back(opening);
+    // }
 
     // =======================
     // Extrude windows
     // =======================
-    auto window_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::WINDOW; });
-    for(const auto& face : window_faces)
-    {
-      extrude_face(vertices, wall_indices, 0.f, g_config.window_frac_bottom, face);
-      extrude_face(vertices, wall_indices, g_config.window_frac_top, g_config.ceil_height, face);
-      triangulate_face(vertices, wall_indices, g_config.window_frac_bottom, true, face);
-      triangulate_face(vertices, wall_indices, g_config.window_frac_top, false, face);
-    }
+    // auto window_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::Window; });
+    // for(const auto& face : window_faces)
+    // {
+    //   extrude_face(vertices, wall_indices, 0.f, g_config.window_frac_bottom, face);
+    //   extrude_face(vertices, wall_indices, g_config.window_frac_top, g_config.ceil_height, face);
+    //   triangulate_face(vertices, wall_indices, g_config.window_frac_bottom, true, face);
+    //   triangulate_face(vertices, wall_indices, g_config.window_frac_top, false, face);
+    // }
 
-    auto floor_range = PrimitiveRange{ 0, static_cast<u32>(floor_indices.size()), MaterialType::Floor };
+    auto floor_range = PrimitiveRange{ 0, static_cast<u32>(mesh_floor_indices.size()), MaterialType::Floor };
     auto all_indices = std::vector<u32>{};
-    all_indices.reserve(floor_indices.size() + wall_indices.size());
-    all_indices.insert(all_indices.end(), floor_indices.begin(), floor_indices.end());
+    all_indices.reserve(mesh_floor_indices.size() + mesh_wall_indices.size());
+    all_indices.insert(all_indices.end(), mesh_floor_indices.begin(), mesh_floor_indices.end());
 
     auto wall_range = PrimitiveRange{ 
       static_cast<u32>(all_indices.size()), 
-      static_cast<u32>(wall_indices.size()), 
+      static_cast<u32>(mesh_wall_indices.size()), 
       MaterialType::Wall };
-    all_indices.insert(all_indices.end(), wall_indices.begin(), wall_indices.end());
+    all_indices.insert(all_indices.end(), mesh_wall_indices.begin(), mesh_wall_indices.end());
     
-    result.mesh_vertices = std::move(vertices);
+    result.mesh_vertices = std::move(mesh_vertices);
     result.mesh_indices  = std::move(all_indices);
     result.primitives = { floor_range, wall_range };
     return result;

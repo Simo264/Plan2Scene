@@ -11,9 +11,6 @@
 #include <string_view>
 #include <map>
 
-#include "../geometry.hpp"
-#include "../globals.hpp"
-
 // Important: When you read data inside a block, those vertices are in local space. 
 // Inside the addInsert call you need to transform those vertices into world spaces. 
 // Otherwise, if the primitives are not inside any blocks it means that their vertices are already in world space.
@@ -30,57 +27,11 @@ static auto s_block_door_info = std::map<std::string, DoorBlockInfo>{};
 
 static auto classify_layer(std::string_view name) 
 {
-  if (name.contains("DOOR"))      return LayerType::DOOR;
-  if (name.contains("WALL"))      return LayerType::WALL;
-  if (name.contains("WINDOW"))    return LayerType::WINDOW;
-  return LayerType::NONE;
+  if (name.contains("DOOR"))      return SegmentLayer::Door;
+  if (name.contains("WALL"))      return SegmentLayer::Wall;
+  if (name.contains("WINDOW"))    return SegmentLayer::Window;
+  return SegmentLayer::None;
 } 
-
-void DRWParser::addHeader(const DRW_Header* data)
-{
-  unit_scale = 0.0;
-  
-  if(!data) 
-  { 
-    g_logger.push_message({"No header data.", LogLevel::Warning});
-    return;
-  }
-  
-  auto it = data->vars.find("$INSUNITS"); 
-  if(it == data->vars.end())
-  {
-    g_logger.push_message({"$INSUNITS not found.", LogLevel::Warning});
-    return;
-  }
-
-  auto units = 0;
-  auto variant = it->second;
-  if (variant->type() == DRW_Variant::INTEGER)
-  {
-    units = variant->content.i;
-  }
-  else
-  {
-    g_logger.push_message({"$INSUNITS is not INTEGER.", LogLevel::Warning});
-    return;
-  }
-
-  switch (units) 
-  {
-    case 1:  unit_scale = 0.0254;        break;  // Inches
-    case 2:  unit_scale = 0.3048;        break;  // Feet
-    case 3:  unit_scale = 0.9144;        break;  // Yards
-    case 4:  unit_scale = 0.001;         break;  // Millimeters
-    case 5:  unit_scale = 0.01;          break;  // Centimeters
-    case 6:  unit_scale = 1.0;           break;  // Meters
-    case 7:  unit_scale = 1.0e-6;        break;  // Kilometers
-    case 21: unit_scale = 0.3048006096;  break;  // US Survey Feet
-    default: 
-      g_logger.push_message({std::format("Unknown $INSUNITS value: {}", units), LogLevel::Warning});
-      break;
-  }
-  g_logger.push_message({std::format("INSUNITS = {}, scale = {}", units, unit_scale), LogLevel::Text});
-}
 
 void DRWParser::addLine(const DRW_Line& data)
 {
@@ -98,11 +49,11 @@ void DRWParser::addLine(const DRW_Line& data)
     return;
   }
  
-  if(layer_type == LayerType::WALL)
+  if(layer_type == SegmentLayer::Wall)
     walls.push_back(segment);
-  else if(layer_type == LayerType::WINDOW)    
+  else if(layer_type == SegmentLayer::Window)    
     windows.push_back(segment);
-  else if (layer_type == LayerType::DOOR) 
+  else if (layer_type == SegmentLayer::Door) 
     doors.push_back(segment);
 }
 
@@ -134,7 +85,7 @@ void DRWParser::addLWPolyline(const DRW_LWPolyline& data)
   }
 
   // break polyline into segments
-  auto to_segments = [&](LayerType lt) -> std::vector<Segment> 
+  auto to_segments = [&](SegmentLayer lt) -> std::vector<Segment> 
   {
     auto count = (i32)vertices.size();
     auto num_segments = is_closed ? count : count - 1;
@@ -166,10 +117,10 @@ void DRWParser::addLWPolyline(const DRW_LWPolyline& data)
   // WALL
   // =============================
   
-  if(layer_type == LayerType::WALL)
+  if(layer_type == SegmentLayer::Wall)
   {
     // Break the polyline into segments and add to the walls
-    auto segs = to_segments(LayerType::WALL);
+    auto segs = to_segments(SegmentLayer::Wall);
     for (auto& seg : segs)
       walls.push_back(seg);
   }
@@ -178,10 +129,10 @@ void DRWParser::addLWPolyline(const DRW_LWPolyline& data)
   // WINDOW
   // =============================
   
-  else if(layer_type == LayerType::WINDOW)
+  else if(layer_type == SegmentLayer::Window)
   {
     // Break the polyline into segments and add to the windows
-    auto segs = to_segments(LayerType::WINDOW);
+    auto segs = to_segments(SegmentLayer::Window);
     for (auto& seg : segs) 
       windows.push_back(seg);
   }
@@ -190,14 +141,14 @@ void DRWParser::addLWPolyline(const DRW_LWPolyline& data)
   // DOOR
   // =============================
   
-  else if(layer_type == LayerType::DOOR)
+  else if(layer_type == SegmentLayer::Door)
   {
     // Calculate bb from points
     auto pts = to_points();
-    auto bbox = calculate_bbox_2D(pts);
+    auto bbox = BoundingBox2D::calculate_from_contour(pts);
     // We look for the longest side
-    auto long_sides = get_long_sides_bbox2d(bbox);
-    auto longest_side = long_sides[1];
+    auto long_sides = bbox.get_long_sides();
+    auto longest_side = long_sides[0];
     longest_side.layer = layer_type;
     doors.push_back(longest_side);
   }
@@ -218,7 +169,7 @@ void DRWParser::addArc(const DRW_Arc& data)
   // DOOR
   // =============================
 
-  if (layer_type == LayerType::DOOR)
+  if (layer_type == SegmentLayer::Door)
   {
     auto center = glm::dvec2{ data.basePoint.x, data.basePoint.y };
     auto radius = data.radious;
@@ -249,7 +200,7 @@ void DRWParser::addInsert(const DRW_Insert& data)
   // DOOR
   // =============================
 
-  if(layer_type == LayerType::DOOR)
+  if(layer_type == SegmentLayer::Door)
   {
     auto base_width = 10.0;
     auto it = s_block_door_info.find(block_name);
@@ -262,14 +213,14 @@ void DRWParser::addInsert(const DRW_Insert& data)
       hinge.x + door_width * cos_angle,
       hinge.y + door_width * sin_angle
     };
-    doors.push_back(Segment{ hinge, tip, LayerType::DOOR });
+    doors.push_back(Segment{ hinge, tip, SegmentLayer::Door });
   }
   
   // =============================
   // WINDOW
   // =============================
 
-  else if(layer_type == LayerType::WINDOW)
+  else if(layer_type == SegmentLayer::Window)
   {
     auto it = s_block_vertices.find(block_name);
     if (it == s_block_vertices.end()) 
@@ -290,7 +241,7 @@ void DRWParser::addInsert(const DRW_Insert& data)
     {    
       auto start = transform(local_segment.start);
       auto end = transform(local_segment.end);
-      windows.push_back(Segment{ start, end, LayerType::WINDOW });
+      windows.push_back(Segment{ start, end, SegmentLayer::Window });
     }
   }
 }

@@ -164,7 +164,7 @@ static auto create_floor_face(const BoundingBox2D& house_bbox)
     glm::dvec2(house_bbox.max.x, house_bbox.max.y),
     glm::dvec2(house_bbox.min.x, house_bbox.max.y) 
   };
-  floor_face.type = FaceType::FLOOR;
+  floor_face.type = FaceType::Floor;
   return floor_face;
 }
 
@@ -173,7 +173,7 @@ int main(int argc, char** argv)
   if (argc != 2)
     throw std::runtime_error("Missing argument: <config>.json");
 
-  g_config = load_config(argv[1]);
+  g_config = Config(argv[1]);
 
   auto window_context = init_window_context(viewport_info.width, viewport_info.height);
  
@@ -361,8 +361,8 @@ int main(int argc, char** argv)
             try 
             {
               // remove all FLOOR faces and push only one quad for floor
-              std::erase_if(ctx.faces, [](auto face) { return face.type == FaceType::FLOOR; });
-              auto house_bbox = calculate_bbox_2D(ctx.walls);
+              std::erase_if(ctx.faces, [](auto face) { return face.type == FaceType::Floor; });
+              auto house_bbox = BoundingBox2D::calculate_from_segments(ctx.walls);
               auto floor_face = create_floor_face(house_bbox);
               ctx.faces.push_back(std::move(floor_face));
               build_result = Reconstruction::build_mesh(ctx.faces);

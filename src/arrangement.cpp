@@ -25,7 +25,7 @@ Arrangement build_arrangement(const std::vector<glm::dvec2>& vertices,
 {
   // Convert GraphEdges to CGAL Segment2
   
-  struct TaggedSegment { Segment2 segment; LayerType layer; };
+  struct TaggedSegment { Segment2 segment; SegmentLayer layer; };
 
   auto tagged = std::vector<TaggedSegment>{};
   tagged.reserve(edges.size());
@@ -60,7 +60,7 @@ Arrangement build_arrangement(const std::vector<glm::dvec2>& vertices,
     // Midpoint of this halfedge
     Point2 mid = CGAL::midpoint(src, tgt);
 
-    auto best_layer = LayerType::NONE;
+    auto best_layer = SegmentLayer::None;
     for (const auto& ts : tagged)
     {
       const Point2& A = ts.segment.source();
@@ -116,11 +116,11 @@ FaceType classify_face(const Face& face)
   auto wall_count = 0u;
   auto door_count = 0u;
   auto window_count = 0u;
-  for (LayerType layer : face.edge_layers) 
+  for (SegmentLayer layer : face.edge_layers) 
   {
-    if (layer == LayerType::WALL)         wall_count++;
-    else if (layer == LayerType::DOOR)    door_count++;
-    else if (layer == LayerType::WINDOW)  window_count++;
+    if (layer == SegmentLayer::Wall)         wall_count++;
+    else if (layer == SegmentLayer::Door)    door_count++;
+    else if (layer == SegmentLayer::Window)  window_count++;
   }
 
   auto total_edges = static_cast<u32>(face.edge_layers.size());
@@ -128,19 +128,19 @@ FaceType classify_face(const Face& face)
   // Door face
   
   if (total_edges == 4 && wall_count == 2 && door_count == 2) 
-    return FaceType::DOOR;
+    return FaceType::Door;
 
   // Window face
   
   if (total_edges == 4 && wall_count == 2 && window_count == 2)
-    return FaceType::WINDOW;
+    return FaceType::Window;
 
   // Wall face
 
   if (wall_count == total_edges) 
-    return FaceType::WALL;
+    return FaceType::Wall;
 
   // Floor face
 
-  return FaceType::FLOOR;
+  return FaceType::Floor;
 }

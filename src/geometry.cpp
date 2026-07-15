@@ -4,11 +4,10 @@
 
 #include "dbscan.h"
 
-#include <numeric>
-
-#include <glm/ext/vector_double2.hpp>
 #include <glm/geometric.hpp>
 #include <glm/common.hpp>
+#include <poly2tri/sweep/cdt.h>
+
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>
@@ -26,138 +25,6 @@ f64 calculate_signed_area(const std::vector<glm::dvec2>& contour)
   return area * 0.5;
 }
 
-BoundingBox2D calculate_bbox_2D(const std::vector<glm::dvec2>& polyline) 
-{
-  if (polyline.empty()) 
-    return BoundingBox2D{ glm::dvec2{0.0, 0.0}, glm::dvec2{0.0, 0.0} };
-
-  auto min_x = std::numeric_limits<f64>::max();
-  auto min_y = std::numeric_limits<f64>::max();
-  auto max_x = -std::numeric_limits<f64>::max();
-  auto max_y = -std::numeric_limits<f64>::max();
-  for (const auto& p : polyline) 
-  {
-    min_x = std::min(min_x, p.x);
-    min_y = std::min(min_y, p.y);
-    max_x = std::max(max_x, p.x);
-    max_y = std::max(max_y, p.y);
-  }
-
-  return BoundingBox2D{
-    .min = glm::dvec2{ min_x, min_y },
-    .max = glm::dvec2{ max_x, max_y }
-  };
-}
-
-BoundingBox2D calculate_bbox_2D(const Face& face)
-{
-  const auto& polyline = face.vertices;
-  return calculate_bbox_2D(polyline);
-}
-
-BoundingBox2D calculate_bbox_2D(const std::vector<Segment>& segments)
-{
-  auto min_x =  std::numeric_limits<f64>::max();
-  auto min_y =  std::numeric_limits<f64>::max();
-  auto max_x = -std::numeric_limits<f64>::max();
-  auto max_y = -std::numeric_limits<f64>::max();
-  for (const auto& seg : segments)
-  {
-    min_x = std::min({min_x, seg.start.x, seg.end.x});
-    min_y = std::min({min_y, seg.start.y, seg.end.y});
-    max_x = std::max({max_x, seg.start.x, seg.end.x});
-    max_y = std::max({max_y, seg.start.y, seg.end.y});
-  }
-  return BoundingBox2D{
-    .min = glm::dvec2{ min_x, min_y },
-    .max = glm::dvec2{ max_x, max_y }
-  };
-}
-
-BoundingBox2D calculate_bbox_2D(const std::vector<glm::dvec2>& points, const std::vector<u32>& cluster_indices) 
-{
-  auto min_x = std::numeric_limits<f64>::max();
-  auto min_y = std::numeric_limits<f64>::max();
-  auto max_x = -std::numeric_limits<f64>::max();
-  auto max_y = -std::numeric_limits<f64>::max();
-  for (int idx : cluster_indices) 
-  {
-    const auto& p = points[idx];
-    min_x = std::min(min_x, p.x);
-    min_y = std::min(min_y, p.y);
-    max_x = std::max(max_x, p.x);
-    max_y = std::max(max_y, p.y);
-  }
-
-  return BoundingBox2D{
-    .min = glm::dvec2{ min_x, min_y },
-    .max = glm::dvec2{ max_x, max_y }
-  };
-}
-
-std::array<Segment, 2> get_long_sides_bbox2d(const BoundingBox2D& bbox)
-{
-  auto dx = bbox.max.x - bbox.min.x;
-  auto dy = bbox.max.y - bbox.min.y;
-  if (dx > dy) 
-  {
-    // The X-axis is dominant: the long sides are horizontal
-    Segment bottom = {
-      .start = glm::dvec2(bbox.min.x, bbox.min.y),
-      .end   = glm::dvec2(bbox.max.x, bbox.min.y),
-      .layer = LayerType::NONE
-    };
-    Segment top = {
-      .start = glm::dvec2(bbox.min.x, bbox.max.y),
-      .end   = glm::dvec2(bbox.max.x, bbox.max.y),
-      .layer = LayerType::NONE
-    };
-    return { bottom, top };
-  } 
-  else 
-  {
-    // The Y-axis is dominant: the long sides are vertical
-    Segment left = {
-      .start = glm::dvec2(bbox.min.x, bbox.min.y),
-      .end   = glm::dvec2(bbox.min.x, bbox.max.y),
-      .layer = LayerType::NONE
-    };
-    Segment right = {
-      .start = glm::dvec2(bbox.max.x, bbox.min.y),
-      .end   = glm::dvec2(bbox.max.x, bbox.max.y),
-      .layer = LayerType::NONE
-    };
-    return { left, right };
-  }
-}
-
-BoundingBox3D calculate_bbox_3D(const std::vector<Vertex_PNT>& vertices) 
-{
-  auto min = vertices.front().position;
-  auto max = min;
-  for (const auto& p : vertices) 
-  {
-    min = glm::min(min, p.position);
-    max = glm::max(max, p.position);
-  }
-  return BoundingBox3D{ min, max };
-}
-
-glm::dvec2 calculate_center(const Face& face)
-{
-  auto sum = std::accumulate(face.vertices.begin(), face.vertices.end(), glm::dvec2(0.0));
-  return sum / static_cast<double>(face.vertices.size());
-}
-
-f64 detect_unit_scale(f64 area_bbox) 
-{
-  if (area_bbox > 10'000'000.0) return 0.001;   // mm
-  if (area_bbox > 100'000.0)    return 0.01;    // cm
-  if (area_bbox > 10'000.0)     return 0.0254;  // inches
-  if (area_bbox > 1'000.0)      return 0.1;     // dm
-  if (area_bbox > 100.0)        return 0.3048;  // feet
-  return 1.0;                                   // m
-}
 
 void normalize_segments(f64 unit, std::vector<Segment>& segments)
 {
@@ -170,7 +37,7 @@ void normalize_segments(f64 unit, std::vector<Segment>& segments)
 
 void center_mesh(std::vector<Segment>& walls, std::vector<Segment>& doors, std::vector<Segment>& windows)
 {
-  auto bbox = calculate_bbox_2D(walls);
+  auto bbox = BoundingBox2D::calculate_from_segments(walls);
   auto center = (bbox.min + bbox.max) * 0.5;
   auto translate = [&center](Segment& s) 
   {
@@ -282,7 +149,7 @@ bool are_vectors_parallel(glm::dvec2 v1, glm::dvec2 v2, f64 eps)
 
 void close_wall_gap(glm::dvec2 gap_start,
                     glm::dvec2 gap_end,
-                    LayerType type,
+                    SegmentLayer type,
                     SpatialHash& hash,
                     std::vector<Edge>& edges,
                     f64 width_scale)
@@ -322,9 +189,9 @@ void doors_reconstruction(std::vector<Segment>& doors,
   for (auto i = 0ul; i < doors.size(); ++i)
   { 
     auto& door = doors[i];
-    try 
+    try
     {
-      close_wall_gap(door.start, door.end, LayerType::DOOR, hash, edges, 0.7f);
+      close_wall_gap(door.start, door.end, SegmentLayer::Door, hash, edges, 1.f);
       door.start = vertices[hash.find_nearest(door.start)];
       door.end   = vertices[hash.find_nearest(door.end)];
     } 
@@ -346,12 +213,12 @@ void windows_reconstruction(std::vector<glm::dvec2>& sample_points,
     if (cluster_indices.empty()) 
       continue;
         
-    auto box = calculate_bbox_2D(sample_points, cluster_indices);
-    auto sides = get_long_sides_bbox2d(box);
+    auto box = BoundingBox2D::calculate_from_cluster(sample_points, cluster_indices);
+    auto sides = box.get_long_sides();
     auto longest_side = sides.at(0);
     try 
     {
-      close_wall_gap(longest_side.start, longest_side.end, LayerType::WINDOW, hash, edges, 1.0f);
+      close_wall_gap(longest_side.start, longest_side.end, SegmentLayer::Window, hash, edges, 1.0f);
     } 
     catch (const std::exception& e)
     {
@@ -359,6 +226,52 @@ void windows_reconstruction(std::vector<glm::dvec2>& sample_points,
     }
   }
 }
+
+OpeningInstance compute_opening_instance(const Face& face,
+                                         OpeningType type,
+                                         f32 z_min,
+                                         f32 z_max) 
+{
+  auto op = OpeningInstance{};
+  op.type = type;
+
+  auto center_2d = face.calculate_center();
+  op.height = z_max - z_min;
+  op.center = glm::vec3(center_2d.x, z_min + op.height * 0.5, center_2d.y);
+
+  // Find longest side of the face
+  auto max_edge_idx = 0;
+  auto max_len_sqr = 0.0;
+  for (size_t i = 0; i < face.vertices.size(); ++i) 
+  {
+    auto v1 = face.vertices[i];
+    auto v2 = face.vertices[(i + 1) % face.vertices.size()];
+    auto len_sqr = glm::length2(v2 - v1);
+    if (len_sqr > max_len_sqr) 
+    {
+      max_len_sqr = len_sqr;
+      max_edge_idx = i;
+    }
+  }
+  op.width = static_cast<f32>(std::sqrt(max_len_sqr));
+
+  // Calculate direction and rotation
+  auto p1 = glm::dvec2(face.vertices[max_edge_idx]);
+  auto p2 = glm::dvec2(face.vertices[(max_edge_idx + 1) % face.vertices.size()]);
+  auto dir =glm::dvec2(glm::normalize(p2 - p1));
+  op.rotation_z = static_cast<f32>(std::atan2(dir.y, dir.x));
+
+  // Calculate thickness
+  auto next_edge_idx = (max_edge_idx + 1) % face.vertices.size();
+  auto p3 = face.vertices[(next_edge_idx + 1) % face.vertices.size()];
+  op.thickness = static_cast<f32>(glm::distance(p2, p3));
+  return op;
+}
+
+
+
+
+
 
 void ensure_winding_matches_normal(Vertex_PNT& v0, 
                                    Vertex_PNT& v1, 
@@ -412,7 +325,7 @@ void triangulate_face(std::vector<Vertex_PNT>& out_vertices,
                       const Face& face)
 {
   auto polyline = face.vertices;
-  auto face_bbox = calculate_bbox_2D(polyline);
+  auto face_bbox = BoundingBox2D::calculate_from_contour(polyline);
     
   auto p2t_points = std::vector<p2t::Point>{};
   auto p2t_ptr_points = std::vector<p2t::Point*>{};
@@ -430,102 +343,3 @@ void triangulate_face(std::vector<Vertex_PNT>& out_vertices,
 
   build_triangulated_face(out_vertices, out_indices, triangles, height, facing_up, face_bbox);
 }
-
-void extrude_face(std::vector<Vertex_PNT>& vertices,
-                  std::vector<u32>& out_indices,
-                  f32 base_height,
-                  f32 top_height,
-                  const Face& face)
-{
-  constexpr glm::vec3 up(0.0f, 1.0f, 0.0f); 
-  const auto& contour = face.vertices; 
-  auto v_bottom_uv = base_height / g_config.wall_texture_scaling; 
-  auto v_top_uv = top_height / g_config.wall_texture_scaling; 
-
-  for (auto i = 0u; i < contour.size(); ++i)  
-  { 
-    auto p1 = contour[i]; 
-    auto p2 = contour[(i + 1) % contour.size()]; 
-    auto edge = glm::vec3(f32(p2.x - p1.x), 0.0f, f32(p2.y - p1.y)); 
-    auto edge_len = glm::length(edge); 
-    auto normal = glm::normalize(glm::cross(up, edge)); 
-    auto u0 = 0.0f; 
-    auto u1 = edge_len / g_config.wall_texture_scaling; 
-
-    auto BL = Vertex_PNT{ {f32(p1.x), base_height, f32(p1.y)}, normal, {u0, v_bottom_uv} }; 
-    auto BR = Vertex_PNT{ {f32(p2.x), base_height, f32(p2.y)}, normal, {u1, v_bottom_uv} }; 
-    auto TR = Vertex_PNT{ {f32(p2.x), top_height, f32(p2.y)}, normal, {u1, v_top_uv} }; 
-    auto TL = Vertex_PNT{ {f32(p1.x), top_height, f32(p1.y)}, normal, {u0, v_top_uv} }; 
-
-    auto tri_normal = glm::cross(BR.position - BL.position, TR.position - BL.position);
-    auto winding_ok = glm::dot(tri_normal, normal) >= 0.0f;
-    
-    auto base = static_cast<u32>(vertices.size()); 
-    vertices.push_back(BL); 
-    vertices.push_back(BR); 
-    vertices.push_back(TR); 
-    vertices.push_back(TL); 
-    if (winding_ok)
-    {
-      out_indices.push_back(base + 0);
-      out_indices.push_back(base + 1);
-      out_indices.push_back(base + 2);
-      out_indices.push_back(base + 0);
-      out_indices.push_back(base + 2);
-      out_indices.push_back(base + 3);
-    }
-    else
-    {
-      out_indices.push_back(base + 0);
-      out_indices.push_back(base + 2);
-      out_indices.push_back(base + 1);
-      out_indices.push_back(base + 0);
-      out_indices.push_back(base + 3);
-      out_indices.push_back(base + 2);
-    } 
-  } 
-}
-
-OpeningInstance compute_opening_instance(const Face& face,
-                                         OpeningType type,
-                                         f32 z_min,
-                                         f32 z_max) 
-{
-  auto op = OpeningInstance{};
-  op.type = type;
-
-  auto center_2d = calculate_center(face);
-  op.height = z_max - z_min;
-  op.center = glm::vec3(center_2d.x, z_min + op.height * 0.5, center_2d.y);
-
-  // Find longest side of the face
-  auto max_edge_idx = 0;
-  auto max_len_sqr = 0.0;
-  for (size_t i = 0; i < face.vertices.size(); ++i) 
-  {
-    auto v1 = face.vertices[i];
-    auto v2 = face.vertices[(i + 1) % face.vertices.size()];
-    auto len_sqr = glm::length2(v2 - v1);
-    if (len_sqr > max_len_sqr) 
-    {
-      max_len_sqr = len_sqr;
-      max_edge_idx = i;
-    }
-  }
-  op.width = static_cast<f32>(std::sqrt(max_len_sqr));
-
-  // Calculate direction and rotation
-  auto p1 = glm::dvec2(face.vertices[max_edge_idx]);
-  auto p2 = glm::dvec2(face.vertices[(max_edge_idx + 1) % face.vertices.size()]);
-  auto dir =glm::dvec2(glm::normalize(p2 - p1));
-  op.rotation_z = static_cast<f32>(std::atan2(dir.y, dir.x));
-
-  // Calculate thickness
-  auto next_edge_idx = (max_edge_idx + 1) % face.vertices.size();
-  auto p3 = face.vertices[(next_edge_idx + 1) % face.vertices.size()];
-  op.thickness = static_cast<f32>(glm::distance(p2, p3));
-  return op;
-}
-
-
-

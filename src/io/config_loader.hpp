@@ -12,10 +12,14 @@ struct Config
   Config(const std::filesystem::path& config_path);
 
   std::filesystem::path dxf_path;
-
   f64 unit_scale;
-  f32 door_width;
+  
   f32 ceil_height;
+  f32 door_width;
+  f32 door_height;
+  f32 window_sill_height;
+  f32 window_height;
+  f32 window_width;
 
   f64 snap_eps;
   

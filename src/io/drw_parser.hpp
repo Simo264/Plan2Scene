@@ -65,7 +65,11 @@ public:
   virtual void writeObjects() override {}
   virtual void writeAppId() override {}
 
+  void remove_duplicate_segments(std::vector<Segment>& segments);
+
   std::vector<Segment> walls;
   std::vector<Segment> doors;
   std::vector<Segment> windows;
+private:
+  SegmentLayer classify_layer(std::string_view name);
 };

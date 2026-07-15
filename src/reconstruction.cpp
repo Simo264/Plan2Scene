@@ -120,15 +120,33 @@ namespace Reconstruction
     auto bbox = BoundingBox2D(parser.walls);
     auto area = bbox.calculate_area();
     auto unit_scale = g_config.unit_scale;
+
+    auto doors_before = parser.doors.size();
+    parser.remove_duplicate_segments(parser.doors);
+    auto doors_after = parser.doors.size();
+    auto doors_removed = doors_before - doors_after;
+    
     g_logger.push_message({std::format(
-      "DXF file data:\n number of wall segments: {}\n number of door segments: {}\n number of window segments: {}\n area: {}\n unit scale:{}",
-      parser.walls.size(), parser.doors.size(), parser.windows.size(), area, unit_scale),
-      LogLevel::Text});
+        "=== Segment Deduplication ===\n"
+        " Doors before: {}\n"
+        " Doors after:  {}\n"
+        " Removed:      {} duplicates",
+        doors_before, doors_after, doors_removed),
+        LogLevel::Text});
+    
+    g_logger.push_message({std::format(
+        "DXF file data:\n"
+        " number of wall segments: {}\n"
+        " number of door segments: {}\n"
+        " number of window segments: {}\n"
+        " area: {}\n"
+        " unit scale: {}",
+        parser.walls.size(), parser.doors.size(), parser.windows.size(), area, unit_scale),
+        LogLevel::Text});
     
     normalize_segments(unit_scale, parser.walls);
     normalize_segments(unit_scale, parser.doors);
     normalize_segments(unit_scale, parser.windows);
-
     center_mesh(parser.walls, parser.doors, parser.windows);
 
     ctx.walls = std::move(parser.walls);
@@ -168,11 +186,8 @@ namespace Reconstruction
     {
       try 
       {
-        auto edges_before_doors = ctx.edges.size();
         doors_reconstruction(ctx.doors, ctx.hash, ctx.edges);
-        auto doors_edges_added = ctx.edges.size() - edges_before_doors;
-        g_logger.push_message({std::format("Doors: {} processed -> {} edges added", ctx.doors.size(), doors_edges_added),
-          LogLevel::Text});
+        g_logger.push_message({std::format("Processing {} door segments", ctx.doors.size()), LogLevel::Text});
       } 
       catch (const std::exception& e) 
       {
@@ -184,10 +199,8 @@ namespace Reconstruction
     {
       try
       {
-        auto edges_before_windows = ctx.edges.size();
         windows_reconstruction(ctx.sample_points, ctx.clusters, ctx.hash, ctx.edges);
-        auto windows_edges_added = ctx.edges.size() - edges_before_windows;
-        g_logger.push_message({std::format("Windows: {} clusters processed -> {} edges added", ctx.clusters.size(), windows_edges_added), 
+        g_logger.push_message({std::format("Processing {} windows clusters", ctx.clusters.size()), 
           LogLevel::Text});
       } 
       catch (const std::exception& e) 
@@ -214,7 +227,11 @@ namespace Reconstruction
     auto mesh_floor_indices  = std::vector<u32>{};
     auto mesh_wall_indices   = std::vector<u32>{};
     auto result              = ReconstructionResult{};
+    
     auto ceil_height         = g_config.ceil_height;
+    auto door_height         = g_config.door_height;
+    auto window_sill         = g_config.window_sill_height;
+    auto window_height       = g_config.window_height;
     auto wall_tex_scaling    = g_config.wall_texture_scaling;
     auto floor_tex_scaling   = g_config.floor_texture_scaling;
 
@@ -236,9 +253,10 @@ namespace Reconstruction
     // Extrude doors
     // =======================
     auto door_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::Door; });
+    g_logger.push_message({std::format("{} door faces found!", std::ranges::distance(door_faces)), LogLevel::Text});
     for(const auto& face : door_faces)
     {
-      auto door_base = ceil_height * 0.8f;
+      auto door_base = door_height;
       auto door_top = ceil_height;
 
       face.extrude(mesh_vertices, mesh_wall_indices, door_base, door_top, wall_tex_scaling);
@@ -252,17 +270,14 @@ namespace Reconstruction
     // Extrude windows
     // =======================
     auto window_faces = std::ranges::views::filter(faces, [](const Face& f) { return f.type == FaceType::Window; });
+    g_logger.push_message({std::format("{} door windows found!", std::ranges::distance(window_faces)), LogLevel::Text});
     for(const auto& face : window_faces)
     {
-      auto window_base = 0.0f;
-      auto window_top  = ceil_height * 0.2f;
-      face.extrude(mesh_vertices, mesh_wall_indices, window_base, window_top, wall_tex_scaling);
-      face.triangulate(mesh_vertices, mesh_wall_indices, window_top, wall_tex_scaling, true);
+      face.extrude(mesh_vertices, mesh_wall_indices, 0.0f, window_sill, wall_tex_scaling);
+      face.triangulate(mesh_vertices, mesh_wall_indices, window_sill, wall_tex_scaling, true);
       
-      window_base = ceil_height * 0.8f;
-      window_top  = ceil_height;
-      face.extrude(mesh_vertices, mesh_wall_indices, window_base, window_top, wall_tex_scaling);
-      face.triangulate(mesh_vertices, mesh_wall_indices, window_base, wall_tex_scaling, false);
+      face.extrude(mesh_vertices, mesh_wall_indices, window_height, ceil_height, wall_tex_scaling);
+      face.triangulate(mesh_vertices, mesh_wall_indices, window_height, wall_tex_scaling, false);
     }
 
     auto floor_range = PrimitiveRange{ 

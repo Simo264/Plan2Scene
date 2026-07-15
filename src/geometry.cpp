@@ -4,11 +4,11 @@
 
 #include "dbscan.h"
 
-#include <glm/geometric.hpp>
-#include <glm/common.hpp>
+#include <print>
 #include <poly2tri/sweep/cdt.h>
 
-
+#include <glm/geometric.hpp>
+#include <glm/common.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>
 
@@ -191,7 +191,11 @@ void doors_reconstruction(std::vector<Segment>& doors,
     auto& door = doors[i];
     try
     {
-      close_wall_gap(door.start, door.end, SegmentLayer::Door, hash, edges, 1.f);
+      auto target_width = g_config.door_width;
+      
+      auto current_width = glm::distance(door.start, door.end);
+      auto width_scale = target_width / current_width;           
+      close_wall_gap(door.start, door.end, SegmentLayer::Door, hash, edges, width_scale);
       door.start = vertices[hash.find_nearest(door.start)];
       door.end   = vertices[hash.find_nearest(door.end)];
     } 
@@ -218,7 +222,10 @@ void windows_reconstruction(std::vector<glm::dvec2>& sample_points,
     auto longest_side = sides.at(0);
     try 
     {
-      close_wall_gap(longest_side.start, longest_side.end, SegmentLayer::Window, hash, edges, 1.0f);
+      auto target_width = g_config.window_width;
+      auto current_width = glm::distance(longest_side.start, longest_side.end);
+      auto width_scale = target_width / current_width;              
+      close_wall_gap(longest_side.start, longest_side.end, SegmentLayer::Window, hash, edges, width_scale);
     } 
     catch (const std::exception& e)
     {

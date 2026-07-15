@@ -80,10 +80,8 @@ void windows_reconstruction(std::vector<glm::dvec2>& sample_points,
                             SpatialHash& hash,
                             std::vector<Edge>& edges);
 
+
 OpeningInstance compute_opening_instance(const Face& face, 
                                          OpeningType type,
                                          f32 z_min, 
                                          f32 z_max);
-
-
-

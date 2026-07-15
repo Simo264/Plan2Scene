@@ -1,11 +1,19 @@
 {
   "dxf_filename": "Simple_House_Plan.dxf",
   "unit_scale": 0.1,
-  "door_width": 1.2,
+  
   "ceil_height": 2.7,
+  "door_width": 3.0,
+  "door_height": 2.1,
+  "window_sill_height": 0.5,
+  "window_height": 2.1,
+  "window_width": 4.0,
+  
   "snap_eps": 1e-2,
+  
   "cluster_num_samples": 10,
   "cluster_eps": 1.0,
+  
   "floor_texture_scaling": 2.0,
   "wall_texture_scaling": 2.0
 }

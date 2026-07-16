@@ -280,18 +280,12 @@ namespace Reconstruction
       face.triangulate(mesh_vertices, mesh_wall_indices, window_height, wall_tex_scaling, false);
     }
 
-    auto floor_range = PrimitiveRange{ 
-      0, 
-      static_cast<u32>(mesh_floor_indices.size()), 
-      MaterialType::Floor };
+    auto floor_range = PrimitiveRange{ 0, static_cast<u32>(mesh_floor_indices.size()), MaterialType::Floor };
     auto all_indices = std::vector<u32>{};
     all_indices.reserve(mesh_floor_indices.size() + mesh_wall_indices.size());
     all_indices.insert(all_indices.end(), mesh_floor_indices.begin(), mesh_floor_indices.end());
 
-    auto wall_range = PrimitiveRange{ 
-      static_cast<u32>(all_indices.size()), 
-      static_cast<u32>(mesh_wall_indices.size()), 
-      MaterialType::Wall };
+    auto wall_range = PrimitiveRange{ static_cast<u32>(all_indices.size()), static_cast<u32>(mesh_wall_indices.size()), MaterialType::Wall };
     all_indices.insert(all_indices.end(), mesh_wall_indices.begin(), mesh_wall_indices.end());
     
     result.mesh_vertices = std::move(mesh_vertices);

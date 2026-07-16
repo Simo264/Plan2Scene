@@ -4,9 +4,10 @@ project(Plan2Scene)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+set(CMAKE_BUILD_TYPE Debug)
 
+find_package(TBB REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
@@ -58,6 +59,7 @@ add_executable(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
+  TBB::tbb
   OpenGL::GL
   glad::glad
   glfw

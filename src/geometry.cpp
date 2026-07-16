@@ -4,7 +4,6 @@
 
 #include "dbscan.h"
 
-#include <print>
 #include <poly2tri/sweep/cdt.h>
 
 #include <glm/geometric.hpp>
@@ -237,7 +236,7 @@ void windows_reconstruction(std::vector<glm::dvec2>& sample_points,
 OpeningInstance compute_opening_instance(const Face& face,
                                          OpeningType type,
                                          f32 z_min,
-                                         f32 z_max) 
+                                         f32 z_max)
 {
   auto op = OpeningInstance{};
   op.type = type;
@@ -249,7 +248,7 @@ OpeningInstance compute_opening_instance(const Face& face,
   // Find longest side of the face
   auto max_edge_idx = 0;
   auto max_len_sqr = 0.0;
-  for (size_t i = 0; i < face.vertices.size(); ++i) 
+  for (auto i = 0u; i < face.vertices.size(); ++i) 
   {
     auto v1 = face.vertices[i];
     auto v2 = face.vertices[(i + 1) % face.vertices.size()];

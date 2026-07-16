@@ -3,11 +3,11 @@
   "unit_scale": 0.1,
   
   "ceil_height": 2.7,
-  "door_width": 3.0,
+  "door_width": 0.9, 
   "door_height": 2.1,
-  "window_sill_height": 0.5,
-  "window_height": 2.1,
-  "window_width": 4.0,
+  "window_sill_height": 0.9,
+  "window_height": 1.4,
+  "window_width": 1.6,
   
   "snap_eps": 1e-2,
   

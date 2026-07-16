@@ -227,7 +227,7 @@ ViewportInfo viewport_panel(Texture viewport_image, bool flip_viewport_image)
 void properties_panel()
 {
   ImGui::SetNextWindowSize(ImVec2(300, 0), ImGuiCond_FirstUseEver);
-  if(ImGui::Begin("Params"))
+  if(ImGui::Begin("Params")) 
   {
     ImGui::Text("DXF file: %s", g_config.dxf_path.string().c_str());
     ImGui::Separator();
@@ -250,12 +250,25 @@ void properties_panel()
       add_row("Cluster Num Samples", "%d", g_config.cluster_num_samples);
       add_row("Cluster Epsilon", "%.4f", g_config.cluster_eps);
       add_row("Ceiling Height", "%.2f m", g_config.ceil_height);
+
+      add_row("Door Width", "%.2f m", g_config.door_width);
+      add_row("Door Height", "%.2f m", g_config.door_height);
+      add_row("Door Aspect", "%.2f", g_config.door_aspect);
+
+      add_row("Window Sill Height", "%.2f m", g_config.window_sill_height);
+      add_row("Window Height", "%.2f m", g_config.window_height);
+      add_row("Window Width", "%.2f m", g_config.window_width);
+      add_row("Window Aspect", "%.2f", g_config.window_aspect);
+
+      add_row("Floor Texture Scaling", "%.2f", g_config.floor_texture_scaling);
+      add_row("Wall Texture Scaling", "%.2f", g_config.wall_texture_scaling);
+
       ImGui::EndTable();
-    }   
+    }
   }
-  
   ImGui::End();
 }
+
 
 void scene_panel(Camera& camera, Transformation& mesh_transform, glm::vec3 &light_position, f32& light_power)
 {

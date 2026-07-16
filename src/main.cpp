@@ -2,13 +2,13 @@
 #include <GLFW/glfw3.h>
 #include <exception>
 #include <filesystem>
+#include <print>
 #include <format>
 #include <memory>
 #include <stdexcept>
 #include <atomic>
 
 #include "types.hpp"
-#include "geometry.hpp"
 #include "reconstruction.hpp"
 #include "log.hpp"
 #include "globals.hpp"
@@ -155,7 +155,7 @@ static void create_framebuffer(FrameBuffer& fb, Texture& color, Texture& depth, 
   fb.unbind(FramebufferTarget::READ_DRAW);
 }
 
-static auto create_floor_face(const BoundingBox2D& house_bbox)
+static auto create_floor_face(BoundingBox2D house_bbox)
 {
   auto floor_face = Face{};
   floor_face.vertices = {
@@ -173,7 +173,16 @@ int main(int argc, char** argv)
   if (argc != 2)
     throw std::runtime_error("Missing argument: <config>.json");
 
-  g_config = Config(argv[1]);
+  try
+  {
+    g_config = Config(argv[1]);
+  }
+  catch(const std::exception& e)
+  {
+    std::println("Configuration error: {}", e.what());
+    exit(1);
+  }
+    
 
   auto window_context = init_window_context(viewport_info.width, viewport_info.height);
  

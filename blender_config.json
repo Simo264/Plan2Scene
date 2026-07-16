@@ -1,20 +1,20 @@
 {
   "rendering": {
-    "samples": 16,
+    "samples": 32,
     "resolution_x": 640,
     "resolution_y": 360,
-    "output_image": "out/draftperson_Floor_Plan_cycles.png"
+    "output_image": "out/Simple_House_Plan.png"
   },
   "scene": {
-    "gltf_path": "out/Simple_House_Plan.gltf",
+    "model_path": "out/Simple_House_Plan.gltf",
     "opening_placeholders": "out/Simple_House_Plan_openings.json",
-    "door_asset": "assets/door_classic.glb",
-    "window_asset": "assets/xyz.glb",
+    "door_asset": "assets/Wooden_Door.glb",
+    "window_asset": "assets/PVC_window.glb",
     "hdri_path": "HDRIs/partly_cloudy_4k.hdr",
     "hdri_intensity": 1.0,
     "camera": {
-      "location": [3.0, 30.0, 3.0],
-      "rotation_degrees": [80.0, 0.0, -185.0],
+      "location": [-7.54497, 4.4, 1.8],
+      "rotation_degrees": [84.0, 0.0, -258.0],
       "fov_degrees": 60.0
     },
     "lights": {
@@ -22,7 +22,7 @@
         "energy": 700.0,
         "color": [1.0, 0.95, 0.88],
         "shadow_soft_size": 0.15,
-        "location": [0.0, 0.0, 0.5]
+        "location": [-12, 0.0, 1.4]
       },
       "sun": {
         "energy": 2.5,
@@ -56,11 +56,6 @@
       "disp_scale": 0.03,
       "ao": "materials/beige_wall/beige_wall_001_ao_1k.jpg",
       "arm": "materials/beige_wall/beige_wall_001_arm_1k.jpg"
-    },
-    "Simple_Material": {
-      "base_color": [0.2, 0.6, 0.9],
-      "roughness_value": 0.4,
-      "metallic_value": 0.0
     }
   }
 }

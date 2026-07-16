@@ -12,11 +12,9 @@ if script_dir not in sys.path:
 from render_utils import (
   clear_scene,
   setup_rendering_engine,
-  import_gltf,
-  place_openings,
+  import_model,
 
   setup_world_hdri,
-  apply_materials,
   setup_camera,
   setup_lights,
 )
@@ -47,7 +45,11 @@ def main():
   res_y = rendering["resolution_y"]
   output_path = rendering["output_image"]
 
-  gltf_path = scene_cfg["gltf_path"]
+  model_path = scene_cfg["model_path"]
+  openings_path = scene_cfg.get("opening_placeholders")
+  door_asset_path = scene_cfg.get("door_asset")
+  window_asset_path = scene_cfg.get("window_asset")
+
   hdri_path = scene_cfg["hdri_path"]
   hdri_intensity = scene_cfg.get("hdri_intensity", 1.0)
 
@@ -67,28 +69,9 @@ def main():
   
   setup_rendering_engine(samples, res_x, res_y, output_path)
   
-  import_gltf(gltf_path)
-
-  # ==========================================
-  # Load and place openings (doors/windows)
-  # ==========================================
-  openings_path_rel = scene_cfg.get("opening_placeholders")
-  openings_path = os.path.join(PROJECT_ROOT, openings_path_rel)
-  door_asset_rel = scene_cfg.get("door_asset")
-  door_asset_path = os.path.join(PROJECT_ROOT, door_asset_rel)
-  window_asset_rel = scene_cfg.get("window_asset")
-  window_asset_path = os.path.join(PROJECT_ROOT, window_asset_rel)
-
-  if os.path.exists(openings_path):
-    with open(openings_path, 'r') as f:
-      openings_data = json.load(f)
-    place_openings(openings_data["openings"], door_asset_path, window_asset_path)
-  else:
-    print(f"No openings file found: {openings_path}")
+  import_model(model_path, openings_path, door_asset_path, window_asset_path, materials)
 
   setup_world_hdri(hdri_path, strength=hdri_intensity)
-
-  apply_materials(materials)
 
   setup_camera(cam_loc, cam_rot, cam_fov)
 

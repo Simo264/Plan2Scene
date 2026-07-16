@@ -31,36 +31,6 @@ def setup_rendering_engine(samples, resolution_x, resolution_y, output_path):
   print(f"RENDER ENGINE: {scene.cycles.device}, samples={samples}, resolution={resolution_x}x{resolution_y}")
   print(f"OUTPUT IMAGE : {os.path.abspath(output_path)}")
 
-def import_gltf(filepath):
-  if not os.path.isabs(filepath):
-    filepath = os.path.join(PROJECT_ROOT, filepath)
-  abs_path = os.path.abspath(filepath)
-  if not os.path.exists(abs_path):
-    print(f"GLTF file not found: {abs_path}")
-    return
-  print(f"IMPORT GLTF  : {abs_path}")
-  bpy.ops.import_scene.gltf(filepath=abs_path)
-
-def place_openings(openings, door_glb_path, window_glb_path=None):
-  for i, opening in enumerate(openings):
-    op_type = opening.get("type")
-    loc, rot = _get_opening_transform(opening)
-    width = opening["width"]
-    height = opening["height"]
-    thickness = opening.get("thickness", 0.1)
-
-    if op_type == "Door":
-      if door_glb_path and os.path.exists(door_glb_path):
-        _place_glb_asset(door_glb_path, loc, rot, width, height, thickness, asset_name=f"Door_{i:03d}")
-      else:
-        _create_placeholder_door(loc, rot, width, height, thickness, name=f"Door_Placeholder_{i:03d}")
-
-    elif op_type == "Window":
-      if window_glb_path and os.path.exists(window_glb_path):
-        _place_glb_asset(window_glb_path, loc, rot, width, height, thickness, asset_name=f"Window_{i:03d}")
-      else:
-        _create_placeholder_window(loc, rot, width, height, thickness, name=f"Window_Placeholder_{i:03d}")
-
 def setup_camera(location, rotation, fov_degrees):
   cam_data = bpy.data.cameras.new('MainCamera')
   cam_data.lens_unit = 'FOV'
@@ -71,6 +41,33 @@ def setup_camera(location, rotation, fov_degrees):
   cam_obj.location = location
   cam_obj.rotation_euler = mathutils.Euler(rotation, 'XYZ')
   bpy.context.view_layer.update()
+
+def import_model(model_path, openings_path, door_asset_path, window_asset_path, materials):
+  model_path = os.path.join(PROJECT_ROOT, model_path)
+  if not os.path.exists(model_path):
+    print(f"GLTF file not found: {model_path}")
+    exit(1)
+  
+  print(f"IMPORT GLTF  : {model_path}")
+  bpy.ops.import_scene.gltf(filepath=model_path)
+
+ # Apply materials
+  
+  _apply_materials(materials)
+
+  # Load and place openings (doors/windows)
+  
+  openings_path = os.path.join(PROJECT_ROOT, openings_path)
+  if not os.path.exists(openings_path):
+    print(f"No openings file found: {openings_path}")
+    return;
+
+  door_asset_path = os.path.join(PROJECT_ROOT, door_asset_path)
+  window_asset_path = os.path.join(PROJECT_ROOT, window_asset_path)
+  with open(openings_path, 'r') as f:
+    openings_data = json.load(f)
+  _place_openings(openings_data["openings"], door_asset_path, window_asset_path)
+
 
 def setup_lights(point_params, sun_params):
   # Point light
@@ -83,24 +80,21 @@ def setup_lights(point_params, sun_params):
   bpy.context.collection.objects.link(light_obj)
 
   # Sun light
-  sun_data = bpy.data.lights.new(name="KeyLight", type='SUN')
+  sun_data = bpy.data.lights.new(name="SunLight", type='SUN')
   sun_data.energy = sun_params.get("energy", 2.5)
   sun_data.angle = math.radians(sun_params.get("angle_degrees", 2.0))
-  sun_obj = bpy.data.objects.new(name="KeyLight", object_data=sun_data)
+  sun_obj = bpy.data.objects.new(name="SunLight", object_data=sun_data)
   rot = sun_params.get("rotation_degrees", [60.0, 0.0, 35.0])
   sun_obj.rotation_euler = (math.radians(rot[0]), math.radians(rot[1]), math.radians(rot[2]))
   bpy.context.collection.objects.link(sun_obj)
 
 def setup_world_hdri(hdri_path, strength=1.0):
-  # If path is relative, resolve it
-  if not os.path.isabs(hdri_path):
-    hdri_path = os.path.join(PROJECT_ROOT, hdri_path)
-  abs_path = os.path.abspath(hdri_path)
-  if not os.path.exists(abs_path):
-    print(f"Warning: HDRI not found {abs_path}")
+  hdri_path = os.path.join(PROJECT_ROOT, hdri_path)
+  if not os.path.exists(hdri_path):
+    print(f"Warning: HDRI not found {hdri_path}")
     return
 
-  print(f"HDRI IMAGE   : {abs_path} (intensity={strength})")
+  print(f"HDRI IMAGE   : {hdri_path} (intensity={strength})")
   world = bpy.data.worlds.get("World")
   if world is None:
     world = bpy.data.worlds.new("World")
@@ -124,14 +118,14 @@ def setup_world_hdri(hdri_path, strength=1.0):
   node_texcoord.location = (-550, 0)
 
   # Load HDR image
-  img_name = os.path.basename(abs_path)
+  img_name = os.path.basename(hdri_path)
   if img_name in bpy.data.images:
     node_env_tex.image = bpy.data.images[img_name]
   else:
-    node_env_tex.image = bpy.data.images.load(abs_path)
+    node_env_tex.image = bpy.data.images.load(hdri_path)
 
   # HDRIs are loaded as 'Non-Color' by default in Blender
-  node_env_tex.image.colorspace_settings.name = 'Non-Color'
+  # node_env_tex.image.colorspace_settings.name = 'Non-Color'
 
   links.new(node_texcoord.outputs["Generated"], node_mapping.inputs["Vector"])
   links.new(node_mapping.outputs["Vector"], node_env_tex.inputs["Vector"])
@@ -141,37 +135,21 @@ def setup_world_hdri(hdri_path, strength=1.0):
   # Ambient light intensity
   node_background.inputs["Strength"].default_value = strength
 
-def apply_materials(materials_dict):
+
+# ==========================================
+# HELPER FUNCTIONS FOR MATERIALS MANAGEMENT
+# ==========================================
+
+def _apply_materials(materials):
   for material in bpy.data.materials:
     base_name = material.name.split('.')[0]
-    if base_name in materials_dict:
+    if base_name in materials:
       print(f"Applying material: `{base_name}`")
-      setup_material_nodes(material, materials_dict[base_name])
+      _setup_material_nodes(material, materials[base_name])
     else:
       print(f"Material not found `{base_name}`. Using default.")
 
-def load_image_node(nodes, imagepath, colorspace='sRGB'):
-  if not imagepath:
-    return None
-
-  # If the path is relative, resolve it against PROJECT_ROOT
-  if not os.path.isabs(imagepath):
-    imagepath = os.path.join(PROJECT_ROOT, imagepath)
-  abs_path = os.path.abspath(imagepath)
-  if not os.path.exists(abs_path):
-    print(f"Warning: image not found {abs_path}")
-    return None
-  node_tex = nodes.new("ShaderNodeTexImage")
-  img_name = os.path.basename(abs_path)
-  if img_name in bpy.data.images:
-    node_tex.image = bpy.data.images[img_name]
-  else:
-    node_tex.image = bpy.data.images.load(abs_path)
-  
-  node_tex.image.colorspace_settings.name = colorspace
-  return node_tex
-
-def setup_material_nodes(mat, mat_config):
+def _setup_material_nodes(mat, mat_config):
   mat_name = mat.name
   print(f"  Configuring material: '{mat_name}'")
   nodes, links, node_principled, node_output, node_mapping = _setup_base_nodes(mat)
@@ -182,11 +160,6 @@ def setup_material_nodes(mat, mat_config):
   _mix_albedo_ao(nodes, links, albedo_output, ao_output, node_principled, mat_config)
   _handle_normal(nodes, links, node_mapping, node_principled, mat_config)
   _handle_displacement(nodes, links, node_mapping, node_output, mat, mat_config)
-
-
-# ==========================================
-# HELPER FUNCTIONS FOR MATERIALS MANAGEMENT
-# ==========================================
 
 def _setup_base_nodes(mat):
   mat.use_nodes = True
@@ -214,7 +187,7 @@ def _handle_albedo(nodes, links, node_mapping, node_principled, mat_config):
   base_color = mat_config.get("base_color", [1.0, 1.0, 1.0])
   if albedo_path:
     print(f"    - Albedo texture: {albedo_path}")
-    tex_albedo = load_image_node(nodes, albedo_path, 'sRGB')
+    tex_albedo = _load_image_node(nodes, albedo_path, 'sRGB')
     if tex_albedo:
       tex_albedo.location = (-600, 300)
       links.new(node_mapping.outputs["Vector"], tex_albedo.inputs["Vector"])
@@ -243,7 +216,7 @@ def _handle_arm_or_single(nodes, links, node_mapping, node_principled, mat_confi
 
   if arm_path:
     print(f"    - Using ARM texture: {arm_path}")
-    tex_arm = load_image_node(nodes, arm_path, 'Non-Color')
+    tex_arm = _load_image_node(nodes, arm_path, 'Non-Color')
     if tex_arm:
       tex_arm.location = (-600, 0)
       links.new(node_mapping.outputs["Vector"], tex_arm.inputs["Vector"])
@@ -262,7 +235,7 @@ def _handle_arm_or_single(nodes, links, node_mapping, node_principled, mat_confi
     # Ambient occlusion - AO
     if ao_path:
       print(f"    - AO texture: {ao_path}")
-      tex_ao = load_image_node(nodes, ao_path, 'Non-Color')
+      tex_ao = _load_image_node(nodes, ao_path, 'Non-Color')
       if tex_ao:
         tex_ao.location = (-600, 150)
         links.new(node_mapping.outputs["Vector"], tex_ao.inputs["Vector"])
@@ -275,7 +248,7 @@ def _handle_arm_or_single(nodes, links, node_mapping, node_principled, mat_confi
     # Roughness
     if roughness_path:
       print(f"    - Roughness texture: {roughness_path}")
-      tex_rough = load_image_node(nodes, roughness_path, 'Non-Color')
+      tex_rough = _load_image_node(nodes, roughness_path, 'Non-Color')
       if tex_rough:
         tex_rough.location = (-600, -150)
         links.new(node_mapping.outputs["Vector"], tex_rough.inputs["Vector"])
@@ -290,7 +263,7 @@ def _handle_arm_or_single(nodes, links, node_mapping, node_principled, mat_confi
     # Metallic
     if metallic_path:
       print(f"    - Metallic texture: {metallic_path}")
-      tex_metallic = load_image_node(nodes, metallic_path, 'Non-Color')
+      tex_metallic = _load_image_node(nodes, metallic_path, 'Non-Color')
       if tex_metallic:
         tex_metallic.location = (-600, -300)
         links.new(node_mapping.outputs["Vector"], tex_metallic.inputs["Vector"])
@@ -331,7 +304,7 @@ def _handle_normal(nodes, links, node_mapping, node_principled, mat_config):
   normal_strength = mat_config.get("normal_strength", 1.5)
   if normal_path:
     print(f"    - Normal map: {normal_path} (strength={normal_strength})")
-    tex_normal = load_image_node(nodes, normal_path, 'Non-Color')
+    tex_normal = _load_image_node(nodes, normal_path, 'Non-Color')
     if tex_normal:
       tex_normal.location = (-600, -400)
       node_normal_map = nodes.new("ShaderNodeNormalMap")
@@ -350,7 +323,7 @@ def _handle_displacement(nodes, links, node_mapping, node_output, mat, mat_confi
   disp_scale = mat_config.get("disp_scale", 0.05)
   if disp_path:
     print(f"    - Displacement map: {disp_path} (scale={disp_scale})")
-    tex_disp = load_image_node(nodes, disp_path, 'Non-Color')
+    tex_disp = _load_image_node(nodes, disp_path, 'Non-Color')
     if tex_disp:
       tex_disp.location = (-600, -650)
       node_disp = nodes.new("ShaderNodeDisplacement")
@@ -371,10 +344,51 @@ def _handle_displacement(nodes, links, node_mapping, node_output, mat, mat_confi
   else:
     print("    - No displacement map")
 
+def _load_image_node(nodes, imagepath, colorspace='sRGB'):
+  if not imagepath:
+    return None
+
+  # If the path is relative, resolve it against PROJECT_ROOT
+  if not os.path.isabs(imagepath):
+    imagepath = os.path.join(PROJECT_ROOT, imagepath)
+  abs_path = os.path.abspath(imagepath)
+  if not os.path.exists(abs_path):
+    print(f"Warning: image not found {abs_path}")
+    return None
+  node_tex = nodes.new("ShaderNodeTexImage")
+  img_name = os.path.basename(abs_path)
+  if img_name in bpy.data.images:
+    node_tex.image = bpy.data.images[img_name]
+  else:
+    node_tex.image = bpy.data.images.load(abs_path)
+  
+  node_tex.image.colorspace_settings.name = colorspace
+  return node_tex
+
+
 # ==========================================
 # HELPER FUNCTIONS FOR OPENINGS
 # ==========================================
 
+def _place_openings(openings, door_glb_path, window_glb_path=None):
+  for i, opening in enumerate(openings):
+    op_type = opening.get("type")
+    loc, rot = _get_opening_transform(opening)
+    width = opening["width"]
+    height = opening["height"]
+    thickness = opening.get("thickness", 0.1)
+
+    if op_type == "Door":
+      if door_glb_path and os.path.exists(door_glb_path):
+        _place_glb_asset(door_glb_path, loc, rot, width, height, thickness, asset_name=f"Door_{i:03d}")
+      else:
+        _create_placeholder_door(loc, rot, width, height, thickness, name=f"Door_Placeholder_{i:03d}")
+
+    elif op_type == "Window":
+      if window_glb_path and os.path.exists(window_glb_path):
+        _place_glb_asset(window_glb_path, loc, rot, width, height, thickness, asset_name=f"Window_{i:03d}")
+      else:
+        _create_placeholder_window(loc, rot, width, height, thickness, name=f"Window_Placeholder_{i:03d}")
 
 def _create_placeholder_door(location, rotation, width, height, thickness=0.08, color=(0.4, 0.2, 0.1, 1.0), name="Door_Placeholder"):
   bpy.ops.mesh.primitive_cube_add(size=1, location=location, rotation=rotation)

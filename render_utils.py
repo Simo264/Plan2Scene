@@ -41,8 +41,25 @@ def import_gltf(filepath):
   print(f"IMPORT GLTF  : {abs_path}")
   bpy.ops.import_scene.gltf(filepath=abs_path)
 
+def place_openings(openings, door_glb_path, window_glb_path=None):
+  for i, opening in enumerate(openings):
+    op_type = opening.get("type")
+    loc, rot = _get_opening_transform(opening)
+    width = opening["width"]
+    height = opening["height"]
+    thickness = opening.get("thickness", 0.1)
 
+    if op_type == "Door":
+      if door_glb_path and os.path.exists(door_glb_path):
+        _place_glb_asset(door_glb_path, loc, rot, width, height, thickness, asset_name=f"Door_{i:03d}")
+      else:
+        _create_placeholder_door(loc, rot, width, height, thickness, name=f"Door_Placeholder_{i:03d}")
 
+    elif op_type == "Window":
+      if window_glb_path and os.path.exists(window_glb_path):
+        _place_glb_asset(window_glb_path, loc, rot, width, height, thickness, asset_name=f"Window_{i:03d}")
+      else:
+        _create_placeholder_window(loc, rot, width, height, thickness, name=f"Window_Placeholder_{i:03d}")
 
 def setup_camera(location, rotation, fov_degrees):
   cam_data = bpy.data.cameras.new('MainCamera')
@@ -354,4 +371,116 @@ def _handle_displacement(nodes, links, node_mapping, node_output, mat, mat_confi
   else:
     print("    - No displacement map")
 
+# ==========================================
+# HELPER FUNCTIONS FOR OPENINGS
+# ==========================================
+
+
+def _create_placeholder_door(location, rotation, width, height, thickness=0.08, color=(0.4, 0.2, 0.1, 1.0), name="Door_Placeholder"):
+  bpy.ops.mesh.primitive_cube_add(size=1, location=location, rotation=rotation)
+  obj = bpy.context.object
+  obj.name = name
+  obj.scale = (width, thickness, height)
+  mat = bpy.data.materials.new(name=f"{name}_Material")
+  mat.use_nodes = True
+  mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = color
+  if color[3] < 1.0:
+    mat.blend_method = 'BLEND'
+    mat.node_tree.nodes["Principled BSDF"].inputs["Alpha"].default_value = color[3]
+  else:
+    mat.blend_method = 'OPAQUE'
+  obj.data.materials.append(mat)
+  return obj
+
+def _create_placeholder_window(location, rotation, width, height, thickness=0.1, color=(0.2, 0.6, 1.0, 0.3), name="Window_Placeholder"):
+  bpy.ops.mesh.primitive_cube_add(size=1, location=location, rotation=rotation)
+  obj = bpy.context.object
+  obj.name = name
+  obj.scale = (width, thickness, height)
+  mat = bpy.data.materials.new(name=f"{name}_Material")
+  mat.use_nodes = True
+  mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = color
+  mat.blend_method = 'BLEND'
+  mat.node_tree.nodes["Principled BSDF"].inputs["Alpha"].default_value = color[3]
+  obj.data.materials.append(mat)
+  return obj
+
+def _get_opening_transform(opening):
+  gx, gy_height, gz_spatial = opening["center"]
+  loc = (gx, -gz_spatial, gy_height)
+  rot_z = -opening["rotation_z"]
+  return loc, (0.0, 0.0, rot_z)
+
+def _place_glb_asset(glb_path, location, rotation_euler, target_width, target_height, target_depth=None, asset_name="asset"):
+  """
+  Importa un file GLB, lo posiziona e lo scala per adattarsi alle dimensioni target.
+  - Se target_depth è None, scala uniformemente (larghezza come riferimento).
+  - asset_name: nome dell'oggetto anchor.
+  - Restituisce l'oggetto anchor o None in caso di fallimento.
+  """
+  pre_import_objs = set(bpy.data.objects)
+  try:
+      bpy.ops.import_scene.gltf(filepath=glb_path)
+  except Exception as e:
+      print(f"Import fallito per {glb_path}: {e}")
+      return None
+
+  imported = list(set(bpy.data.objects) - pre_import_objs)
+  if not imported:
+      print(f"Nessun oggetto importato da {glb_path}")
+      return None
+
+  roots = [o for o in imported if o.parent is None or o.parent not in imported]
+
+  # Crea un anchor
+  anchor = bpy.data.objects.new(asset_name, None)
+  bpy.context.collection.objects.link(anchor)
+  bpy.context.view_layer.update()
+
+  # Calcola bounding box di tutte le mesh importate
+  bbox_corners = []
+  for obj in imported:
+      if obj.type == 'MESH':
+          bbox_corners.extend([obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box])
+
+  if not bbox_corners:
+      print(f"Nessuna mesh trovata in {glb_path}")
+      bpy.data.objects.remove(anchor)
+      return None
+
+  xs = [c.x for c in bbox_corners]
+  ys = [c.y for c in bbox_corners]
+  zs = [c.z for c in bbox_corners]
+  asset_width  = max(xs) - min(xs)
+  asset_height = max(zs) - min(zs)
+  asset_depth  = max(ys) - min(ys)
+
+  bbox_center = mathutils.Vector((
+      (max(xs) + min(xs)) * 0.5,
+      (max(ys) + min(ys)) * 0.5,
+      (max(zs) + min(zs)) * 0.5,
+  ))
+
+  # Rende i figli figli dell'anchor e centra la bbox
+  for obj in roots:
+      obj.parent = anchor
+      obj.matrix_parent_inverse = anchor.matrix_world.inverted()
+      obj.location -= bbox_center
+
+  # Calcola scale (positive)
+  scale_x = target_width / asset_width if asset_width > 1e-6 else 1.0
+  scale_z = target_height / asset_height if asset_height > 1e-6 else 1.0
+
+  if target_depth is not None:
+      scale_y = target_depth / asset_depth if asset_depth > 1e-6 else 1.0
+  else:
+      # Scala uniforme: usa la larghezza come riferimento
+      uniform = target_width / asset_width if asset_width > 1e-6 else 1.0
+      scale_x = scale_y = scale_z = uniform
+
+  anchor.location = location
+  anchor.rotation_euler = rotation_euler
+  anchor.scale = (abs(scale_x), abs(scale_y), abs(scale_z))   # Forza positivo
+
+  return anchor
 

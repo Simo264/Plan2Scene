@@ -200,7 +200,7 @@ void export_opening_placeholders(const ReconstructionResult& result, const std::
 
   json j_config;
   json j_openings = json::array();
-  for (const auto& op : result.openings) 
+  for (const auto& op : result.openings)
   {
     j_openings.push_back({
       {"type", (op.type == OpeningType::Door) ? "Door" : "Window"},

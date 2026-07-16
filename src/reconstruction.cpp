@@ -256,13 +256,10 @@ namespace Reconstruction
     g_logger.push_message({std::format("{} door faces found!", std::ranges::distance(door_faces)), LogLevel::Text});
     for(const auto& face : door_faces)
     {
-      auto door_base = door_height;
-      auto door_top = ceil_height;
+      face.extrude(mesh_vertices, mesh_wall_indices, door_height, ceil_height, wall_tex_scaling);
+      face.triangulate(mesh_vertices, mesh_wall_indices, door_height, wall_tex_scaling, true);
 
-      face.extrude(mesh_vertices, mesh_wall_indices, door_base, door_top, wall_tex_scaling);
-      face.triangulate(mesh_vertices, mesh_wall_indices, door_base, wall_tex_scaling, true);
-
-      auto opening = compute_opening_instance(face, OpeningType::Door, 0.0f, door_base);
+      auto opening = compute_opening_instance(face, OpeningType::Door, 0.0f, door_height);
       result.openings.push_back(opening);
     }
 
@@ -278,6 +275,9 @@ namespace Reconstruction
       
       face.extrude(mesh_vertices, mesh_wall_indices, window_height, ceil_height, wall_tex_scaling);
       face.triangulate(mesh_vertices, mesh_wall_indices, window_height, wall_tex_scaling, false);
+
+      auto opening = compute_opening_instance(face, OpeningType::Window, window_sill, window_height);
+      result.openings.push_back(opening);
     }
 
     auto floor_range = PrimitiveRange{ 0, static_cast<u32>(mesh_floor_indices.size()), MaterialType::Floor };

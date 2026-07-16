@@ -66,6 +66,27 @@ We are ready to export in GLTF format.
   - Planar Straight-Line Graph with `CGAL`
   - Polygon triangulation with `poly2tri`
 
+### Definition of openings (doors and windows)
+
+The final dimensions of the openings are fixed and must be known a priori. 
+
+During the geometry processing phase, the calculation engine does not apply a static scaling factor, but dynamically calculates the ratio of the width detected in the DXF to the desired target width to bring each gap back to the exact required geometric measurement, while preserving the midpoint (centering) of the original opening.
+
+The target widths are defined directly in the DXF template configuration JSON file:
+
+```json
+{
+  "ceil_height": 2.7,
+  
+  "door_width": 0.9, 
+  "door_height": 2.1,
+  
+  "window_sill_height": 0.9,
+  "window_height": 1.4,
+  "window_width": 1.6,  
+}
+```
+
 
 ## Photorealistic rendering
 

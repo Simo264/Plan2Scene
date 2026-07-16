@@ -182,7 +182,6 @@ int main(int argc, char** argv)
     std::println("Configuration error: {}", e.what());
     exit(1);
   }
-    
 
   auto window_context = init_window_context(viewport_info.width, viewport_info.height);
  

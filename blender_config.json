@@ -6,7 +6,10 @@
     "output_image": "out/draftperson_Floor_Plan_cycles.png"
   },
   "scene": {
-    "gltf_path": "out/draftperson_Floor_Plan.gltf",
+    "gltf_path": "out/Simple_House_Plan.gltf",
+    "opening_placeholders": "out/Simple_House_Plan_openings.json",
+    "door_asset": "assets/door_classic.glb",
+    "window_asset": "assets/xyz.glb",
     "hdri_path": "HDRIs/partly_cloudy_4k.hdr",
     "hdri_intensity": 1.0,
     "camera": {

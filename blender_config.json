@@ -1,61 +1,47 @@
 {
-  "rendering": {
-    "samples": 32,
-    "resolution_x": 640,
-    "resolution_y": 360,
-    "output_image": "out/Simple_House_Plan.png"
+  "samples": 128,
+  "resolution_x": 1280,
+  "resolution_y": 720,
+  "use_denoising" : true,
+  "render_engine": "CYCLES",
+  "output_blender": "out/scene.blend",
+
+  "model_path": "out/draftperson_Floor_Plan.gltf",
+  "opening_placeholders": "out/draftperson_Floor_Plan_openings.json",
+  "door_asset": "assets/Wooden_Door.glb",
+  "window_asset": "assets/Classical_Window.glb",
+  "hdri_path": "HDRIs/grasslands_sunset_4k.hdr",
+  "hdri_intensity": 1.0,
+
+  "floor_material": {
+    "albedo": "materials/patio_tiles/patio_tiles_diff_1k.jpg",
+    "base_color": [0.8, 0.8, 0.8],
+    "normal": "materials/patio_tiles/patio_tiles_nor_gl_1k.jpg",
+    "normal_strength": 1.5,
+    "roughness": "materials/patio_tiles/patio_tiles_rough_1k.jpg",
+    "roughness_value": 0.5,
+    "metallic": "materials/patio_tiles/patio_tiles_metallic_1k.jpg",
+    "metallic_value": 0.0,
+    "displacement": "materials/patio_tiles/patio_tiles_disp_1k.jpg",
+    "disp_scale": 0.05,
+    "ao": "materials/patio_tiles/patio_tiles_ao_1k.jpg",
+    "ao_mix_factor": 1.0,
+    "arm": "materials/patio_tiles/patio_tiles_arm_1k.jpg"
   },
-  "scene": {
-    "model_path": "out/Simple_House_Plan.gltf",
-    "opening_placeholders": "out/Simple_House_Plan_openings.json",
-    "door_asset": "assets/Wooden_Door.glb",
-    "window_asset": "assets/PVC_window.glb",
-    "hdri_path": "HDRIs/partly_cloudy_4k.hdr",
-    "hdri_intensity": 1.0,
-    "camera": {
-      "location": [-7.54497, 4.4, 1.8],
-      "rotation_degrees": [84.0, 0.0, -258.0],
-      "fov_degrees": 60.0
-    },
-    "lights": {
-      "point": {
-        "energy": 700.0,
-        "color": [1.0, 0.95, 0.88],
-        "shadow_soft_size": 0.15,
-        "location": [-12, 0.0, 1.4]
-      },
-      "sun": {
-        "energy": 2.5,
-        "angle_degrees": 2.0,
-        "rotation_degrees": [60.0, 0.0, 35.0]
-      }
-    }
-  },
-  "materials": {
-    "Floor_Mat": {
-      "albedo": "materials/patio_tiles/patio_tiles_diff_1k.jpg",
-      "base_color": [0.8, 0.8, 0.8],
-      "normal": "materials/patio_tiles/patio_tiles_nor_gl_1k.jpg",
-      "normal_strength": 1.5,
-      "roughness": "materials/patio_tiles/patio_tiles_rough_1k.jpg",
-      "roughness_value": 0.5,
-      "metallic": "materials/patio_tiles/patio_tiles_metallic_1k.jpg",
-      "metallic_value": 0.0,
-      "displacement": "materials/patio_tiles/patio_tiles_disp_1k.jpg",
-      "disp_scale": 0.05,
-      "ao": "materials/patio_tiles/patio_tiles_ao_1k.jpg",
-      "ao_mix_factor": 1.0,
-      "arm": "materials/patio_tiles/patio_tiles_arm_1k.jpg"
-    },
-    "Wall_And_Ceil_Mat": {
-      "albedo": "materials/beige_wall/beige_wall_001_diff_1k.jpg",
-      "normal": "materials/beige_wall/beige_wall_001_nor_gl_1k.jpg",
-      "normal_strength": 1.2,
-      "roughness": "materials/beige_wall/beige_wall_001_rough_1k.jpg",
-      "displacement": "materials/beige_wall/beige_wall_001_disp_1k.jpg",
-      "disp_scale": 0.03,
-      "ao": "materials/beige_wall/beige_wall_001_ao_1k.jpg",
-      "arm": "materials/beige_wall/beige_wall_001_arm_1k.jpg"
-    }
+
+  "wall_and_ceil_material": {
+    "albedo": "materials/beige_wall/beige_wall_001_diff_1k.jpg",
+    "base_color": [0.8, 0.8, 0.8],
+    "normal": "materials/beige_wall/beige_wall_001_nor_gl_1k.jpg",
+    "normal_strength": 1.5,
+    "metallic": "",
+    "metallic_value": 0.0,
+    "roughness": "materials/beige_wall/beige_wall_001_rough_1k.jpg",
+    "roughness_value": 0.5,
+    "displacement": "materials/beige_wall/beige_wall_001_disp_1k.jpg",
+    "disp_scale": 0.05,
+    "ao": "materials/beige_wall/beige_wall_001_ao_1k.jpg",
+    "ao_mix_factor": 1.0,
+    "arm": "materials/beige_wall/beige_wall_001_arm_1k.jpg"
   }
 }

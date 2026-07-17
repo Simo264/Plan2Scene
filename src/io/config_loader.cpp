@@ -117,6 +117,4 @@ void Config::validate_config()
     throw std::runtime_error("window_sill_height must be >= 0");
   if (window_sill_height >= ceil_height)
     throw std::runtime_error("window_sill_height must be < ceil_height");
-  if (window_sill_height + window_height >= ceil_height)
-    throw std::runtime_error("window_sill_height + window_height must be < ceil_height (no wall above window)");
 }

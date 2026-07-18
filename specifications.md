@@ -196,5 +196,5 @@ This script does not produce a final image directly. Instead, it saves a complet
 
 The script is invoked from the command line as follows:
 ```bash
-blender -b -P render_scene.py
+blender -b -P generate_blender_scene.py
 ```

@@ -66,7 +66,7 @@ Before executing the program, create and activate a Python virtual environment (
 
 ```bash
 python -m venv venv
-source venv/bin/activate
+source venv/bin/activate.fish
 pip install -r requirements.txt
 ```
 Launch the program by passing the JSON configuration file as an argument:
@@ -74,3 +74,11 @@ Launch the program by passing the JSON configuration file as an argument:
 ```bash
 ./build/Plan2Scene cad/house_plan/Simple_House_Plan.json
 ```
+
+To generate the blender file, run the following command:
+
+```bash
+python generate_blender_scene.py
+```
+
+Important: this script reads the JSON configuration file `blender_config.json` and generates a corresponding blender scene. Edit `blender_config.json` to customize the scene.

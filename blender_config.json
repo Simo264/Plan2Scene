@@ -6,8 +6,8 @@
   "render_engine": "CYCLES",
   "output_blender": "out/scene.blend",
 
-  "model_path": "out/draftperson_Floor_Plan.gltf",
-  "opening_placeholders": "out/draftperson_Floor_Plan_openings.json",
+  "model_path": "out/Simple_House_Plan.gltf",
+  "opening_placeholders": "out/Simple_House_Plan_openings.json",
   "door_asset": "assets/Wooden_Door.glb",
   "window_asset": "assets/Classical_Window.glb",
   "hdri_path": "HDRIs/grasslands_sunset_4k.hdr",

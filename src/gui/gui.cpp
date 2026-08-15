@@ -371,7 +371,7 @@ void console_panel(GLFWwindow* window, ReconstructionStage& current_stage, std::
     }
     ImGui::EndChild();
 
-#define BYPASS_CONFIRM 1
+#define BYPASS_CONFIRM 0
 
 #if BYPASS_CONFIRM
   if (worker_state == ThreadState::WaitingConfirmation)
